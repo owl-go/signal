@@ -21,10 +21,12 @@ var (
 	quit     chan struct{}
 )
 
+// init 初始化包
 func init() {
 	quit = make(chan struct{})
 }
 
+// Init 初始化对象
 func Init(etcds []string) {
 	var err error
 	etcd, err = newEtcd(etcds)
@@ -33,6 +35,7 @@ func Init(etcds []string) {
 	}
 }
 
+// UpdateLoad 测试功能，暂时没用
 func UpdateLoad(ip string, port int) {
 	nodeIP = ip
 	nodePort = port
@@ -54,7 +57,7 @@ func UpdateLoad(ip string, port int) {
 	}()
 }
 
-// cost 1 second
+// getScore 获取服务器信息
 func getScore() string {
 	var score float64
 	p, err := cpu.Percent(time.Second, false)
@@ -91,10 +94,12 @@ func getScore() string {
 	return strconv.Itoa(int(score))
 }
 
+// Close 退出
 func Close() {
 	close(quit)
 }
 
+// Keep 写入key-value并保存key，保活
 func Keep(key, val string) {
 	log.Infof("discovery.Keep etcd=%v", etcd)
 	if etcd != nil {
@@ -102,18 +107,21 @@ func Keep(key, val string) {
 	}
 }
 
+// Watch 监控对应的key改变
 func Watch(key string, watchFunc WatchCallback, prefix bool) {
 	if etcd != nil {
 		etcd.watch(key, watchFunc, prefix)
 	}
 }
 
+// Del etcd删除key
 func Del(key string, prefix bool) {
 	if etcd != nil {
 		etcd.del(key, prefix)
 	}
 }
 
+// GetByPrefix etcd查询key对应的value
 func GetByPrefix(key string) map[string]string {
 	if etcd == nil {
 		return nil

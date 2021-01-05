@@ -9,24 +9,25 @@ import (
 	"go.etcd.io/etcd/clientv3"
 )
 
-// ServiceNode .
+// ServiceNode 管理服务器节点和etcd客户端
 type ServiceNode struct {
 	reg  *ServiceRegistry
 	name string
 	node Node
 }
 
+// NodeStateType 节点状态
 type NodeStateType int32
 
 const (
-	UP   NodeStateType = 0
-	DOWN NodeStateType = 1
+	serverUp   NodeStateType = 0
+	serverDown NodeStateType = 1
 )
 
-// ServiceWatchCallback .
+// ServiceWatchCallback 定义服务节点状态改变回调
 type ServiceWatchCallback func(service string, state NodeStateType, nodes Node)
 
-// NewServiceNode .
+// NewServiceNode 新建一个服务节点和etcd客户端对象
 func NewServiceNode(endpoints []string, dc string) *ServiceNode {
 	var sn ServiceNode
 	sn.reg = NewServiceRegistry(endpoints, "/"+dc+"/node/")
@@ -37,22 +38,22 @@ func NewServiceNode(endpoints []string, dc string) *ServiceNode {
 	return &sn
 }
 
-// NodeInfo .
+// NodeInfo 返回服务节点信息
 func (sn *ServiceNode) NodeInfo() Node {
 	return sn.node
 }
 
-// GetEventChannel .
+// GetEventChannel 获取广播对象string
 func (sn *ServiceNode) GetEventChannel() string {
 	return "event-" + sn.node.Info["id"]
 }
 
-// GetRPCChannel .
+// GetRPCChannel 获取RPC对象string
 func (sn *ServiceNode) GetRPCChannel() string {
 	return "rpc-" + sn.node.Info["id"]
 }
 
-// RegisterNode register a new node.
+// RegisterNode 注册一个新的服务节点
 func (sn *ServiceNode) RegisterNode(serviceName string, name string, ID string) {
 	sn.node.ID = randomString(12)
 	sn.node.Info["name"] = name
@@ -64,14 +65,14 @@ func (sn *ServiceNode) RegisterNode(serviceName string, name string, ID string) 
 	}
 }
 
-// ServiceWatcher .
+// ServiceWatcher 服务发现对象
 type ServiceWatcher struct {
 	reg      *ServiceRegistry
 	nodesMap map[string]map[string]Node
 	callback ServiceWatchCallback
 }
 
-// NewServiceWatcher .
+// NewServiceWatcher 新建一个服务发现对象
 func NewServiceWatcher(endpoints []string, dc string) *ServiceWatcher {
 	sw := &ServiceWatcher{
 		nodesMap: make(map[string]map[string]Node),
@@ -82,11 +83,13 @@ func NewServiceWatcher(endpoints []string, dc string) *ServiceWatcher {
 	return sw
 }
 
+// GetNodes 根据服务名称获取所有该服务节点的所有对象
 func (sw *ServiceWatcher) GetNodes(service string) (map[string]Node, bool) {
 	nodes, found := sw.nodesMap[service]
 	return nodes, found
 }
 
+// GetNodesByID 根据服务节点id获取到服务节点对象
 func (sw *ServiceWatcher) GetNodesByID(ID string) (*Node, bool) {
 	for _, nodes := range sw.nodesMap {
 		for id, node := range nodes {
@@ -98,9 +101,10 @@ func (sw *ServiceWatcher) GetNodesByID(ID string) (*Node, bool) {
 	return nil, false
 }
 
+// DeleteNodesByID 删除指定节点id的服务节点
 func (sw *ServiceWatcher) DeleteNodesByID(ID string) bool {
 	for service, nodes := range sw.nodesMap {
-		for id, _ := range nodes {
+		for id := range nodes {
 			if id == ID {
 				delete(sw.nodesMap[service], id)
 				return true
@@ -110,6 +114,7 @@ func (sw *ServiceWatcher) DeleteNodesByID(ID string) bool {
 	return false
 }
 
+// WatchNode 监控到服务节点状态改变
 func (sw *ServiceWatcher) WatchNode(ch clientv3.WatchChan) {
 	go func() {
 		for {
@@ -123,7 +128,7 @@ func (sw *ServiceWatcher) WatchNode(ch clientv3.WatchChan) {
 					if found {
 						service := n.Info["service"]
 						if sw.callback != nil {
-							sw.callback(service, DOWN, *n)
+							sw.callback(service, serverDown, *n)
 						}
 						sw.DeleteNodesByID(nodeID)
 					}
@@ -133,7 +138,7 @@ func (sw *ServiceWatcher) WatchNode(ch clientv3.WatchChan) {
 	}()
 }
 
-//WatchServiceNode .
+// WatchServiceNode 监控指定服务名称的所有服务节点的状态
 func (sw *ServiceWatcher) WatchServiceNode(serviceName string, callback ServiceWatchCallback) {
 	log.Infof("Start service watcher => [%s].", serviceName)
 	sw.callback = callback
@@ -155,7 +160,7 @@ func (sw *ServiceWatcher) WatchServiceNode(serviceName string, callback ServiceW
 
 			if _, found := sw.GetNodesByID(node.ID); !found {
 				log.Infof("New %s node UP => [%s].", service, node.ID)
-				callback(service, UP, node)
+				callback(service, serverUp, node)
 
 				log.Infof("Start watch for [%s] node => [%s].", service, node.ID)
 				Watch(node.ID, sw.WatchNode, true)
@@ -168,6 +173,7 @@ func (sw *ServiceWatcher) WatchServiceNode(serviceName string, callback ServiceW
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
 
+// 生成服务节点id
 func randomString(n int) string {
 	rand.Seed(time.Now().UnixNano())
 	b := make([]rune, n)
@@ -177,12 +183,12 @@ func randomString(n int) string {
 	return string(b)
 }
 
-// GetEventChannel .
+// GetEventChannel 同上面
 func GetEventChannel(node Node) string {
 	return "event-" + node.Info["id"]
 }
 
-// GetRPCChannel .
+// GetRPCChannel 同上面
 func GetRPCChannel(node Node) string {
 	return "rpc-" + node.Info["id"]
 }

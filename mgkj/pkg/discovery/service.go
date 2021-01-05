@@ -11,19 +11,19 @@ import (
 	"mgkj/pkg/util"
 )
 
-//ServiceRegistry lib
+// ServiceRegistry etcd服务注册管理对象
 type ServiceRegistry struct {
 	Scheme string
 	etcd   *Etcd
 }
 
-//Node service node info
+// Node 服务器节点信息对象
 type Node struct {
 	ID   string
 	Info map[string]string
 }
 
-//NewServiceRegistry ServiceRegistry factory method
+// NewServiceRegistry 创建一个etcd服务注册管理对象
 func NewServiceRegistry(endpoints []string, scheme string) *ServiceRegistry {
 	r := &ServiceRegistry{
 		Scheme: scheme,
@@ -33,7 +33,7 @@ func NewServiceRegistry(endpoints []string, scheme string) *ServiceRegistry {
 	return r
 }
 
-//RegisterServiceNode .
+// RegisterServiceNode 注册一个服务节点到etcd服务管理上
 func (r *ServiceRegistry) RegisterServiceNode(serviceName string, node Node) error {
 	if serviceName == "" {
 		return fmt.Errorf("Service name must be non empty")
@@ -46,6 +46,7 @@ func (r *ServiceRegistry) RegisterServiceNode(serviceName string, node Node) err
 	return nil
 }
 
+// keepRegistered 注册一个服务节点到etcd服务管理上
 func (r *ServiceRegistry) keepRegistered(serviceName string, node Node) {
 	for {
 		nodePath := r.Scheme + serviceName + "-" + node.ID
@@ -60,7 +61,7 @@ func (r *ServiceRegistry) keepRegistered(serviceName string, node Node) {
 	}
 }
 
-//GetServiceNodes returns a list of active service nodes
+// GetServiceNodes 返回活动的服务器列表
 func (r *ServiceRegistry) GetServiceNodes(serviceName string) ([]Node, error) {
 	rsp, err := r.etcd.GetResponseByPrefix(r.servicePath(serviceName))
 	if err != nil {
@@ -81,6 +82,7 @@ func (r *ServiceRegistry) GetServiceNodes(serviceName string) ([]Node, error) {
 	return nodes, nil
 }
 
+// encode 将map格式转换成string
 func encode(m map[string]string) string {
 	if m != nil {
 		b, _ := json.Marshal(m)
@@ -89,6 +91,7 @@ func encode(m map[string]string) string {
 	return ""
 }
 
+// decode 将string格式转换成map
 func decode(ds []byte) map[string]string {
 	if ds != nil && len(ds) > 0 {
 		var s map[string]string
@@ -98,6 +101,7 @@ func decode(ds []byte) map[string]string {
 	return nil
 }
 
+// servicePath 获取指定服务器名称对应的key
 func (r *ServiceRegistry) servicePath(serviceName string) string {
 	service := strings.Replace(serviceName, "/", "-", -1)
 	return path.Join(r.Scheme, service)

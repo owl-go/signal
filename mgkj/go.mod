@@ -6,13 +6,11 @@ require (
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/chuckpreslar/emission v0.0.0-20170206194824-a7ddd980baf9
 	github.com/cloudwebrtc/go-protoo v1.0.0
-	github.com/cloudwebrtc/nats-protoo v0.0.0-20200328144814-d3c1c848d442
 	github.com/coreos/etcd v3.3.25+incompatible // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/go-redis/redis/v7 v7.4.0
 	github.com/google/uuid v1.1.2 // indirect
-	github.com/nats-io/nats-server/v2 v2.1.9 // indirect
 	github.com/rs/zerolog v1.20.0
 	github.com/shirou/gopsutil v3.20.11+incompatible
 	github.com/spf13/viper v1.7.1
