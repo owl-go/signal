@@ -8,7 +8,7 @@ import (
 
 func TestFunction(t *testing.T) {
 	//amqp := New("module1", "amqp://guest:guest@localhost:5672/")
-	amqp := New("module1", "amqp://zhouwq:123456@8.129.55.41:5672/admin")
+	amqp := New("rpc1", "board", "amqp://zhouwq:123456@8.129.55.41:5672/admin")
 
 	rpcMsgs, err := amqp.ConsumeRPC()
 	if err != nil {
@@ -35,8 +35,8 @@ func TestFunction(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		m := make(map[string]interface{})
 		m["key"] = fmt.Sprintf("rpc %d", i)
-		amqp.RPCCall("module1", m, "")
-		amqp.RPCCall("module2", m, "")
+		amqp.RPCCall("rpc1", m, "")
+		amqp.RPCCall("rpc2", m, "")
 		m["key"] = fmt.Sprintf("broadcast %d", i)
 		amqp.BroadCast(m)
 		time.Sleep(time.Second)

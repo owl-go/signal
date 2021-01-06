@@ -30,7 +30,7 @@ type Amqp struct {
 }
 
 // New 创建一个Amqp对象
-func New(id, url string) *Amqp {
+func New(rpc, event, url string) *Amqp {
 	a := &Amqp{
 		Emitter: *emission.NewEmitter(),
 	}
@@ -45,13 +45,13 @@ func New(id, url string) *Amqp {
 		return nil
 	}
 
-	err = a.initRPC(id)
+	err = a.initRPC(rpc)
 	if err != nil {
 		log.Panicf(err.Error())
 		return nil
 	}
 
-	err = a.initBroadCast()
+	err = a.initBroadCast(event)
 	if err != nil {
 		log.Panicf(err.Error())
 		return nil
@@ -93,7 +93,7 @@ func (a *Amqp) initRPC(id string) error {
 }
 
 // initBroadCast 初始化广播
-func (a *Amqp) initBroadCast() error {
+func (a *Amqp) initBroadCast(id string) error {
 	var err error
 	// 创建通道
 	a.broadCastChannel, err = a.conn.Channel()
@@ -102,13 +102,13 @@ func (a *Amqp) initBroadCast() error {
 	}
 
 	// a receiving broadcast msg queue 创建路由
-	err = a.broadCastChannel.ExchangeDeclare("broadCastExchange", "topic", true, false, false, false, nil)
+	err = a.broadCastChannel.ExchangeDeclare(broadCastExchange, "topic", true, false, false, false, nil)
 	if err != nil {
 		return err
 	}
 
 	// a receive queue 创建队列
-	a.broadCastQueue, err = a.broadCastChannel.QueueDeclare("", false, false, true, false, nil)
+	a.broadCastQueue, err = a.broadCastChannel.QueueDeclare(id, false, false, true, false, nil)
 	if err != nil {
 		return err
 	}
@@ -213,6 +213,6 @@ func (a *Amqp) BroadCast(msg map[string]interface{}) error {
 		amqp.Publishing{
 			ContentType: "text/plain",
 			Body:        []byte(str),
-			ReplyTo:     a.rpcQueue.Name,
+			ReplyTo:     a.broadCastQueue.Name,
 		})
 }
