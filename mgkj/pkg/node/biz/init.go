@@ -5,14 +5,12 @@ import (
 )
 
 var (
-	amqp  *mq.Amqp
-	bizID string
+	amqp *mq.Amqp
 )
 
 // Init 初始化服务
-func Init(id, mqURL string) {
-	bizID = id
-	amqp = mq.New(id, mqURL)
+func Init(mqURL string, rpc, event string) {
+	amqp = mq.New(rpc, event, mqURL)
 	handleRPCMsgs()
 	handleBroadCastMsgs()
 }

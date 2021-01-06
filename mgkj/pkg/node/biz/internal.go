@@ -42,10 +42,6 @@ func handleRPCMsgs() {
 		for rpcm := range rpcMsgs {
 			msg := util.Unmarshal(string(rpcm.Body))
 			from := rpcm.ReplyTo
-			if from == bizID {
-				continue
-			}
-
 			log.Infof("biz.handleRPCMsgs msg=%v", msg)
 			resp := util.Val(msg, "response")
 			if resp != "" {

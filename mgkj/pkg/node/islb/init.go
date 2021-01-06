@@ -5,7 +5,6 @@ import (
 
 	"mgkj/pkg/db"
 	"mgkj/pkg/mq"
-	"mgkj/pkg/proto"
 )
 
 const (
@@ -18,8 +17,8 @@ var (
 )
 
 // Init 初始化服务
-func Init(mqURL string, config db.Config) {
-	amqp = mq.New(proto.IslbID, mqURL)
+func Init(mqURL string, config db.Config, rpc, event string) {
+	amqp = mq.New(rpc, event, mqURL)
 	redis = db.NewRedis(config)
 	handleRPCMsgs()
 }

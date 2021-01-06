@@ -26,8 +26,9 @@ func init() {
 }
 
 type global struct {
-	Pprof string `mapstructure:"pprof"`
-	// TestIP []string `mapstructure:"testip"`
+	Pprof    string `mapstructure:"pprof"`
+	Name     string `mapstructure:"name"`
+	ServerID string `mapstructure:"serverid"`
 }
 
 type log struct {
@@ -39,7 +40,7 @@ type etcd struct {
 }
 
 type amqp struct {
-	Url string `mapstructure:"url"`
+	URL string `mapstructure:"url"`
 }
 
 type redis struct {

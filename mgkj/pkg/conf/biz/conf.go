@@ -11,8 +11,6 @@ import (
 var (
 	cfg    = config{}
 	Global = &cfg.Global
-	WebRTC = &cfg.WebRTC
-	Rtp    = &cfg.Rtp
 	Log    = &cfg.Log
 	Etcd   = &cfg.Etcd
 	Signal = &cfg.Signal
@@ -27,9 +25,9 @@ func init() {
 }
 
 type global struct {
-	Addr  string `mapstructure:"addr"`
-	Pprof string `mapstructure:"pprof"`
-	// TestIP []string `mapstructure:"testip"`
+	Pprof    string `mapstructure:"pprof"`
+	Name     string `mapstructure:"name"`
+	ServerID string `mapstructure:"serverid"`
 }
 
 type log struct {
@@ -51,18 +49,8 @@ type amqp struct {
 	URL string `mapstructure:"url"`
 }
 
-type webrtc struct {
-	ICE []string `mapstructure:"ice"`
-}
-
-type rtp struct {
-	Port int `mapstructure:"port"`
-}
-
 type config struct {
 	Global  global `mapstructure:"global"`
-	WebRTC  webrtc `mapstructure:"webrtc"`
-	Rtp     rtp    `mapstructure:"rtp"`
 	Log     log    `mapstructure:"log"`
 	Etcd    etcd   `mapstructure:"etcd"`
 	Signal  signal `mapstructure:"signal"`
