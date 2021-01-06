@@ -167,6 +167,18 @@ func Map(args ...interface{}) map[string]interface{} {
 	return msg
 }
 
+// MapStr 将数据组装成map对象
+func MapStr(args ...interface{}) map[string]string {
+	if len(args)%2 != 0 {
+		return nil
+	}
+	msg := make(map[string]string)
+	for i := 0; i < len(args)/2; i++ {
+		msg[args[2*i].(string)] = args[2*i+1].(string)
+	}
+	return msg
+}
+
 /*
 func GetIDFromRTP(pkt *rtp.Packet) string {
 	if !pkt.Header.Extension || len(pkt.Header.ExtensionPayload) < 36 {
