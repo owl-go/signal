@@ -3,7 +3,7 @@ pprof = ":6060"
 
 # name
 name = "biz"
-serverid = shenzhen_biz_1
+serverid = "shenzhen_biz_1"
 
 [log]
 level = "info"
