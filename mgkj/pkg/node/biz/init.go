@@ -21,7 +21,7 @@ var (
 func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, mqURL string) {
 	node = serviceNode
 	watch = ServiceWatcher
-	watch.WatchServiceNode("", WatchServiceNodes)
+	go watch.WatchServiceNode("", WatchServiceNodes)
 	amqp = mq.New(node.GetRPCChannel(), node.GetEventChannel(), mqURL)
 	handleRPCMsgs()
 	handleBroadCastMsgs()

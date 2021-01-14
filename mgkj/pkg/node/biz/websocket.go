@@ -2,7 +2,6 @@ package node
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -41,19 +40,19 @@ func checkRoom() {
 	t := time.NewTicker(statCycle)
 	defer t.Stop()
 	for range t.C {
-		info := "biz.checkRoom start\n"
+		//info := "biz.checkRoom start\n"
 		var nCount int = 0
 		roomLock.Lock()
 		for rid, node := range rooms {
 			nCount += len(node.room.GetPeers())
-			info += fmt.Sprintf("room: %s peers: %d\n", rid, len(node.room.GetPeers()))
+			//info += fmt.Sprintf("room: %s peers: %d\n", rid, len(node.room.GetPeers()))
 			if len(node.room.GetPeers()) == 0 {
 				node.room.Close()
 				delete(rooms, rid)
 			}
 		}
 		roomLock.Unlock()
-		log.Infof(info)
+		//log.Infof(info)
 		// 更新负载
 		node.UpdateNodePayload(nCount)
 	}

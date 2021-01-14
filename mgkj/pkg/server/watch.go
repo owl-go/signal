@@ -163,13 +163,15 @@ func (serviceWatcher *ServiceWatcher) GetServiceNodes(prefix string) ([]Node, er
 
 	for _, val := range rsp.Kvs {
 		nodeobj := Decode(val.Value)
-		node := Node{}
-		node.Ndc = nodeobj["Ndc"]
-		node.Nid = nodeobj["Nid"]
-		node.Name = nodeobj["Name"]
-		node.Nip = nodeobj["Nip"]
-		node.Npayload = nodeobj["Npayload"]
-		nodes = append(nodes, node)
+		if nodeobj["Nid"] != "" {
+			node := Node{}
+			node.Ndc = nodeobj["Ndc"]
+			node.Nid = nodeobj["Nid"]
+			node.Name = nodeobj["Name"]
+			node.Nip = nodeobj["Nip"]
+			node.Npayload = nodeobj["Npayload"]
+			nodes = append(nodes, node)
+		}
 	}
 	return nodes, nil
 }
