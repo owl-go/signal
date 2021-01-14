@@ -88,7 +88,6 @@ func (serviceWatcher *ServiceWatcher) WatchNode(ch clientv3.WatchChan) {
 		for {
 			msg := <-ch
 			for _, ev := range msg.Events {
-				log.Infof("%s %q:%q", ev.Type, ev.Kv.Key, ev.Kv.Value)
 				if ev.Type == clientv3.EventTypeDelete {
 					nodemap := Decode(ev.Kv.Value)
 					node := &Node{
@@ -115,7 +114,7 @@ func (serviceWatcher *ServiceWatcher) WatchNode(ch clientv3.WatchChan) {
 
 // WatchServiceNode 监控指定服务名称的所有服务节点的状态
 func (serviceWatcher *ServiceWatcher) WatchServiceNode(prefix string, callback ServiceWatchCallback) {
-	log.Infof("Start service watcher => [%s].", prefix)
+	log.Infof("Start service watcher => [%s]", prefix)
 	serviceWatcher.callback = callback
 	for {
 		nodes, err := serviceWatcher.GetServiceNodes(prefix)
@@ -123,7 +122,6 @@ func (serviceWatcher *ServiceWatcher) WatchServiceNode(prefix string, callback S
 			log.Errorf("serviceWatcher.GetServiceNodes err=%v", err)
 			continue
 		}
-		log.Infof("Nodes: => %v", nodes)
 
 		for _, node := range nodes {
 			nid := node.Nid
@@ -134,10 +132,8 @@ func (serviceWatcher *ServiceWatcher) WatchServiceNode(prefix string, callback S
 			}
 
 			if _, found := serviceWatcher.GetNodeByID(nid); !found {
-				log.Infof("New %s node UP => [%s].", name, nid)
+				log.Infof("New %s node UP => [%s]", name, nid)
 				callback(ServerUp, node)
-
-				log.Infof("Start watch for [%s] node => [%s].", name, nid)
 				serviceWatcher.etcd.Watch(node.GetPrefixByNid(), serviceWatcher.WatchNode, true)
 				serviceWatcher.nodesMap[name][nid] = node
 			}
