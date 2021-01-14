@@ -9,58 +9,27 @@ import (
 	"mgkj/pkg/log"
 )
 
-// MarshalStr 将args分析成string
-func MarshalStr(args ...interface{}) string {
-	m := Map(args)
-	if byt, err := json.Marshal(m); err != nil {
+// MarshalStr 将map转换成string
+func MarshalStr(m map[string]string) string {
+	byt, err := json.Marshal(m)
+	if err != nil {
 		log.Errorf(err.Error())
 		return ""
-	} else {
-		return string(byt)
 	}
-}
-
-// MarshalStrMap 将map转换成string
-func MarshalStrMap(m map[string]string) string {
-	if byt, err := json.Marshal(m); err != nil {
-		log.Errorf(err.Error())
-		return ""
-	} else {
-		return string(byt)
-	}
+	return string(byt)
 }
 
 // Marshal 将map转换成string
 func Marshal(m map[string]interface{}) string {
-	if byt, err := json.Marshal(m); err != nil {
+	byt, err := json.Marshal(m)
+	if err != nil {
 		log.Errorf(err.Error())
 		return ""
-	} else {
-		return string(byt)
 	}
+	return string(byt)
 }
 
-// Unmarshal 将string转换成map
-func Unmarshal(str string) map[string]interface{} {
-	var data map[string]interface{}
-	if err := json.Unmarshal([]byte(str), &data); err != nil {
-		log.Errorf(err.Error())
-		return data
-	}
-	return data
-}
-
-// Recover 抓panic
-func Recover(flag string) {
-	_, _, l, _ := runtime.Caller(1)
-	if err := recover(); err != nil {
-		log.Errorf("[%s] Recover panic line => %v", flag, l)
-		log.Errorf("[%s] Recover err => %v", flag, err)
-		debug.PrintStack()
-	}
-}
-
-// Val 从msg的map结构中获取值
+// Val 从map结构中获取值
 func Val(msg map[string]interface{}, key string) string {
 	if msg == nil {
 		return ""
@@ -80,6 +49,16 @@ func Val(msg map[string]interface{}, key string) string {
 	}
 }
 
+// Unmarshal 将string转换成map
+func Unmarshal(str string) map[string]interface{} {
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(str), &data); err != nil {
+		log.Errorf(err.Error())
+		return data
+	}
+	return data
+}
+
 // Map 将数据组装成map对象
 func Map(args ...interface{}) map[string]interface{} {
 	if len(args)%2 != 0 {
@@ -92,8 +71,8 @@ func Map(args ...interface{}) map[string]interface{} {
 	return msg
 }
 
-// MapStr 将数据组装成map对象
-func MapStr(args ...interface{}) map[string]string {
+// Map2 将数据组装成map对象
+func Map2(args ...interface{}) map[string]string {
 	if len(args)%2 != 0 {
 		return nil
 	}
@@ -115,4 +94,14 @@ func RandStr(l int) string {
 		bytes[i] = byte(randInt(65, 90))
 	}
 	return string(bytes)
+}
+
+// Recover 抓panic
+func Recover(flag string) {
+	_, _, l, _ := runtime.Caller(1)
+	if err := recover(); err != nil {
+		log.Errorf("[%s] Recover panic line => %v", flag, l)
+		log.Errorf("[%s] Recover err => %v", flag, err)
+		debug.PrintStack()
+	}
 }

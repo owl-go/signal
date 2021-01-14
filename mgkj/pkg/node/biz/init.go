@@ -81,22 +81,45 @@ func FindSfuNodeByMid(mid string) *server.Node {
 	}
 
 	ch := make(chan int, 1)
-	sfu := server.Node{}
+	var sfu *server.Node
 	find := false
 	respIslb := func(resp map[string]interface{}) {
-		sfu.Ndc = resp["Ndc"].(string)
-		sfu.Nid = resp["Nid"].(string)
-		sfu.Name = resp["Name"].(string)
-		sfu.Nip = resp["Nip"].(string)
-		sfu.Npayload = resp["Nip"].(string)
-		find = true
+		nid := resp["nid"].(string)
+		if nid != "" {
+			sfu = FindSfuNodeByID(nid)
+			find = true
+		}
 		ch <- 0
 	}
-	amqp.RPCCallWithResp(server.GetRPCChannel(*islb), util.Map("method", proto.IslbGetSfuInfo, "service", "sfu", "mid", mid), respIslb)
+	amqp.RPCCallWithResp(server.GetRPCChannel(*islb), util.Map("method", proto.IslbGetSfuInfo, "mid", mid), respIslb)
 	<-ch
 	close(ch)
 	if find {
-		return &sfu
+		return sfu
 	}
 	return nil
+}
+
+// FindMediaIndoByMid 根据mid向islb查询指定的流信息
+func FindMediaIndoByMid(mid string) (string, bool) {
+	islb := FindIslbNode()
+	if islb == nil {
+		log.Errorf("FindMediaIndoByMid islb not found")
+		return "", false
+	}
+
+	ch := make(chan int, 1)
+	var minfo string
+	find := false
+	respIslb := func(resp map[string]interface{}) {
+		minfo = resp["minfo"].(string)
+		if minfo != "" {
+			find = true
+		}
+		ch <- 0
+	}
+	amqp.RPCCallWithResp(server.GetRPCChannel(*islb), util.Map("method", proto.IslbGetMediaInfo, "mid", mid), respIslb)
+	<-ch
+	close(ch)
+	return minfo, find
 }

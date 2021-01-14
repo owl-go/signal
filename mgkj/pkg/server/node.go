@@ -46,7 +46,7 @@ func (node *Node) GetPrefixByNid() string {
 
 // GetNodeValue 获取节点保存的值
 func (node *Node) GetNodeValue() string {
-	return Encode(util.MapStr("Ndc", node.Ndc, "Nid", node.Nid, "Name", node.Name, "Nip", node.Nip, "Npayload", node.Npayload))
+	return Encode(util.Map2("Ndc", node.Ndc, "Nid", node.Nid, "Name", node.Name, "Nip", node.Nip, "Npayload", node.Npayload))
 }
 
 // Encode 将map格式转换成string

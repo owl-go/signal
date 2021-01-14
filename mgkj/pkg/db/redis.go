@@ -1,8 +1,6 @@
 package db
 
 import (
-	"context"
-	"fmt"
 	"time"
 
 	"mgkj/pkg/log"
@@ -66,60 +64,20 @@ func NewRedis(c Config) *Redis {
 	return r
 }
 
-// Set redis以key-value方式存储
-func (r *Redis) Set(k, v string, t time.Duration) error {
+// Keys redis查找所有符合给定模式的所有key
+func (r *Redis) Keys(k string) []string {
 	if r.clusterMode {
-		return r.cluster.Set(k, v, t).Err()
+		return r.cluster.Keys(k).Val()
 	}
-	return r.single.Set(k, v, t).Err()
+	return r.single.Keys(k).Val()
 }
 
-// Get redis获取key的值
-func (r *Redis) Get(k string) string {
-	if r.clusterMode {
-		return r.cluster.Get(k).Val()
-	}
-	return r.single.Get(k).Val()
-}
-
-// Del redis删除指定key的值
+// Del redis删除指定key的所有数据
 func (r *Redis) Del(k string) error {
 	if r.clusterMode {
 		return r.cluster.Del(k).Err()
 	}
 	return r.single.Del(k).Err()
-}
-
-// HSet redis以hash散列表方式存储
-func (r *Redis) HSet(k, field string, value interface{}) error {
-	if r.clusterMode {
-		return r.cluster.HSet(k, field, value).Err()
-	}
-	return r.single.HSet(k, field, value).Err()
-}
-
-// HGet redis读取hash散列表key值
-func (r *Redis) HGet(k, field string) string {
-	if r.clusterMode {
-		return r.cluster.HGet(k, field).Val()
-	}
-	return r.single.HGet(k, field).Val()
-}
-
-// HGetAll redis读取全部hash散列表key值
-func (r *Redis) HGetAll(k string) map[string]string {
-	if r.clusterMode {
-		return r.cluster.HGetAll(k).Val()
-	}
-	return r.single.HGetAll(k).Val()
-}
-
-// HDel redis删除hash散列表key值
-func (r *Redis) HDel(k, field string) error {
-	if r.clusterMode {
-		return r.cluster.HDel(k, field).Err()
-	}
-	return r.single.HDel(k, field).Err()
 }
 
 // Expire redis设置key过期时间
@@ -130,51 +88,50 @@ func (r *Redis) Expire(k string, t time.Duration) error {
 	return r.single.Expire(k, t).Err()
 }
 
-// Keys redis查找所有符合给定模式的key
-func (r *Redis) Keys(k string) []string {
+// Set redis以字符串方式存储key值
+func (r *Redis) Set(k, v string, t time.Duration) error {
 	if r.clusterMode {
-		return r.cluster.Keys(k).Val()
+		return r.cluster.Set(k, v, t).Err()
 	}
-	return r.single.Keys(k).Val()
+	return r.single.Set(k, v, t).Err()
 }
 
-// HSetTTL redis设置给定key的值和剩余生存时间
-func (r *Redis) HSetTTL(k, field string, value interface{}, t time.Duration) error {
+// Get redis以字符串方式存储,获取key值
+func (r *Redis) Get(k string) string {
 	if r.clusterMode {
-		if err := r.cluster.HSet(k, field, value).Err(); err != nil {
-			return err
-		}
-		return r.cluster.Expire(k, t).Err()
+		return r.cluster.Get(k).Val()
 	}
-	if err := r.single.HSet(k, field, value).Err(); err != nil {
-		return err
-	}
-	return r.single.Expire(k, t).Err()
+	return r.single.Get(k).Val()
 }
 
-// Watch http://redisdoc.com/topic/notification.html
-func (r *Redis) Watch(ctx context.Context, key string) <-chan interface{} {
-	var pubsub *redis.PubSub
+// HSet redis以hash散列表方式存储key的field字段的值
+func (r *Redis) HSet(k, field string, value interface{}) error {
 	if r.clusterMode {
-		pubsub = r.cluster.PSubscribe(fmt.Sprintf("__key*__:%s", key))
-	} else {
-		pubsub = r.single.PSubscribe(fmt.Sprintf("__key*__:%s", key))
+		return r.cluster.HSet(k, field, value).Err()
 	}
+	return r.single.HSet(k, field, value).Err()
+}
 
-	res := make(chan interface{})
-	go func() {
-		for {
-			select {
-			case msg := <-pubsub.Channel():
-				op := msg.Payload
-				log.Infof("key => %s, op => %s", key, op)
-				res <- op
-			case <-ctx.Done():
-				pubsub.Close()
-				close(res)
-				return
-			}
-		}
-	}()
-	return res
+// HGet redis读取hash散列表key的field字段的值
+func (r *Redis) HGet(k, field string) string {
+	if r.clusterMode {
+		return r.cluster.HGet(k, field).Val()
+	}
+	return r.single.HGet(k, field).Val()
+}
+
+// HDel redis删除hash散列表key的field字段
+func (r *Redis) HDel(k, field string) error {
+	if r.clusterMode {
+		return r.cluster.HDel(k, field).Err()
+	}
+	return r.single.HDel(k, field).Err()
+}
+
+// HGetAll redis读取hash散列表key值对应的全部字段数据
+func (r *Redis) HGetAll(k string) map[string]string {
+	if r.clusterMode {
+		return r.cluster.HGetAll(k).Val()
+	}
+	return r.single.HGetAll(k).Val()
 }

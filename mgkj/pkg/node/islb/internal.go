@@ -1,44 +1,14 @@
 package node
 
 import (
-	"sync"
+	"fmt"
+	"strings"
 	"time"
 
 	"mgkj/pkg/log"
 	"mgkj/pkg/proto"
 	"mgkj/pkg/util"
 )
-
-var (
-	medias     = make(map[string]*MediaNode)
-	mediasLock sync.RWMutex
-	peers      = make(map[string]*PeerNode)
-	peerLock   sync.RWMutex
-	rooms      = make(map[string]*RoomNode)
-	roomLock   sync.RWMutex
-)
-
-// MediaNode 媒体结构
-type MediaNode struct {
-	rid   string
-	uid   string
-	mid   string
-	minfo string
-	nid   string
-}
-
-// PeerNode peer结构
-type PeerNode struct {
-	uid  string
-	info string
-	mids []*MediaNode
-}
-
-// RoomNode 房间结构
-type RoomNode struct {
-	rid   string
-	peers []*PeerNode
-}
 
 // handleRPCMsgs 接收消息处理
 func handleRPCMsgs() {
@@ -51,9 +21,10 @@ func handleRPCMsgs() {
 	go func() {
 		for rpcm := range rpcMsgs {
 			msg := util.Unmarshal(string(rpcm.Body))
-			src := rpcm.ReplyTo
-			corrID := rpcm.CorrelationId
 			log.Infof("islb.handleRPCMsgs msg=%v", msg)
+
+			src := rpcm.ReplyTo
+			index := rpcm.CorrelationId
 			method := util.Val(msg, "method")
 			if method == "" {
 				continue
@@ -68,10 +39,12 @@ func handleRPCMsgs() {
 				streamAdd(msg)
 			case proto.IslbOnStreamRemove:
 				streamRemove(msg)
-			case proto.IslbOnBroadcast:
-				broadcast(msg)
+			case proto.IslbGetSfuInfo:
+				getSfuByMid(msg, src, index)
+			case proto.IslbGetMediaInfo:
+				getSfuByMid(msg, src, index)
 			case proto.IslbGetMediaPubs:
-				getAllPubs(msg, src, corrID)
+				getMediaPubs(msg, src, index)
 			}
 		}
 	}()
@@ -79,153 +52,151 @@ func handleRPCMsgs() {
 
 // clientJoin 有人加入房间
 func clientJoin(data map[string]interface{}) {
-	log.Infof("amqp.rpc.clientJoin data=%v", data)
+	log.Infof("islb.rpc.clientJoin data=%v", data)
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
 	info := util.Val(data, "info")
-	// 找到保存用户信息的key
-	ukey := proto.GetUserInfoKey(rid)
+	// 获取用户信息保存的key
+	uKey := proto.GetUserInfoKey(rid, uid)
 	// 写入key值
-	err := redis.HSetTTL(ukey, uid, info, redisKeyTTL)
+	err := redis.Set(uKey, info, redisKeyTTL)
 	if err != nil {
-		log.Errorf("redis.HSetTTL clientJoin err = %v", err)
+		log.Errorf("redis.Set clientJoin err = %v", err)
 	}
 	// 生成resp对象
 	msg := util.Map("method", proto.IslbClientOnJoin, "rid", rid, "uid", uid, "info", info)
-	log.Infof("amqp.BroadCast msg=%v", msg)
 	amqp.BroadCast(msg)
 }
 
-// clientLeave 有人退出
+// clientLeave 有人退出房间
 func clientLeave(data map[string]interface{}) {
-	log.Infof("amqp.rpc.clientLeave data=%v", data)
+	log.Infof("islb.rpc.clientLeave data=%v", data)
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
-	// 找到保存用户信息的key
-	ukey := proto.GetUserInfoKey(rid)
+	// 获取用户信息保存的key
+	ukey := proto.GetUserInfoKey(rid, uid)
 	// 删除key值
-	info := redis.HGet(ukey, uid)
-	err := redis.HDel(ukey, uid)
+	info := redis.Get(ukey)
+	err := redis.Del(ukey)
 	if err != nil {
-		log.Errorf("redis.HDel clientLeave err = %v", err)
+		log.Errorf("redis.Del clientLeave err = %v", err)
 	}
 	// 生成resp对象
 	msg := util.Map("method", proto.IslbClientOnLeave, "rid", rid, "uid", uid, "info", info)
-	log.Infof("amqp.BroadCast msg=%v", msg)
-	// make broadcast leave msg after remove stream msg, for ion block bug
 	time.Sleep(500 * time.Millisecond)
 	amqp.BroadCast(msg)
 }
 
 // streamAdd 有人发布流
 func streamAdd(data map[string]interface{}) {
-	log.Infof("amqp.rpc.streamAdd data=%v", data)
+	log.Infof("islb.rpc.streamAdd data=%v", data)
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
 	mid := util.Val(data, "mid")
+	nid := util.Val(data, "nid")
 	minfo := util.Val(data, "minfo")
-	// 找到保存用户发布流的key
-	ukey := proto.GetPubMediaKey(rid, uid)
+	// 获取媒体信息保存的key
+	ukey := proto.GetMediaInfoKey(rid, uid, mid)
 	// 写入key值
-	err := redis.HSetTTL(ukey, mid, minfo, redisKeyTTL)
+	err := redis.Set(ukey, minfo, redisKeyTTL)
 	if err != nil {
-		log.Errorf("redis.HSetTTL streamAdd err = %v", err)
+		log.Errorf("redis.Set streamAdd err = %v", err)
+	}
+	// 获取发布流信息保存的key
+	ukey = proto.GetMediaPubKey(rid, uid, mid)
+	// 写入key值
+	err = redis.Set(ukey, nid, redisKeyTTL)
+	if err != nil {
+		log.Errorf("redis.Set streamAdd err = %v", err)
 	}
 	// 生成resp对象
 	msg := util.Map("method", proto.IslbOnStreamAdd, "rid", rid, "uid", uid, "mid", mid, "minfo", minfo)
-	log.Infof("amqp.BroadCast msg=%v", msg)
 	amqp.BroadCast(msg)
 }
 
 // streamRemove 有人取消发布流
 func streamRemove(data map[string]interface{}) {
-	log.Infof("amqp.rpc.streamRemove data=%v", data)
+	log.Infof("islb.rpc.streamRemove data=%v", data)
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
 	mid := util.Val(data, "mid")
-	// 找到保存用户发布流的key
-	ukey := proto.GetPubMediaKey(rid, uid)
+	// 获取媒体信息保存的key
+	ukey := proto.GetMediaInfoKey(rid, uid, mid)
 	// 删除key值
-	minfo := redis.HGet(ukey, mid)
-	err := redis.HDel(ukey, mid)
+	minfo := redis.Get(ukey)
+	err := redis.Del(ukey)
 	if err != nil {
-		log.Errorf("redis.HDel streamRemove err = %v", err)
+		log.Errorf("redis.Del streamRemove err = %v", err)
+	}
+	// 获取发布流信息保存的key
+	ukey = proto.GetMediaPubKey(rid, uid, mid)
+	// 删除key值
+	err = redis.Del(ukey)
+	if err != nil {
+		log.Errorf("redis.Del streamRemove err = %v", err)
 	}
 	// 生成resp对象
 	msg := util.Map("method", proto.IslbOnStreamRemove, "rid", rid, "uid", uid, "mid", mid, "minfo", minfo)
-	log.Infof("amqp.BroadCast msg=%v", msg)
 	amqp.BroadCast(msg)
 }
 
-// broadcast 接收到消息，发送广播出去
-func broadcast(data map[string]interface{}) {
-	log.Infof("amqp.rpc.broadcast data=%v", data)
-	rid := util.Val(data, "rid")
-	uid := util.Val(data, "uid")
-	mData := util.Val(data, "data")
-	// resp对象
-	msg := util.Map("method", proto.IslbOnBroadcast, "rid", rid, "uid", uid, "data", mData)
-	log.Infof("amqp.BroadCast msg=%v", msg)
-	amqp.BroadCast(msg)
-}
-
-// getAllPubs 获取房间所有人的发布流
-func getAllPubs(data map[string]interface{}, from, corrID string) {
-	log.Infof("amqp.rpc.getAllPubs data=%v", data)
-	rid := util.Val(data, "rid")
-	// 找到保存用户信息的key
-	ukey := proto.GetUserInfoKey(rid)
-	// 查询key值
-	uids := redis.HGetAll(ukey)
-	for uid := range uids {
-		getOnePubs(rid, uid, from, corrID)
+// getSfuByMid 获取指定mid对应的sfu节点
+func getSfuByMid(data map[string]interface{}, from, index string) {
+	log.Infof("islb.rpc.getSfuByMid data=%v", data)
+	mid := util.Val(data, "mid")
+	// 获取发布流信息保存的key
+	ukeys := redis.Keys("/sfu/mid/" + mid + "*")
+	if ukeys != nil && len(ukeys) == 1 {
+		nid := redis.Get(ukeys[0])
+		resp := util.Map("response", proto.IslbGetSfuInfo, "mid", mid, "nid", nid)
+		amqp.RPCCall(from, resp, index)
+		return
 	}
+	resp := util.Map("response", proto.IslbGetSfuInfo, "mid", mid)
+	amqp.RPCCall(from, resp, index)
 }
 
-// getOnePubs 获取一个用户的发布流
-func getOnePubs(rid, uid, from, corrID string) {
-	// 找到保存用户发布流的key
-	ukey := proto.GetPubMediaKey(rid, uid)
-	// 查询key值
-	mids := redis.HGetAll(ukey)
-	for mid := range mids {
-		minfo := redis.HGet(ukey, mid)
-		resp := util.Map("response", proto.IslbGetMediaPubs, "rid", rid, "uid", uid, "mid", mid, "minfo", minfo)
-		log.Infof("amqp.RpcCall from=%s resp=%v corrID=%s", from, resp, corrID)
-		amqp.RPCCall(from, resp, corrID)
+// getMediaInfo 获取指定mid对应的流的信息
+func getMediaInfo(data map[string]interface{}, from, index string) {
+	log.Infof("islb.rpc.getMediaInfo data=%v", data)
+	mid := util.Val(data, "mid")
+	// 获取媒体信息保存的key
+	ukeys := redis.Keys("/media/mid/" + mid + "*")
+	if ukeys != nil && len(ukeys) == 1 {
+		minfo := redis.Get(ukeys[0])
+		resp := util.Map("response", proto.IslbGetMediaInfo, "mid", mid, "minfo", minfo)
+		amqp.RPCCall(from, resp, index)
+		return
 	}
+	resp := util.Map("response", proto.IslbGetSfuInfo, "mid", mid)
+	amqp.RPCCall(from, resp, index)
 }
 
-// removePeerAll 删除一个用户所有的信息
-func removePeerAll(data map[string]interface{}) {
-	log.Infof("amqp.rpc.removePeerAll data=%v", data)
+// getMediaPubs 获取房间所有人的发布流
+func getMediaPubs(data map[string]interface{}, from, index string) {
+	log.Infof("islb.rpc.getAllPubs data=%v", data)
 	rid := util.Val(data, "rid")
-	uid := util.Val(data, "uid")
-	// 找到保存用户发布流的key
-	ukey := proto.GetPubMediaKey(rid, uid)
-	mids := redis.HGetAll(ukey)
-	for mid := range mids {
-		// 删除用户发布流
-		minfo := redis.HGet(ukey, mid)
-		err := redis.HDel(ukey, mid)
-		if err != nil {
-			log.Errorf("redis.HDel streamRemove err = %v", err)
+	// 找到保存用户流信息的key
+	ukeys := redis.Keys("/media/mid/*/rid/" + rid)
+	nlen := len(ukeys)
+	for _, key := range ukeys {
+		minfo := redis.Get(key)
+		mid, uid, err := parseMediaKey(key)
+		if err == nil {
+			resp := util.Map("response", proto.IslbGetMediaPubs, "rid", rid, "uid", uid, "mid", mid, "minfo", minfo, "len", nlen)
+			amqp.RPCCall(from, resp, index)
 		}
-		// 生成resp对象
-		msg := util.Map("method", proto.IslbOnStreamRemove, "rid", rid, "uid", uid, "mid", mid, "minfo", minfo)
-		log.Infof("amqp.BroadCast msg=%v", msg)
-		amqp.BroadCast(msg)
 	}
-	// 找到保存用户信息的key
-	ukey = proto.GetUserInfoKey(rid)
-	// 删除key值
-	info := redis.HGet(ukey, uid)
-	err := redis.HDel(ukey, uid)
-	if err != nil {
-		log.Errorf("redis.HDel clientLeave err = %v", err)
+}
+
+// parseMediaKey 分析key
+func parseMediaKey(key string) (string, string, error) {
+	arr := strings.Split(key, "/")
+	if len(arr) < 6 {
+		return "", "", fmt.Errorf("Can‘t parse mediainfo; [%s]", key)
 	}
-	// 生成resp对象
-	msg := util.Map("method", proto.IslbClientOnLeave, "rid", rid, "uid", uid, "info", info)
-	log.Infof("amqp.BroadCast msg=%v", msg)
-	amqp.BroadCast(msg)
+
+	mid := arr[3]
+	uid := arr[5]
+	return mid, uid, nil
 }

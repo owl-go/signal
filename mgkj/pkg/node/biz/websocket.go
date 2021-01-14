@@ -42,16 +42,20 @@ func checkRoom() {
 	defer t.Stop()
 	for range t.C {
 		info := "biz.checkRoom start\n"
+		var nCount int = 0
 		roomLock.Lock()
-		for rid, roomobj := range rooms {
-			info += fmt.Sprintf("room: %s peers: %d\n", rid, len(roomobj.room.GetPeers()))
-			if len(roomobj.room.GetPeers()) == 0 {
-				roomobj.room.Close()
+		for rid, node := range rooms {
+			nCount += len(node.room.GetPeers())
+			info += fmt.Sprintf("room: %s peers: %d\n", rid, len(node.room.GetPeers()))
+			if len(node.room.GetPeers()) == 0 {
+				node.room.Close()
 				delete(rooms, rid)
 			}
 		}
 		roomLock.Unlock()
 		log.Infof(info)
+		// 更新负载
+		node.UpdateNodePayload(nCount)
 	}
 }
 
@@ -199,17 +203,20 @@ func join(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, 
 
 	// 查询房间存在的发布流
 	ch := make(chan int, 1)
-	respIslb := func(resp map[string]map[string]interface{}) {
-		for _, rsp := range resp {
-			uid := rsp["uid"]
-			mid := rsp["mid"]
-			minfo := rsp["minfo"]
-			log.Infof("biz.join respHandler mid=%v info=%v", mid, minfo)
-			if mid != "" {
-				peer.Notify(proto.ClientOnStreamAdd, util.Map("rid", rid, "uid", uid, "mid", mid, "minfo", minfo))
-			}
+	nCount := 0
+	respIslb := func(resp map[string]interface{}) {
+		uid := resp["uid"]
+		mid := resp["mid"]
+		minfo := resp["minfo"]
+		nLen := resp["len"].(int)
+		if mid != "" {
+			peer.Notify(proto.ClientOnStreamAdd, util.Map("rid", rid, "uid", uid, "mid", mid, "minfo", minfo))
 		}
-		ch <- 0
+
+		nCount = nCount + 1
+		if nLen == nCount {
+			ch <- 0
+		}
 	}
 	// 获取房间所有人的发布流
 	amqp.RPCCallWithResp(reg.GetRPCChannel(*islb), util.Map("method", proto.IslbGetMediaPubs, "rid", rid, "uid", uid), respIslb)
@@ -292,16 +299,16 @@ func publish(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 	// 获取sfu节点的resp
 	ch := make(chan int, 1)
 	rsp := make(map[string]interface{})
-	respIslb := func(resp map[string]interface{}) {
+	respsfu := func(resp map[string]interface{}) {
 		log.Infof("biz.publish respHandler resp=%v", resp)
 		rsp = resp
 		ch <- 0
 	}
-	amqp.RPCCallWithResp(reg.GetRPCChannel(*sfu), util.Map("method", proto.ClientPublish, "rid", rid, "uid", uid, "mid", mid, "minfo", minfo, "jsep", jsep), respIslb)
+	amqp.RPCCallWithResp(reg.GetRPCChannel(*sfu), util.Map("method", proto.ClientPublish, "rid", rid, "uid", uid, "mid", mid, "minfo", minfo, "jsep", jsep), respsfu)
 	<-ch
 	close(ch)
 
-	amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.IslbOnStreamAdd, "rid", rid, "uid", uid, "mid", mid, "minfo", minfo), "")
+	amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.IslbOnStreamAdd, "rid", rid, "uid", uid, "mid", mid, "minfo", minfo, "nid", nid), "")
 	accept(rsp)
 }
 
