@@ -28,8 +28,8 @@ type Etcd struct {
 	stop          bool                        // 停止开关
 }
 
-// newEtcd 创建etcd对象
-func newEtcd(endpoints []string) (*Etcd, error) {
+// NewEtcd 创建etcd对象
+func NewEtcd(endpoints []string) (*Etcd, error) {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   endpoints,
 		DialTimeout: defaultDialTimeout,
@@ -41,13 +41,14 @@ func newEtcd(endpoints []string) (*Etcd, error) {
 	}
 
 	return &Etcd{
+		stop:      false,
 		client:    cli,
 		liveKeyID: make(map[string]clientv3.LeaseID),
 	}, nil
 }
 
-// keep 写入key-value并保存key，保活
-func (e *Etcd) keep(key, value string) error {
+// Keep 写入key-value并保活
+func (e *Etcd) Keep(key, value string) error {
 	resp, err := e.client.Grant(context.TODO(), defaultGrantTimeout)
 	if err != nil {
 		log.Errorf("Etcd.keep Grant %s %v", key, err)
@@ -82,8 +83,8 @@ func (e *Etcd) keep(key, value string) error {
 	return nil
 }
 
-// del 删除key，prefix是否前缀
-func (e *Etcd) del(key string, prefix bool) error {
+// Delete 删除key，prefix是否前缀
+func (e *Etcd) Delete(key string, prefix bool) error {
 	e.liveKeyIDLock.Lock()
 	delete(e.liveKeyID, key)
 	e.liveKeyIDLock.Unlock()
@@ -96,8 +97,8 @@ func (e *Etcd) del(key string, prefix bool) error {
 	return err
 }
 
-// watch 观察指定的key,有改变通过watchFunc回调告知
-func (e *Etcd) watch(key string, watchFunc WatchCallback, prefix bool) error {
+// Watch 观察指定的key,有改变通过watchFunc回调告知
+func (e *Etcd) Watch(key string, watchFunc WatchCallback, prefix bool) error {
 	if watchFunc == nil {
 		return errors.New("watchFunc is nil")
 	}
@@ -109,8 +110,8 @@ func (e *Etcd) watch(key string, watchFunc WatchCallback, prefix bool) error {
 	return nil
 }
 
-// close 关闭对象
-func (e *Etcd) close() error {
+// Close 关闭对象
+func (e *Etcd) Close() error {
 	if e.stop {
 		return errors.New("Etcd already close")
 	}
@@ -123,14 +124,14 @@ func (e *Etcd) close() error {
 	return e.client.Close()
 }
 
-// update 更新key-value
-func (e *Etcd) update(key, value string) error {
+// Update 更新key-value
+func (e *Etcd) Update(key, value string) error {
 	e.liveKeyIDLock.Lock()
 	id := e.liveKeyID[key]
 	e.liveKeyIDLock.Unlock()
 	_, err := e.client.Put(context.TODO(), key, value, clientv3.WithLease(id))
 	if err != nil {
-		err = e.keep(key, value)
+		err = e.Keep(key, value)
 		if err != nil {
 			log.Errorf("Etcd.Keep %s %s %v", key, value, err)
 		}
@@ -138,8 +139,8 @@ func (e *Etcd) update(key, value string) error {
 	return err
 }
 
-// get 获取key-value
-func (e *Etcd) get(key string) (string, error) {
+// GetValue 获取指定key对应的值,key不带前缀
+func (e *Etcd) GetValue(key string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultOperationTimeout)
 	resp, err := e.client.Get(ctx, key)
 	if err != nil {
@@ -154,23 +155,23 @@ func (e *Etcd) get(key string) (string, error) {
 	return val, err
 }
 
-// getByPrefix 获取指定前缀的key-value对
-func (e *Etcd) getByPrefix(key string) (map[string]string, error) {
+// GetByPrefix 获取指定前缀的key对应的值,map格式返回
+func (e *Etcd) GetByPrefix(key string) (map[string]string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultOperationTimeout)
 	resp, err := e.client.Get(ctx, key, clientv3.WithPrefix())
 	if err != nil {
 		cancel()
 		return nil, err
 	}
-	m := make(map[string]string)
+	data := make(map[string]string)
 	for _, kv := range resp.Kvs {
-		m[string(kv.Key)] = string(kv.Value)
+		data[string(kv.Key)] = string(kv.Value)
 	}
 	cancel()
-	return m, err
+	return data, err
 }
 
-// GetResponseByPrefix 获取指定前缀的key-value对
+// GetResponseByPrefix 获取指定前缀的key对应的值
 func (e *Etcd) GetResponseByPrefix(key string) (*clientv3.GetResponse, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultOperationTimeout)
 	resp, err := e.client.Get(ctx, key, clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortDescend))

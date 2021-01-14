@@ -1,12 +1,44 @@
 package node
 
 import (
+	"sync"
 	"time"
 
 	"mgkj/pkg/log"
 	"mgkj/pkg/proto"
 	"mgkj/pkg/util"
 )
+
+var (
+	medias     = make(map[string]*MediaNode)
+	mediasLock sync.RWMutex
+	peers      = make(map[string]*PeerNode)
+	peerLock   sync.RWMutex
+	rooms      = make(map[string]*RoomNode)
+	roomLock   sync.RWMutex
+)
+
+// MediaNode 媒体结构
+type MediaNode struct {
+	rid   string
+	uid   string
+	mid   string
+	minfo string
+	nid   string
+}
+
+// PeerNode peer结构
+type PeerNode struct {
+	uid  string
+	info string
+	mids []*MediaNode
+}
+
+// RoomNode 房间结构
+type RoomNode struct {
+	rid   string
+	peers []*PeerNode
+}
 
 // handleRPCMsgs 接收消息处理
 func handleRPCMsgs() {
@@ -19,11 +51,8 @@ func handleRPCMsgs() {
 	go func() {
 		for rpcm := range rpcMsgs {
 			msg := util.Unmarshal(string(rpcm.Body))
-			from := rpcm.ReplyTo
+			src := rpcm.ReplyTo
 			corrID := rpcm.CorrelationId
-			if from == proto.IslbID {
-				continue
-			}
 			log.Infof("islb.handleRPCMsgs msg=%v", msg)
 			method := util.Val(msg, "method")
 			if method == "" {
@@ -41,12 +70,8 @@ func handleRPCMsgs() {
 				streamRemove(msg)
 			case proto.IslbOnBroadcast:
 				broadcast(msg)
-			case proto.IslbGetPeers:
-				getAllPeers(msg, from, corrID)
-			case proto.IslbGetPubs:
-				getAllPubs(msg, from, corrID)
-			case proto.IslbOnPeerRemoveAll:
-				removePeerAll(msg)
+			case proto.IslbGetMediaPubs:
+				getAllPubs(msg, src, corrID)
 			}
 		}
 	}()
@@ -144,22 +169,6 @@ func broadcast(data map[string]interface{}) {
 	amqp.BroadCast(msg)
 }
 
-// getAllPeers 获取房间所有人的信息
-func getAllPeers(data map[string]interface{}, from, corrID string) {
-	log.Infof("amqp.rpc.getAllPeers data=%v", data)
-	rid := util.Val(data, "rid")
-	// 找到保存用户信息的key
-	ukey := proto.GetUserInfoKey(rid)
-	// 查询key值
-	uids := redis.HGetAll(ukey)
-	for uid := range uids {
-		info := redis.HGet(ukey, uid)
-		resp := util.Map("response", proto.IslbGetPeers, "rid", rid, "uid", uid, "info", info)
-		log.Infof("amqp.RpcCall from=%s resp=%v corrID=%s", from, resp, corrID)
-		amqp.RPCCall(from, resp, corrID)
-	}
-}
-
 // getAllPubs 获取房间所有人的发布流
 func getAllPubs(data map[string]interface{}, from, corrID string) {
 	log.Infof("amqp.rpc.getAllPubs data=%v", data)
@@ -181,7 +190,7 @@ func getOnePubs(rid, uid, from, corrID string) {
 	mids := redis.HGetAll(ukey)
 	for mid := range mids {
 		minfo := redis.HGet(ukey, mid)
-		resp := util.Map("response", proto.IslbGetPubs, "rid", rid, "uid", uid, "mid", mid, "minfo", minfo)
+		resp := util.Map("response", proto.IslbGetMediaPubs, "rid", rid, "uid", uid, "mid", mid, "minfo", minfo)
 		log.Infof("amqp.RpcCall from=%s resp=%v corrID=%s", from, resp, corrID)
 		amqp.RPCCall(from, resp, corrID)
 	}

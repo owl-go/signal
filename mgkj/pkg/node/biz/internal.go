@@ -19,10 +19,7 @@ func strToMap(msg map[string]interface{}, key string) {
 func handleRPCMsgResp(corrID, from, resp string, msg map[string]interface{}) {
 	log.Infof("biz.handleRPCMsgResp corrID=%s, from=%s, resp=%s msg=%v", corrID, from, resp, msg)
 	switch resp {
-	case proto.IslbGetPeers:
-		strToMap(msg, "info")
-		amqp.Emit(corrID, msg)
-	case proto.IslbGetPubs:
+	case proto.IslbGetMediaPubs:
 		strToMap(msg, "minfo")
 		amqp.Emit(corrID, msg)
 	default:

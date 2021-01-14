@@ -7,32 +7,32 @@ import (
 	"github.com/cloudwebrtc/go-protoo/room"
 )
 
-// RoomObj 房间对象
-type RoomObj struct {
+// RoomNode 房间对象
+type RoomNode struct {
 	room *room.Room
 }
 
 // GetID 获取房间rid
-func (r *RoomObj) GetID() string {
+func (r *RoomNode) GetID() string {
 	return r.room.ID()
 }
 
 // NewRoom 创建一个房间
-func NewRoom(rid string) *RoomObj {
-	roomobj := new(RoomObj)
-	roomobj.room = room.NewRoom(rid)
+func NewRoom(rid string) *RoomNode {
+	node := new(RoomNode)
+	node.room = room.NewRoom(rid)
 	roomLock.Lock()
-	rooms[rid] = roomobj
+	rooms[rid] = node
 	roomLock.Unlock()
-	return roomobj
+	return node
 }
 
 // GetRoom 根据rid获取指定房间
-func GetRoom(rid string) *RoomObj {
+func GetRoom(rid string) *RoomNode {
 	roomLock.RLock()
-	roomobj := rooms[rid]
+	node := rooms[rid]
 	roomLock.RUnlock()
-	return roomobj
+	return node
 }
 
 // DelRoom 删除指定房间
@@ -45,8 +45,9 @@ func DelRoom(rid string) {
 	roomLock.Unlock()
 }
 
-// GetRoomByPeer 根据peer查询房间信息
-func GetRoomByPeer(id string) *RoomObj {
+// GetRoomsByPeer 根据peer查询房间信息
+func GetRoomsByPeer(id string) []*RoomNode {
+	var r []*RoomNode
 	roomLock.RLock()
 	defer roomLock.RUnlock()
 	for _, roomobj := range rooms {
@@ -54,62 +55,62 @@ func GetRoomByPeer(id string) *RoomObj {
 			continue
 		}
 		if peer := roomobj.room.GetPeer(id); peer != nil {
-			return roomobj
+			r = append(r, roomobj)
 		}
 	}
-	return nil
+	return r
 }
 
 // AddPeer 房间增加指定的人
 func AddPeer(rid string, peer *peer.Peer) {
-	roomobj := GetRoom(rid)
-	if roomobj == nil {
-		roomobj = NewRoom(rid)
+	node := GetRoom(rid)
+	if node == nil {
+		node = NewRoom(rid)
 	}
-	if roomobj.room.GetPeer(peer.ID()) != nil {
-		roomobj.room.RemovePeer(peer.ID())
+	if node.room.GetPeer(peer.ID()) != nil {
+		node.room.RemovePeer(peer.ID())
 	}
-	roomobj.room.AddPeer(peer)
+	node.room.AddPeer(peer)
 }
 
 // DelPeer 删除房间里的人
 func DelPeer(rid, uid string) {
-	roomobj := GetRoom(rid)
-	if roomobj != nil {
-		roomobj.room.RemovePeer(uid)
+	node := GetRoom(rid)
+	if node != nil {
+		node.room.RemovePeer(uid)
 		// 判断房间里面剩余人个数
-		peers := roomobj.room.GetPeers()
+		peers := node.room.GetPeers()
 		nCount := len(peers)
 		if nCount == 0 {
-			DelRoom(roomobj.room.ID())
+			DelRoom(node.room.ID())
 		}
 	}
 }
 
 // HasPeer 判断房间是否有指定的人
 func HasPeer(rid string, peer *peer.Peer) bool {
-	roomobj := GetRoom(rid)
-	if roomobj == nil {
+	node := GetRoom(rid)
+	if node == nil {
 		return false
 	}
-	return (roomobj.room.GetPeer(peer.ID()) != nil)
+	return (node.room.GetPeer(peer.ID()) != nil)
 }
 
 // HasPeer2 判断房间是否有指定的人
 func HasPeer2(rid, uid string) bool {
-	roomobj := GetRoom(rid)
-	if roomobj == nil {
+	node := GetRoom(rid)
+	if node == nil {
 		return false
 	}
-	return (roomobj.room.GetPeer(uid) != nil)
+	return (node.room.GetPeer(uid) != nil)
 }
 
 // NotifyAll 通知房间所有人
 func NotifyAll(rid string, method string, msg map[string]interface{}) {
 	log.Infof("biz.NotifyAll rid=%s method=%s msg=%v", rid, method, msg)
-	roomobj := GetRoom(rid)
-	if roomobj != nil {
-		for _, peer := range roomobj.room.GetPeers() {
+	node := GetRoom(rid)
+	if node != nil {
+		for _, peer := range node.room.GetPeers() {
 			if peer != nil {
 				peer.Notify(method, msg)
 			}
@@ -119,19 +120,19 @@ func NotifyAll(rid string, method string, msg map[string]interface{}) {
 
 // NotifyAllWithoutPeer 通知房间所有人除去peer
 func NotifyAllWithoutPeer(rid string, peer *peer.Peer, method string, msg map[string]interface{}) {
-	log.Infof("biz.NotifyAllWithoutPeer rid=%s peer=%s method=%s msg=%v", rid, peer.ID(), method, msg)
-	roomobj := GetRoom(rid)
-	if roomobj != nil {
-		roomobj.room.Notify(peer, method, msg)
+	log.Infof("biz.NotifyAllWithoutPeer rid=%s uid=%s method=%s msg=%v", rid, peer.ID(), method, msg)
+	node := GetRoom(rid)
+	if node != nil {
+		node.room.Notify(peer, method, msg)
 	}
 }
 
 // NotifyAllWithoutID 通知房间所有人除去skipID
 func NotifyAllWithoutID(rid string, skipID string, method string, msg map[string]interface{}) {
-	log.Infof("biz.NotifyAllWithoutID rid=%s skipID=%s method=%s msg=%v", rid, skipID, method, msg)
-	roomobj := GetRoom(rid)
-	if roomobj != nil {
-		for _, peer := range roomobj.room.GetPeers() {
+	log.Infof("biz.NotifyAllWithoutID rid=%s uid=%s method=%s msg=%v", rid, skipID, method, msg)
+	node := GetRoom(rid)
+	if node != nil {
+		for _, peer := range node.room.GetPeers() {
 			if peer != nil && peer.ID() != skipID {
 				peer.Notify(method, msg)
 			}

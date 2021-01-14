@@ -25,14 +25,15 @@ func main() {
 		}()
 	}
 
-	serviceNode := server.NewServiceNode(conf.Etcd.Addrs, conf.Global.ServerID, conf.Global.Name, "")
+	serviceNode := server.NewServiceNode(conf.Etcd.Addrs, conf.Global.Ndc, conf.Global.Nid, conf.Global.Name, conf.Global.Nip)
 	serviceNode.RegisterNode()
+	serviceWatcher := server.NewServiceWatcher(conf.Etcd.Addrs)
 
 	config := db.Config{
 		Addrs: conf.Redis.Addrs,
 		Pwd:   conf.Redis.Pwd,
 		DB:    conf.Redis.DB,
 	}
-	ilsb.Init(conf.Amqp.URL, config, serviceNode.GetRPCChannel(), serviceNode.GetEventChannel())
+	ilsb.Init(serviceNode, serviceWatcher, conf.Amqp.URL, config)
 	select {}
 }

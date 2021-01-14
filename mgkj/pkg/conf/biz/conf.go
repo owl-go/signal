@@ -9,12 +9,17 @@ import (
 )
 
 var (
-	cfg    = config{}
+	cfg = config{}
+	// Global 全局设置
 	Global = &cfg.Global
-	Log    = &cfg.Log
-	Etcd   = &cfg.Etcd
+	// Log 日志级别设置
+	Log = &cfg.Log
+	// Etcd Etcd设置
+	Etcd = &cfg.Etcd
+	// Signal 信令服务设置
 	Signal = &cfg.Signal
-	Amqp   = &cfg.Amqp
+	// Amqp 消息中间件设置
+	Amqp = &cfg.Amqp
 )
 
 func init() {
@@ -25,9 +30,11 @@ func init() {
 }
 
 type global struct {
-	Pprof    string `mapstructure:"pprof"`
-	Name     string `mapstructure:"name"`
-	ServerID string `mapstructure:"serverid"`
+	Pprof string `mapstructure:"pprof"`
+	Ndc   string `mapstructure:"dc"`
+	Name  string `mapstructure:"name"`
+	Nid   string `mapstructure:"nid"`
+	Nip   string `mapstructure:"nip"`
 }
 
 type log struct {

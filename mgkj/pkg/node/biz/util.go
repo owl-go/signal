@@ -12,10 +12,6 @@ func getMID(uid string) string {
 	return fmt.Sprintf("%s#%s", uid, util.RandStr(6))
 }
 
-func getKeepAliveID(mid string, ssrc uint32) string {
-	return fmt.Sprintf("%s#%d", mid, ssrc)
-}
-
 func invalid(msg map[string]interface{}, key string, reject peer.RejectFunc) bool {
 	val := util.Val(msg, key)
 	if val == "" {
@@ -24,7 +20,7 @@ func invalid(msg map[string]interface{}, key string, reject peer.RejectFunc) boo
 			reject(codeUIDErr, codeStr(codeUIDErr))
 			return true
 		case "rid":
-			reject(codeRoomErr, codeStr(codeRoomErr))
+			reject(codeRIDErr, codeStr(codeRIDErr))
 			return true
 		case "mid":
 			reject(codeMIDErr, codeStr(codeMIDErr))
@@ -33,7 +29,7 @@ func invalid(msg map[string]interface{}, key string, reject peer.RejectFunc) boo
 			reject(codeJsepErr, codeStr(codeJsepErr))
 			return true
 		case "sdp":
-			reject(codeSDPErr, codeStr(codeSDPErr))
+			reject(codeSdpErr, codeStr(codeSdpErr))
 			return true
 		}
 	}

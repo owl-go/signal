@@ -1,32 +1,31 @@
 package node
 
-type code int
-
 const (
-	// OK is returned on success.
 	codeOK int = -iota
-	codeUnknownErr
-	codeJsepErr
-	codeSDPErr
-	codeRoomErr
-	codePubIDErr
-	codeMIDErr
-	codeAddrErr
 	codeUIDErr
-	codePublishErr
+	codeRIDErr
+	codeMIDErr
+	codeJsepErr
+	codeSdpErr
+	codePubErr
+	codeSubErr
+	codeIslbErr
+	codeSfuErr
+	codeUnknownErr
 )
 
 var codeErr = map[int]string{
 	codeOK:         "OK",
-	codeUnknownErr: "unknown error",
-	codeJsepErr:    "jsep not found",
-	codeSDPErr:     "sdp not found",
-	codeRoomErr:    "room not found",
-	codePubIDErr:   "pub id not found",
-	codeMIDErr:     "media id not found",
-	codeAddrErr:    "addr not found",
 	codeUIDErr:     "uid not found",
-	codePublishErr: "publish failed",
+	codeRIDErr:     "rid not found",
+	codeMIDErr:     "mid not found",
+	codeJsepErr:    "jsep not found",
+	codeSdpErr:     "sdp not found",
+	codePubErr:     "pub not found",
+	codeSubErr:     "sub not found",
+	codeIslbErr:    "islb not found",
+	codeSfuErr:     "sfu not found",
+	codeUnknownErr: "unknown error",
 }
 
 func codeStr(code int) string {

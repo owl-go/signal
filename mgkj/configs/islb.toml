@@ -1,9 +1,11 @@
 [global]
 pprof = ":6061"
 
-# name
+# server
+dc = "shenzhen"
 name = "islb"
-serverid = "shenzhen_islb_1"
+nid = "shenzhen_islb_1"
+nip = "8.129.55.41"
 
 [log]
 level = "info"

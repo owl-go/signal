@@ -36,7 +36,7 @@ func TestFunction(t *testing.T) {
 		m := make(map[string]interface{})
 		m["key"] = fmt.Sprintf("rpc %d", i)
 		amqp.RPCCall("rpc1", m, "")
-		amqp.RPCCall("rpc2", m, "")
+		amqp.RPCCall("rpc-shenzhen_islb_1", m, "")
 		m["key"] = fmt.Sprintf("broadcast %d", i)
 		amqp.BroadCast(m)
 		time.Sleep(time.Second)

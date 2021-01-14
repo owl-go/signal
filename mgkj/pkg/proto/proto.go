@@ -19,6 +19,8 @@ const (
 	ClientSubscribe = "subscribe"
 	// ClientUnSubscribe C->Biz unsubscribe
 	ClientUnSubscribe = "unsubscribe"
+	// ClientTrickleICE C->Biz 发送ice
+	ClientTrickleICE = "trickle"
 	// ClientBroadcast C->Biz broadcast
 	ClientBroadcast = "broadcast"
 
@@ -31,10 +33,13 @@ const (
 	// ClientOnStreamRemove biz->C stream-remove
 	ClientOnStreamRemove = "stream-remove"
 
-	// IslbGetPeers biz->islb get all peer
-	IslbGetPeers = "getAllPeers"
-	// IslbGetPubs biz->islb get all publish
-	IslbGetPubs = "getAllPubs"
+	// IslbGetSfuInfo biz->islb get sfu by mid
+	IslbGetSfuInfo = "getSfuInfo"
+	// IslbGetMediaInfo biz->islb get media info
+	IslbGetMediaInfo = "getMediaInfo"
+	// IslbGetMediaPubs biz->islb get all publish
+	IslbGetMediaPubs = "getMediaPubs"
+
 	// IslbClientOnJoin biz->islb peer-join
 	IslbClientOnJoin = ClientOnJoin
 	// IslbClientOnLeave biz->islb peer-leave
@@ -43,13 +48,8 @@ const (
 	IslbOnStreamAdd = ClientOnStreamAdd
 	// IslbOnStreamRemove biz->islb stream-remove
 	IslbOnStreamRemove = ClientOnStreamRemove
-	// IslbOnPeerRemoveAll biz->islb peer-remove-all
-	IslbOnPeerRemoveAll = "peer-remove-all"
 	// IslbOnBroadcast biz->islb broadcast
 	IslbOnBroadcast = ClientBroadcast
-
-	// IslbID islb服务器id
-	IslbID = "islb"
 )
 
 /*

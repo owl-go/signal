@@ -4,7 +4,9 @@ import (
 	"time"
 
 	"mgkj/pkg/db"
+	"mgkj/pkg/log"
 	"mgkj/pkg/mq"
+	"mgkj/pkg/server"
 )
 
 const (
@@ -14,12 +16,19 @@ const (
 var (
 	amqp  *mq.Amqp
 	redis *db.Redis
+	node  *server.ServiceNode
+	watch *server.ServiceWatcher
 )
 
 // Init 初始化服务
-func Init(mqURL string, config db.Config, rpc, event string) {
-	amqp = mq.New(rpc, event, mqURL)
+func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, mqURL string, config db.Config) {
+	// 赋值
+	node = serviceNode
+	watch = ServiceWatcher
+	amqp = mq.New(node.GetRPCChannel(), node.GetEventChannel(), mqURL)
 	redis = db.NewRedis(config)
+	// 启动
+	//watch.WatchServiceNode("", WatchServiceNodes)
 	handleRPCMsgs()
 }
 
@@ -27,5 +36,14 @@ func Init(mqURL string, config db.Config, rpc, event string) {
 func Close() {
 	if amqp != nil {
 		amqp.Close()
+	}
+}
+
+// WatchServiceNodes 查看所有的Node节点
+func WatchServiceNodes(state server.NodeStateType, node server.Node) {
+	if state == server.ServerUp {
+		log.Infof("WatchServiceNodes node up %v", node)
+	} else if state == server.ServerDown {
+		log.Infof("WatchServiceNodes node down %v", node)
 	}
 }
