@@ -266,7 +266,6 @@ func publish(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 	// 获取参数
 	uid := peer.ID()
 	rid := util.Val(msg, "rid")
-	nid := util.Val(msg, "nid")
 	log.Infof("biz.publish uid=%s msg=%v", uid, msg)
 
 	jsep := msg["jsep"].(map[string]interface{})
@@ -291,8 +290,13 @@ func publish(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 		return
 	}
 
-	// 查询sfu节点
-	sfu := FindSfuNodeByID(nid)
+	var sfu *reg.Node
+	nid := util.Val(msg, "nid")
+	if nid != "" {
+		sfu = FindSfuNodeByID(nid)
+	} else {
+		sfu = FindSfuNodeByMid(mid)
+	}
 	if sfu == nil {
 		log.Errorf("sfu node is not find")
 		reject(codeSfuErr, codeStr(codeSfuErr))
@@ -335,7 +339,13 @@ func unpublish(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondF
 		return
 	}
 
-	sfu := FindSfuNodeByMid(mid)
+	var sfu *reg.Node
+	nid := util.Val(msg, "nid")
+	if nid != "" {
+		sfu = FindSfuNodeByID(nid)
+	} else {
+		sfu = FindSfuNodeByMid(mid)
+	}
 	if sfu == nil {
 		log.Errorf("sfu node is not find")
 		reject(codeSfuErr, codeStr(codeSfuErr))
@@ -363,7 +373,13 @@ func subscribe(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondF
 		return
 	}
 
-	sfu := FindSfuNodeByMid(mid)
+	var sfu *reg.Node
+	nid := util.Val(msg, "nid")
+	if nid != "" {
+		sfu = FindSfuNodeByID(nid)
+	} else {
+		sfu = FindSfuNodeByMid(mid)
+	}
 	if sfu == nil {
 		log.Errorf("sfu node is not find")
 		reject(codeSfuErr, codeStr(codeSfuErr))
@@ -392,7 +408,13 @@ func unsubscribe(peer *peer.Peer, msg map[string]interface{}, accept peer.Respon
 	mid := util.Val(msg, "mid")
 	log.Infof("biz.unsubscribe uid=%s msg=%v", uid, msg)
 
-	sfu := FindSfuNodeByMid(mid)
+	var sfu *reg.Node
+	nid := util.Val(msg, "nid")
+	if nid != "" {
+		sfu = FindSfuNodeByID(nid)
+	} else {
+		sfu = FindSfuNodeByMid(mid)
+	}
 	if sfu == nil {
 		log.Errorf("sfu node is not find")
 		reject(codeSfuErr, codeStr(codeSfuErr))
@@ -415,7 +437,13 @@ func trickle(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 	isPub := util.Val(msg, "isPub")
 	log.Infof("biz.trickle uid=%s msg=%v", uid, msg)
 
-	sfu := FindSfuNodeByMid(mid)
+	var sfu *reg.Node
+	nid := util.Val(msg, "nid")
+	if nid != "" {
+		sfu = FindSfuNodeByID(nid)
+	} else {
+		sfu = FindSfuNodeByMid(mid)
+	}
 	if sfu == nil {
 		log.Errorf("sfu node is not find")
 		reject(codeSfuErr, codeStr(codeSfuErr))
@@ -430,7 +458,6 @@ func trickle(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 func broadcast(peer *peer.Peer, data json.RawMessage) {
 	uid := peer.ID()
 	str := string(data)
-	log.Infof("biz.broadcast uid=%s msg=%s", uid, str)
 	// 发送给房间其他人
 	for _, room := range GetRoomsByPeer(uid) {
 		rid := room.GetID()

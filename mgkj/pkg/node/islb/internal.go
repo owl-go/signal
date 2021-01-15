@@ -19,6 +19,7 @@ func handleRPCMsgs() {
 	}
 
 	go func() {
+		defer util.Recover("islb.handleRPCMsgs")
 		for rpcm := range rpcMsgs {
 			msg := util.Unmarshal(string(rpcm.Body))
 			src := rpcm.ReplyTo

@@ -28,7 +28,7 @@ func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher
 	amqp = mq.New(node.GetRPCChannel(), node.GetEventChannel(), mqURL)
 	redis = db.NewRedis(config)
 	// 启动
-	//watch.WatchServiceNode("", WatchServiceNodes)
+	//go watch.WatchServiceNode("", WatchServiceNodes)
 	handleRPCMsgs()
 }
 
