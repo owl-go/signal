@@ -27,7 +27,6 @@ func init() {
 		showHelp()
 		os.Exit(-1)
 	}
-	fmt.Println("conf.init() ok")
 }
 
 type global struct {

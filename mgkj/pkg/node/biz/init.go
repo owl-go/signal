@@ -84,7 +84,7 @@ func FindSfuNodeByMid(mid string) *server.Node {
 	var sfu *server.Node
 	find := false
 	respIslb := func(resp map[string]interface{}) {
-		nid := resp["nid"].(string)
+		nid := util.Val(resp, "nid")
 		if nid != "" {
 			sfu = FindSfuNodeByID(nid)
 			find = true
@@ -112,7 +112,7 @@ func FindMediaIndoByMid(mid string) (string, bool) {
 	var minfo string
 	find := false
 	respIslb := func(resp map[string]interface{}) {
-		minfo = resp["minfo"].(string)
+		minfo := util.Val(resp, "minfo")
 		if minfo != "" {
 			find = true
 		}

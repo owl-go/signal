@@ -204,16 +204,20 @@ func join(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, 
 	ch := make(chan int, 1)
 	nCount := 0
 	respIslb := func(resp map[string]interface{}) {
-		uid := resp["uid"]
-		mid := resp["mid"]
-		minfo := resp["minfo"]
-		nLen := resp["len"].(int)
-		if mid != "" {
-			peer.Notify(proto.ClientOnStreamAdd, util.Map("rid", rid, "uid", uid, "mid", mid, "minfo", minfo))
-		}
-
-		nCount = nCount + 1
-		if nLen == nCount {
+		nLen := int(resp["len"].(float64))
+		if nLen > 0 {
+			uid := resp["uid"]
+			mid := resp["mid"]
+			nid := resp["nid"]
+			minfo := resp["minfo"]
+			if mid != "" {
+				peer.Notify(proto.ClientOnStreamAdd, util.Map("rid", rid, "uid", uid, "nid", nid, "mid", mid, "minfo", minfo))
+			}
+			nCount = nCount + 1
+			if nLen == nCount {
+				ch <- 0
+			}
+		} else {
 			ch <- 0
 		}
 	}
