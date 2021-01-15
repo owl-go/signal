@@ -9,7 +9,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/go-redis/redis/v7 v7.4.0
 	github.com/google/uuid v1.1.2 // indirect
-	github.com/rs/zerolog v1.20.0
+	github.com/pion/ion-log v1.0.0
 	github.com/spf13/viper v1.7.1
 	github.com/streadway/amqp v1.0.0
 	go.etcd.io/etcd v3.3.25+incompatible

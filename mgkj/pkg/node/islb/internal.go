@@ -201,6 +201,11 @@ func getMediaPubs(data map[string]interface{}, from, index string) {
 	// 找到保存用户流信息的key
 	ukeys := redis.Keys("/media/mid/*/rid/" + rid)
 	nLen := len(ukeys)
+	if nLen == 0 {
+		resp := util.Map("response", proto.IslbGetMediaPubs, "rid", rid, "len", nLen)
+		amqp.RPCCall(from, resp, index)
+		return
+	}
 	for _, key := range ukeys {
 		minfo := redis.Get(key)
 		mid, uid, err := parseMediaKey(key)

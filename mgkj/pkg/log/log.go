@@ -1,50 +1,37 @@
 package log
 
 import (
-	"os"
-
-	"github.com/rs/zerolog"
+	log "github.com/pion/ion-log"
 )
 
-var log zerolog.Logger
-
-const (
-	timeFormat = "2006-01-02 15:04:05.999"
-)
-
+// Init 初始化日志
 func Init(level string) {
-	l := zerolog.GlobalLevel()
-	switch level {
-	case "debug":
-		l = zerolog.DebugLevel
-	case "info":
-		l = zerolog.InfoLevel
-	case "warn":
-		l = zerolog.WarnLevel
-	case "error":
-		l = zerolog.ErrorLevel
-	}
-	zerolog.TimeFieldFormat = timeFormat
-	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: timeFormat}
-	log = zerolog.New(output).Level(l).With().Timestamp().Logger()
+	fixByFile := []string{"asm_amd64.s", "proc.go"}
+	fixByFunc := []string{}
+	log.Init("debug", fixByFile, fixByFunc)
 }
 
+// Infof info等级输出
 func Infof(format string, v ...interface{}) {
-	log.Info().Msgf(format, v...)
+	log.Infof(format, v...)
 }
 
+// Debugf debug等级输出
 func Debugf(format string, v ...interface{}) {
-	log.Debug().Msgf(format, v...)
+	log.Debugf(format, v...)
 }
 
+// Warnf warn等级输出
 func Warnf(format string, v ...interface{}) {
-	log.Warn().Msgf(format, v...)
+	log.Warnf(format, v...)
 }
 
+// Errorf error等级输出
 func Errorf(format string, v ...interface{}) {
-	log.Error().Msgf(format, v...)
+	log.Errorf(format, v...)
 }
 
+// Panicf panic等级输出
 func Panicf(format string, v ...interface{}) {
-	log.Panic().Msgf(format, v...)
+	log.Panicf(format, v...)
 }
