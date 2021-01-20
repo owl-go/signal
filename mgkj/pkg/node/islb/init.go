@@ -10,6 +10,7 @@ import (
 )
 
 const (
+	redisShort  = 60 * time.Second
 	redisKeyTTL = 24 * time.Hour
 )
 
@@ -28,7 +29,6 @@ func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher
 	amqp = mq.New(node.GetRPCChannel(), node.GetEventChannel(), mqURL)
 	redis = db.NewRedis(config)
 	// 启动
-	//go watch.WatchServiceNode("", WatchServiceNodes)
 	handleRPCMsgs()
 }
 

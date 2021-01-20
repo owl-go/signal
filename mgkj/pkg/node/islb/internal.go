@@ -32,6 +32,15 @@ func handleRPCMsgs() {
 			}
 
 			switch method {
+			case proto.DistToIslbLoginin:
+				clientloginin(msg)
+			case proto.DistToIslbLoginOut:
+				clientloginout(msg)
+			case proto.DistToIslbPeerHeart:
+				clientPeerHeart(msg)
+			case proto.DistToIslbPeerInfo:
+				getPeerinfo(msg, src, index)
+
 			case proto.IslbClientOnJoin:
 				clientJoin(msg)
 			case proto.IslbClientOnLeave:
@@ -49,6 +58,72 @@ func handleRPCMsgs() {
 			}
 		}
 	}()
+}
+
+/*
+	"method", proto.DistToIslbLoginin, "uid", uid, "nid", node.NodeInfo().Nid
+*/
+// clientloginin 有人登录到dist服务器
+func clientloginin(data map[string]interface{}) {
+	uid := util.Val(data, "uid")
+	dist := util.Val(data, "nid")
+	// 获取用户信息保存的key
+	uKey := proto.GetUserDistKey(uid)
+	// 写入key值
+	err := redis.Set(uKey, dist, redisShort)
+	if err != nil {
+		log.Errorf("redis.Set clientJoin err = %v", err)
+	}
+}
+
+/*
+	"method", proto.DistToIslbLoginOut, "uid", uid, "nid", node.NodeInfo().Nid
+*/
+// clientloginin 有人退录到dist服务器
+func clientloginout(data map[string]interface{}) {
+	uid := util.Val(data, "uid")
+	// 获取用户信息保存的key
+	uKey := proto.GetUserDistKey(uid)
+	// 写入key值
+	err := redis.Del(uKey)
+	if err != nil {
+		log.Errorf("redis.Set clientJoin err = %v", err)
+	}
+}
+
+/*
+	"method", proto.DistToIslbPeerHeart, "uid", uid, "nid", node.NodeInfo().Nid
+*/
+// clientPeerHeart 有人发送心跳到dist服务器,更新key的时间
+func clientPeerHeart(data map[string]interface{}) {
+	uid := util.Val(data, "uid")
+	dist := util.Val(data, "nid")
+	// 获取用户信息保存的key
+	uKey := proto.GetUserDistKey(uid)
+	// 写入key值
+	err := redis.Set(uKey, dist, redisShort)
+	if err != nil {
+		log.Errorf("redis.Set clientJoin err = %v", err)
+	}
+}
+
+/*
+	"method", proto.DistToIslbPeerInfo, "uid", callee
+*/
+// getPeerinfo 获取Peer在哪个Dist服务器
+func getPeerinfo(data map[string]interface{}, from, index string) {
+	// 获取参数
+	uid := util.Val(data, "uid")
+	// 获取用户信息保存的key
+	uKey := proto.GetUserDistKey(uid)
+	dist := redis.Get(uKey)
+	if dist == "" {
+		resp := util.Map("method", proto.IslbToDistPeerInfo, "errorCode", 1, "errorReason", "uid is not live")
+		amqp.RPCCall(from, resp, index)
+	} else {
+		resp := util.Map("method", proto.IslbToDistPeerInfo, "errorCode", 0, "nid", dist)
+		amqp.RPCCall(from, resp, index)
+	}
 }
 
 // clientJoin 有人加入房间

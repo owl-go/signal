@@ -5,6 +5,43 @@ import (
 )
 
 const (
+	// ClientToDistLoginin C->dist 登录
+	ClientToDistLoginin = "loginin"
+	// ClientToDistLoginOut C->dist 退录
+	ClientToDistLoginOut = "loginout"
+	// ClientToDistHeart C->dist 心跳
+	ClientToDistHeart = "heart"
+	// ClientToDistCall C->dist 呼叫
+	ClientToDistCall = "call"
+	// ClientToDistAnswer C->dist 应答
+	ClientToDistAnswer = "answer"
+	// ClientToDistReject C->dist 拒绝
+	ClientToDistReject = "reject"
+
+	// DistToClientCall dist->C 通知端来电
+	DistToClientCall = ClientToDistCall
+	// DistToDistCall dist->dist 通知端来电
+	DistToDistCall = DistToClientCall
+	// DistToClientAnswer dist-> 通知端应答
+	DistToClientAnswer = ClientToDistAnswer
+	// DistToDistAnswer dist->dist 通知端应答
+	DistToDistAnswer = DistToClientAnswer
+	// DistToClientReject dist-> 通知端拒绝
+	DistToClientReject = ClientToDistReject
+	// DistToDistReject dist->dist 通知端拒绝
+	DistToDistReject = DistToClientReject
+
+	// DistToIslbLoginin dist->islb 上线
+	DistToIslbLoginin = ClientToDistLoginin
+	// DistToIslbLoginOut dist->islb 下线
+	DistToIslbLoginOut = ClientToDistLoginOut
+	// DistToIslbPeerHeart dist->islb 心跳
+	DistToIslbPeerHeart = ClientToDistHeart
+	// DistToIslbPeerInfo dist->islb 获取Peer在哪个Dist服务器
+	DistToIslbPeerInfo = "getPeerDist"
+	// IslbToDistPeerInfo islb->dist islb返回peer在哪个dist服务器
+	IslbToDistPeerInfo = DistToIslbPeerInfo
+
 	// ClientJoin C->Biz join
 	ClientJoin = "join"
 	// ClientLeave C->Biz leave
@@ -50,6 +87,11 @@ const (
 // GetUIDFromMID 从mid中获取uid
 func GetUIDFromMID(mid string) string {
 	return strings.Split(mid, "#")[0]
+}
+
+// GetUserDistKey 获取用户连接信息保存的key
+func GetUserDistKey(uid string) string {
+	return "/dist/" + uid
 }
 
 // GetUserInfoKey 获取用户信息保存的key

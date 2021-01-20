@@ -434,7 +434,7 @@ func trickle(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 	rid := util.Val(msg, "rid")
 	mid := util.Val(msg, "mid")
 	ice := util.Val(msg, "ice")
-	isPub := util.Val(msg, "isPub")
+	ispub := util.Val(msg, "ispub")
 	log.Infof("biz.trickle uid=%s msg=%v", uid, msg)
 
 	var sfu *reg.Node
@@ -450,7 +450,7 @@ func trickle(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 		return
 	}
 
-	amqp.RPCCall(reg.GetRPCChannel(*sfu), util.Map("method", proto.ClientTrickleICE, "rid", rid, "uid", uid, "mid", mid, "ice", ice, "isPub", isPub), "")
+	amqp.RPCCall(reg.GetRPCChannel(*sfu), util.Map("method", proto.ClientTrickleICE, "rid", rid, "uid", uid, "mid", mid, "ice", ice, "ispub", ispub), "")
 	accept(emptyMap)
 }
 
