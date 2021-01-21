@@ -21,7 +21,7 @@ var (
 )
 
 /*
-	"method", proto.DistToDistCall, "caller", caller, "callee", callee, "rid", rid, "biz", biz, "nid", node.NodeInfo().Nid
+	"method", proto.DistToDistCall, "caller", caller, "callee", callee, "rid", rid, "biz", biz, "nid", nid
 */
 func dist2distCall(msg map[string]interface{}) {
 	callee := msg["callee"].(string)
@@ -32,7 +32,7 @@ func dist2distCall(msg map[string]interface{}) {
 		data["rid"] = msg["rid"]
 		data["biz"] = msg["biz"]
 		data["nid"] = msg["nid"]
-		peer.Notify(proto.DistToClientCall, msg)
+		peer.Notify(proto.DistToClientCall, data)
 	}
 }
 
@@ -48,7 +48,7 @@ func dist2distAnswer(msg map[string]interface{}) {
 		data["rid"] = msg["rid"]
 		data["biz"] = msg["biz"]
 		data["nid"] = msg["nid"]
-		peer.Notify(proto.DistToClientAnswer, msg)
+		peer.Notify(proto.DistToClientAnswer, data)
 	}
 }
 
@@ -65,24 +65,7 @@ func dist2distReject(msg map[string]interface{}) {
 		data["biz"] = msg["biz"]
 		data["nid"] = msg["nid"]
 		data["code"] = msg["code"]
-		peer.Notify(proto.DistToClientReject, msg)
-	}
-}
-
-// handleRPCMsgResp response msg from islb
-func handleRPCMsgResp(corrID, from, resp string, msg map[string]interface{}) {
-	log.Infof("dist.handleRPCMsgResp corrID=%s, from=%s, resp=%s msg=%v", corrID, from, resp, msg)
-	switch resp {
-	case proto.IslbToDistPeerInfo:
-		amqp.Emit(corrID, msg)
-	case proto.DistToDistCall:
-		dist2distCall(msg)
-	case proto.DistToDistAnswer:
-		dist2distAnswer(msg)
-	case proto.DistToDistReject:
-		dist2distReject(msg)
-	default:
-		log.Warnf("dist.handleRPCMsgResp invalid protocol corrID=%s, from=%s, resp=%s msg=%v", corrID, from, resp, msg)
+		peer.Notify(proto.DistToClientReject, data)
 	}
 }
 
@@ -90,21 +73,35 @@ func handleRPCMsgResp(corrID, from, resp string, msg map[string]interface{}) {
 func handleRPCMsgs() {
 	rpcMsgs, err := amqp.ConsumeRPC()
 	if err != nil {
-		log.Errorf(err.Error())
+		log.Errorf("dist handleRPCMsgs ConsumeRPC err = %s", err.Error())
 		return
 	}
 
 	go func() {
 		defer util.Recover("dist.handleRPCMsgs")
 		for rpcm := range rpcMsgs {
-			msg := util.Unmarshal(string(rpcm.Body))
+			var msg map[string]interface{}
+			err := json.Unmarshal(rpcm.Body, &msg)
+			if err != nil {
+				log.Errorf("dist handleRPCMsgs Unmarshal err = %s", err.Error())
+			}
+
 			from := rpcm.ReplyTo
 			corrID := rpcm.CorrelationId
-			log.Infof("dist.handleRPCMsgs msg=%v", msg)
+			log.Infof("dist.handleRPCMsgs recv msg=%v, from=%s, corrID=%s", msg, from, corrID)
 
-			resp := util.Val(msg, "method")
-			if resp != "" {
-				handleRPCMsgResp(corrID, from, resp, msg)
+			method := util.Val(msg, "method")
+			switch method {
+			case proto.IslbToDistPeerInfo:
+				amqp.Emit(corrID, msg)
+			case proto.DistToDistCall:
+				dist2distCall(msg)
+			case proto.DistToDistAnswer:
+				dist2distAnswer(msg)
+			case proto.DistToDistReject:
+				dist2distReject(msg)
+			default:
+				log.Warnf("dist.handleRPCMsgs invalid protocol method=%s", method)
 			}
 		}
 	}()
@@ -270,7 +267,8 @@ func loginin(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 		return
 	}
 	// 通知islb更新数据库
-	amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.DistToIslbLoginin, "uid", uid, "nid", node.NodeInfo().Nid), "")
+	nid := node.NodeInfo().Nid
+	amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.DistToIslbLoginin, "uid", uid, "nid", nid), "")
 	// resp
 	resp := make(map[string]interface{})
 	resp["biz"] = biz.Nip
@@ -280,6 +278,7 @@ func loginin(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 
 // loginout 退录服务器
 func loginout(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
+	log.Infof("dist handle loginout uid = %s, msg = %v", peer.ID(), msg)
 	// 获取参数
 	uid := peer.ID()
 	// 查询islb节点
@@ -290,13 +289,15 @@ func loginout(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFu
 		return
 	}
 	// 通知islb更新数据库
-	amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.DistToIslbLoginOut, "uid", uid, "nid", node.NodeInfo().Nid), "")
+	nid := node.NodeInfo().Nid
+	amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.DistToIslbLoginOut, "uid", uid, "nid", nid), "")
 	// resp
 	accept(emptyMap)
 }
 
 // heart 心跳
 func heart(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
+	log.Infof("dist handle heart uid = %s, msg = %v", peer.ID(), msg)
 	// 获取参数
 	uid := peer.ID()
 	// 查询islb节点
@@ -307,13 +308,20 @@ func heart(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc,
 		return
 	}
 	// 通知islb更新数据库
-	amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.DistToIslbPeerHeart, "uid", uid, "nid", node.NodeInfo().Nid), "")
+	nid := node.NodeInfo().Nid
+	amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.DistToIslbPeerHeart, "uid", uid, "nid", nid), "")
 	// resp
 	accept(emptyMap)
 }
 
-// call 加入房间
+// call 发送呼叫
 func call(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
+	log.Infof("dist handle call uid = %s, msg = %v", peer.ID(), msg)
+	// 判断参数正确性
+	if invalid(msg, "rid", reject) || invalid(msg, "biz", reject) {
+		return
+	}
+
 	// 获取参数
 	caller := peer.ID()
 	rid := msg["rid"]
@@ -338,10 +346,16 @@ func call(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, 
 			/* "method", proto.IslbToDistPeerInfo, "errorCode", 1, "errorReason", "uid is not live" */
 			err := int(resp["errorCode"].(float64))
 			if err == 0 {
+				// 获取节点
 				nid := resp["nid"].(string)
 				dist := FindDistNodeByID(nid)
-				amqp.RPCCall(reg.GetRPCChannel(*dist), util.Map("method", proto.DistToDistCall,
-					"caller", caller, "callee", callee, "rid", rid, "biz", biz, "nid", node.NodeInfo().Nid), "")
+				if dist != nil {
+					amqp.RPCCall(reg.GetRPCChannel(*dist), util.Map("method", proto.DistToDistCall,
+						"caller", caller, "callee", callee, "rid", rid, "biz", biz, "nid", node.NodeInfo().Nid), "")
+				} else {
+					nCount = nCount + 1
+					peersTmp = append(peersTmp, callee)
+				}
 			} else {
 				nCount = nCount + 1
 				peersTmp = append(peersTmp, callee)
@@ -362,31 +376,65 @@ func call(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, 
 	accept(resp)
 }
 
-// callanswer 加入房间
+// callanswer 接受呼叫
 func callanswer(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
-	callee := peer.ID()
-	caller := msg["uid"].(string)
-	rid := msg["rid"].(string)
-	biz := msg["biz"].(string)
-	nid := msg["nid"].(string)
+	log.Infof("dist handle callanswer uid = %s, msg = %v", peer.ID(), msg)
+	// 判断参数正确性
+	if invalid(msg, "rid", reject) || invalid(msg, "biz", reject) || invalid(msg, "nid", reject) {
+		return
+	}
 
+	// 获取参数
+	callee := peer.ID()
+	caller := util.Val(msg, "caller")
+	rid := util.Val(msg, "rid")
+	biz := util.Val(msg, "biz")
+	nid := util.Val(msg, "nid")
+
+	// 获取节点
 	dist := FindDistNodeByID(nid)
+	if dist == nil {
+		log.Errorf("dist node is not find")
+		reject(codeDistErr, codeStr(codeDistErr))
+		return
+	}
+
+	// 发送消息
 	amqp.RPCCall(reg.GetRPCChannel(*dist), util.Map("method", proto.DistToDistAnswer,
 		"caller", caller, "callee", callee, "rid", rid, "biz", biz, "nid", nid), "")
+
+	// resp
 	accept(emptyMap)
 }
 
-// callreject 加入房间
+// callreject 拒绝呼叫
 func callreject(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
+	log.Infof("dist handle callreject uid = %s, msg = %v", peer.ID(), msg)
+	// 判断参数正确性
+	if invalid(msg, "rid", reject) || invalid(msg, "biz", reject) || invalid(msg, "nid", reject) {
+		return
+	}
+
+	// 获取参数
 	callee := peer.ID()
-	caller := msg["uid"].(string)
-	rid := msg["rid"].(string)
-	biz := msg["biz"].(string)
-	nid := msg["nid"].(string)
+	caller := util.Val(msg, "caller")
+	rid := util.Val(msg, "rid")
+	biz := util.Val(msg, "biz")
+	nid := util.Val(msg, "nid")
 	code := int(msg["code"].(float64))
 
+	// 获取节点
 	dist := FindDistNodeByID(nid)
+	if dist == nil {
+		log.Errorf("dist node is not find")
+		reject(codeDistErr, codeStr(codeDistErr))
+		return
+	}
+
+	// 发送消息
 	amqp.RPCCall(reg.GetRPCChannel(*dist), util.Map("method", proto.DistToDistReject,
 		"caller", caller, "callee", callee, "rid", rid, "biz", biz, "nid", nid, "code", code), "")
+
+	// resp
 	accept(emptyMap)
 }

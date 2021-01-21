@@ -18,6 +18,7 @@ func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher
 	watch = ServiceWatcher
 	go watch.WatchServiceNode("", WatchServiceNodes)
 	amqp = mq.New(node.GetRPCChannel(), node.GetEventChannel(), mqURL)
+	// 启动消息接收
 	handleRPCMsgs()
 }
 
@@ -50,18 +51,18 @@ func FindIslbNode() *server.Node {
 
 // FindDistNodeByID 查询指定id的dist节点
 func FindDistNodeByID(nid string) *server.Node {
-	sfu, find := watch.GetNodeByID(nid)
+	dist, find := watch.GetNodeByID(nid)
 	if find {
-		return sfu
+		return dist
 	}
 	return nil
 }
 
 // FindBizNodeByPayload 查询指定区域下的可用的biz节点
 func FindBizNodeByPayload() *server.Node {
-	sfu, find := watch.GetNodeByPayload(node.NodeInfo().Ndc, "biz")
+	biz, find := watch.GetNodeByPayload(node.NodeInfo().Ndc, "biz")
 	if find {
-		return sfu
+		return biz
 	}
 	return nil
 }

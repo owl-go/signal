@@ -1,6 +1,7 @@
 package node
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -21,10 +22,15 @@ func handleRPCMsgs() {
 	go func() {
 		defer util.Recover("islb.handleRPCMsgs")
 		for rpcm := range rpcMsgs {
-			msg := util.Unmarshal(string(rpcm.Body))
-			src := rpcm.ReplyTo
-			index := rpcm.CorrelationId
-			log.Infof("islb.handleRPCMsgs msg=%v", msg)
+			var msg map[string]interface{}
+			err := json.Unmarshal(rpcm.Body, &msg)
+			if err != nil {
+				log.Errorf("islb handleRPCMsgs Unmarshal err = %s", err.Error())
+			}
+
+			from := rpcm.ReplyTo
+			corrID := rpcm.CorrelationId
+			log.Infof("islb.handleRPCMsgs recv msg=%v, from=%s, corrID=%s", msg, from, corrID)
 
 			method := util.Val(msg, "method")
 			if method == "" {
@@ -39,7 +45,7 @@ func handleRPCMsgs() {
 			case proto.DistToIslbPeerHeart:
 				clientPeerHeart(msg)
 			case proto.DistToIslbPeerInfo:
-				getPeerinfo(msg, src, index)
+				getPeerinfo(msg, from, corrID)
 
 			case proto.IslbClientOnJoin:
 				clientJoin(msg)
@@ -50,18 +56,18 @@ func handleRPCMsgs() {
 			case proto.IslbOnStreamRemove:
 				streamRemove(msg)
 			case proto.IslbGetSfuInfo:
-				getSfuByMid(msg, src, index)
+				getSfuByMid(msg, from, corrID)
 			case proto.IslbGetMediaInfo:
-				getSfuByMid(msg, src, index)
+				getSfuByMid(msg, from, corrID)
 			case proto.IslbGetMediaPubs:
-				getMediaPubs(msg, src, index)
+				getMediaPubs(msg, from, corrID)
 			}
 		}
 	}()
 }
 
 /*
-	"method", proto.DistToIslbLoginin, "uid", uid, "nid", node.NodeInfo().Nid
+	"method", proto.DistToIslbLoginin, "uid", uid, "nid", nid
 */
 // clientloginin 有人登录到dist服务器
 func clientloginin(data map[string]interface{}) {
@@ -77,7 +83,7 @@ func clientloginin(data map[string]interface{}) {
 }
 
 /*
-	"method", proto.DistToIslbLoginOut, "uid", uid, "nid", node.NodeInfo().Nid
+	"method", proto.DistToIslbLoginOut, "uid", uid, "nid", nid
 */
 // clientloginin 有人退录到dist服务器
 func clientloginout(data map[string]interface{}) {
@@ -92,7 +98,7 @@ func clientloginout(data map[string]interface{}) {
 }
 
 /*
-	"method", proto.DistToIslbPeerHeart, "uid", uid, "nid", node.NodeInfo().Nid
+	"method", proto.DistToIslbPeerHeart, "uid", uid, "nid", nid
 */
 // clientPeerHeart 有人发送心跳到dist服务器,更新key的时间
 func clientPeerHeart(data map[string]interface{}) {
