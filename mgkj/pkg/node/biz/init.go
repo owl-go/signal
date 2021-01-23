@@ -6,15 +6,12 @@ import (
 	"mgkj/pkg/proto"
 	"mgkj/pkg/server"
 	"mgkj/pkg/util"
-	"sync"
 )
 
 var (
-	amqp     *mq.Amqp
-	node     *server.ServiceNode
-	watch    *server.ServiceWatcher
-	rooms    = make(map[string]*RoomNode)
-	roomLock sync.RWMutex
+	amqp  *mq.Amqp
+	node  *server.ServiceNode
+	watch *server.ServiceWatcher
 )
 
 // Init 初始化服务
@@ -23,6 +20,7 @@ func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher
 	watch = ServiceWatcher
 	go watch.WatchServiceNode("", WatchServiceNodes)
 	amqp = mq.New(node.GetRPCChannel(), node.GetEventChannel(), mqURL)
+	// 启动
 	handleRPCMsgs()
 	handleBroadCastMsgs()
 }
@@ -84,6 +82,8 @@ func FindSfuNodeByMid(mid string) *server.Node {
 	var sfu *server.Node
 	find := false
 	respIslb := func(resp map[string]interface{}) {
+		// "method", proto.IslbToBizGetSfuInfo, "mid", mid, "nid", nid
+		// "method", proto.IslbToBizGetSfuInfo, "mid", mid
 		nid := util.Val(resp, "nid")
 		if nid != "" {
 			sfu = FindSfuNodeByID(nid)
@@ -91,7 +91,7 @@ func FindSfuNodeByMid(mid string) *server.Node {
 		}
 		ch <- 0
 	}
-	amqp.RPCCallWithResp(server.GetRPCChannel(*islb), util.Map("method", proto.IslbGetSfuInfo, "mid", mid), respIslb)
+	amqp.RPCCallWithResp(server.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbGetSfuInfo, "mid", mid), respIslb)
 	<-ch
 	close(ch)
 	if find {
@@ -112,14 +112,40 @@ func FindMediaIndoByMid(mid string) (string, bool) {
 	var minfo string
 	find := false
 	respIslb := func(resp map[string]interface{}) {
+		// "method", proto.IslbToBizGetMediaInfo, "mid", mid, "minfo", minfo
+		// "method", proto.IslbToBizGetMediaInfo, "mid", mid
 		minfo := util.Val(resp, "minfo")
 		if minfo != "" {
 			find = true
 		}
 		ch <- 0
 	}
-	amqp.RPCCallWithResp(server.GetRPCChannel(*islb), util.Map("method", proto.IslbGetMediaInfo, "mid", mid), respIslb)
+	amqp.RPCCallWithResp(server.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbGetMediaInfo, "mid", mid), respIslb)
 	<-ch
 	close(ch)
 	return minfo, find
+}
+
+// FindPeerIsLive 查询peer是否还在线
+func FindPeerIsLive(uid string) bool {
+	islb := FindIslbNode()
+	if islb == nil {
+		log.Errorf("FindPeerIsLive islb not found")
+		return false
+	}
+
+	var live bool = false
+	ch := make(chan int, 1)
+	respIslb := func(resp map[string]interface{}) {
+		// "method", proto.IslbToDistPeerInfo, "errorCode", 1, "errorReason", "uid is not live"
+		// "method", proto.IslbToDistPeerInfo, "errorCode", 0, "nid", dist
+		nLive := int(resp["errorCode"].(float64))
+		if nLive == 0 {
+			live = true
+		}
+	}
+	amqp.RPCCallWithResp(server.GetRPCChannel(*islb), util.Map("method", proto.DistToIslbPeerInfo, "uid", uid), respIslb)
+	<-ch
+	close(ch)
+	return live
 }

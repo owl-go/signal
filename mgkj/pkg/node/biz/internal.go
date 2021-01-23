@@ -1,35 +1,11 @@
 package node
 
 import (
+	"encoding/json"
 	"mgkj/pkg/log"
 	"mgkj/pkg/proto"
 	"mgkj/pkg/util"
 )
-
-// strToMap make string value to map
-/*
-func strToMap(msg map[string]interface{}, key string) {
-	value := util.Val(msg, key)
-	if value != "" {
-		mValue := util.Unmarshal(value)
-		msg[key] = mValue
-	}
-}*/
-
-// handleRPCMsgResp response msg from islb
-func handleRPCMsgResp(corrID, from, resp string, msg map[string]interface{}) {
-	log.Infof("biz.handleRPCMsgResp corrID=%s, from=%s, resp=%s msg=%v", corrID, from, resp, msg)
-	switch resp {
-	case proto.IslbGetSfuInfo:
-		amqp.Emit(corrID, msg)
-	case proto.IslbGetMediaInfo:
-		amqp.Emit(corrID, msg)
-	case proto.IslbGetMediaPubs:
-		amqp.Emit(corrID, msg)
-	default:
-		log.Warnf("biz.handleRPCMsgResp invalid protocol corrID=%s, from=%s, resp=%s msg=%v", corrID, from, resp, msg)
-	}
-}
 
 // handleRPCMsgs 处理其他模块发送过来的消息
 func handleRPCMsgs() {
@@ -42,14 +18,34 @@ func handleRPCMsgs() {
 	go func() {
 		defer util.Recover("biz.handleRPCMsgs")
 		for rpcm := range rpcMsgs {
-			msg := util.Unmarshal(string(rpcm.Body))
+			var msg map[string]interface{}
+			err := json.Unmarshal(rpcm.Body, &msg)
+			if err != nil {
+				log.Errorf("biz handleRPCMsgs Unmarshal err = %s", err.Error())
+			}
+
 			from := rpcm.ReplyTo
 			corrID := rpcm.CorrelationId
 			log.Infof("biz.handleRPCMsgs msg=%v", msg)
 
-			resp := util.Val(msg, "response")
+			resp := util.Val(msg, "method")
 			if resp != "" {
-				handleRPCMsgResp(corrID, from, resp, msg)
+				switch resp {
+				case proto.IslbToBizGetSfuInfo:
+					amqp.Emit(corrID, msg)
+				case proto.IslbToBizGetMediaInfo:
+					amqp.Emit(corrID, msg)
+				case proto.IslbToBizGetMediaPubs:
+					amqp.Emit(corrID, msg)
+				case proto.SfuToBizPublish:
+					amqp.Emit(corrID, msg)
+				case proto.SfuToBizSubscribe:
+					amqp.Emit(corrID, msg)
+				case proto.SfuToBizOnStreamRemove:
+					amqp.Emit(corrID, msg)
+				default:
+					log.Warnf("biz.handleRPCMsgResp invalid protocol corrID=%s, from=%s, resp=%s msg=%v", corrID, from, resp, msg)
+				}
 			}
 		}
 	}()
@@ -65,7 +61,12 @@ func handleBroadCastMsgs() {
 	go func() {
 		defer util.Recover("biz.handleBroadCastMsgs")
 		for rpcm := range broadCastMsgs {
-			msg := util.Unmarshal(string(rpcm.Body))
+			var msg map[string]interface{}
+			err := json.Unmarshal(rpcm.Body, &msg)
+			if err != nil {
+				log.Errorf("biz handleBroadCastMsgs Unmarshal err = %s", err.Error())
+			}
+
 			method := util.Val(msg, "method")
 			if method == "" {
 				continue
@@ -75,14 +76,21 @@ func handleBroadCastMsgs() {
 			rid := util.Val(msg, "rid")
 			uid := util.Val(msg, "uid")
 			switch method {
-			case proto.IslbClientOnJoin:
-				NotifyAllWithoutID(rid, uid, proto.ClientOnJoin, msg)
-			case proto.IslbClientOnLeave:
-				NotifyAllWithoutID(rid, uid, proto.ClientOnLeave, msg)
-			case proto.IslbOnStreamAdd:
-				NotifyAllWithoutID(rid, uid, proto.ClientOnStreamAdd, msg)
-			case proto.IslbOnStreamRemove:
-				NotifyAllWithoutID(rid, uid, proto.ClientOnStreamRemove, msg)
+			case proto.IslbToBizOnJoin:
+				/* "method", proto.IslbToBizOnJoin, "rid", rid, "uid", uid, "info", info */
+				NotifyAllWithoutID(rid, uid, proto.BizToClientOnJoin, msg)
+			case proto.IslbToBizOnLeave:
+				/* "method", proto.IslbToBizOnLeave, "rid", rid, "uid", uid, "info", info */
+				NotifyAllWithoutID(rid, uid, proto.BizToClientOnLeave, msg)
+			case proto.IslbToBizOnStreamAdd:
+				/* "method", proto.IslbToBizOnStreamAdd, "rid", rid, "uid", uid, "nid", nid, "mid", mid, "minfo", minfo */
+				NotifyAllWithoutID(rid, uid, proto.BizToClientOnStreamAdd, msg)
+			case proto.IslbToBizOnStreamRemove:
+				/* "method", proto.IslbToBizOnStreamRemove, "rid", rid, "uid", uid, "mid", mid, "minfo", minfo */
+				NotifyAllWithoutID(rid, uid, proto.BizToClientOnStreamRemove, msg)
+			case proto.IslbToBizBroadcast:
+				/* "method", proto.IslbToBizBroadcast, "rid", rid, "uid", uid, "data", data */
+				NotifyAllWithoutID(rid, uid, proto.BizToClientBroadcast, msg)
 			}
 		}
 	}()

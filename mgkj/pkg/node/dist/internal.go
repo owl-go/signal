@@ -21,7 +21,7 @@ var (
 )
 
 /*
-	"method", proto.DistToDistCall, "caller", caller, "callee", callee, "rid", rid, "biz", biz, "nid", nid
+	"method", proto.DistToDistCall, "caller", caller, "callee", callee, "rid", rid, "nid", nid
 */
 func dist2distCall(msg map[string]interface{}) {
 	callee := msg["callee"].(string)
@@ -30,14 +30,13 @@ func dist2distCall(msg map[string]interface{}) {
 		data := make(map[string]interface{})
 		data["caller"] = msg["caller"]
 		data["rid"] = msg["rid"]
-		data["biz"] = msg["biz"]
 		data["nid"] = msg["nid"]
 		peer.Notify(proto.DistToClientCall, data)
 	}
 }
 
 /*
-	"method", proto.DistToDistAnswer, "caller", caller, "callee", callee, "rid", rid, "biz", biz, "nid", nid
+	"method", proto.DistToDistAnswer, "caller", caller, "callee", callee, "rid", rid, "nid", nid
 */
 func dist2distAnswer(msg map[string]interface{}) {
 	caller := msg["caller"].(string)
@@ -46,14 +45,13 @@ func dist2distAnswer(msg map[string]interface{}) {
 		data := make(map[string]interface{})
 		data["callee"] = msg["callee"]
 		data["rid"] = msg["rid"]
-		data["biz"] = msg["biz"]
 		data["nid"] = msg["nid"]
 		peer.Notify(proto.DistToClientAnswer, data)
 	}
 }
 
 /*
-	"method", proto.DistToDistReject, "caller", caller, "callee", callee, "rid", rid, "biz", biz, "nid", nid, "code", code
+	"method", proto.DistToDistReject, "caller", caller, "callee", callee, "rid", rid, "nid", nid, "code", code
 */
 func dist2distReject(msg map[string]interface{}) {
 	caller := msg["caller"].(string)
@@ -62,7 +60,6 @@ func dist2distReject(msg map[string]interface{}) {
 		data := make(map[string]interface{})
 		data["callee"] = msg["callee"]
 		data["rid"] = msg["rid"]
-		data["biz"] = msg["biz"]
 		data["nid"] = msg["nid"]
 		data["code"] = msg["code"]
 		peer.Notify(proto.DistToClientReject, data)
@@ -240,6 +237,12 @@ func handleWebSocket(transport *transport.WebSocketTransport, request *http.Requ
 	}
 }
 
+/*
+	"request":true
+	"id":3764139
+	"method":"loginin"
+	"data":{}
+*/
 // loginin 登录服务器
 func loginin(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
 	log.Infof("dist handle loginin uid = %s, msg = %v", peer.ID(), msg)
@@ -276,6 +279,12 @@ func loginin(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 	accept(resp)
 }
 
+/*
+	"request":true
+	"id":3764139
+	"method":"loginout"
+	"data":{}
+*/
 // loginout 退录服务器
 func loginout(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
 	log.Infof("dist handle loginout uid = %s, msg = %v", peer.ID(), msg)
@@ -295,6 +304,12 @@ func loginout(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFu
 	accept(emptyMap)
 }
 
+/*
+	"request":true
+	"id":3764139
+	"method":"heart"
+	"data":{}
+*/
 // heart 心跳
 func heart(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
 	log.Infof("dist handle heart uid = %s, msg = %v", peer.ID(), msg)
@@ -314,18 +329,31 @@ func heart(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc,
 	accept(emptyMap)
 }
 
+/*
+	"request":true
+	"id":3764139
+	"method":"call"
+	"data":{
+		"rid":"$rid"
+		"peers": {
+			"64236c21-21e8-4a3d-9f80-c767d1e1d67f",
+			"65236c21-21e8-4a3d-9f80-c767d1e1d67f",
+			"66236c21-21e8-4a3d-9f80-c767d1e1d67f",
+			"67236c21-21e8-4a3d-9f80-c767d1e1d67f",
+		}
+	}
+*/
 // call 发送呼叫
 func call(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
 	log.Infof("dist handle call uid = %s, msg = %v", peer.ID(), msg)
 	// 判断参数正确性
-	if invalid(msg, "rid", reject) || invalid(msg, "biz", reject) {
+	if invalid(msg, "rid", reject) {
 		return
 	}
 
 	// 获取参数
 	caller := peer.ID()
 	rid := msg["rid"]
-	biz := msg["biz"]
 	peers := msg["peers"].([]string)
 
 	// 查询islb节点
@@ -351,7 +379,7 @@ func call(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, 
 				dist := FindDistNodeByID(nid)
 				if dist != nil {
 					amqp.RPCCall(reg.GetRPCChannel(*dist), util.Map("method", proto.DistToDistCall,
-						"caller", caller, "callee", callee, "rid", rid, "biz", biz, "nid", node.NodeInfo().Nid), "")
+						"caller", caller, "callee", callee, "rid", rid, "nid", node.NodeInfo().Nid), "")
 				} else {
 					nCount = nCount + 1
 					peersTmp = append(peersTmp, callee)
@@ -376,11 +404,21 @@ func call(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, 
 	accept(resp)
 }
 
+/*
+	"request":true
+	"id":3764139
+	"method":"answer"
+	"data":{
+		"caller":"$caller"	// 主叫者uid
+		"rid":"$rid"		// 主叫者房间
+		"nid":"$nid"		// 主叫者所在服务器的id
+	}
+*/
 // callanswer 接受呼叫
 func callanswer(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
 	log.Infof("dist handle callanswer uid = %s, msg = %v", peer.ID(), msg)
 	// 判断参数正确性
-	if invalid(msg, "rid", reject) || invalid(msg, "biz", reject) || invalid(msg, "nid", reject) {
+	if invalid(msg, "rid", reject) || invalid(msg, "nid", reject) {
 		return
 	}
 
@@ -388,7 +426,6 @@ func callanswer(peer *peer.Peer, msg map[string]interface{}, accept peer.Respond
 	callee := peer.ID()
 	caller := util.Val(msg, "caller")
 	rid := util.Val(msg, "rid")
-	biz := util.Val(msg, "biz")
 	nid := util.Val(msg, "nid")
 
 	// 获取节点
@@ -401,17 +438,28 @@ func callanswer(peer *peer.Peer, msg map[string]interface{}, accept peer.Respond
 
 	// 发送消息
 	amqp.RPCCall(reg.GetRPCChannel(*dist), util.Map("method", proto.DistToDistAnswer,
-		"caller", caller, "callee", callee, "rid", rid, "biz", biz, "nid", nid), "")
+		"caller", caller, "callee", callee, "rid", rid, "nid", nid), "")
 
 	// resp
 	accept(emptyMap)
 }
 
+/*
+	"request":true
+	"id":3764139
+	"method":"reject"
+	"data":{
+		"caller":"$caller"	// 主叫者uid
+		"rid":"$rid"		// 主叫者房间
+		"nid":"$nid"		// 主叫者所在服务器的id
+		"code":1, 			// 1-自己拒绝，2-忙线
+	}
+*/
 // callreject 拒绝呼叫
 func callreject(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
 	log.Infof("dist handle callreject uid = %s, msg = %v", peer.ID(), msg)
 	// 判断参数正确性
-	if invalid(msg, "rid", reject) || invalid(msg, "biz", reject) || invalid(msg, "nid", reject) {
+	if invalid(msg, "rid", reject) || invalid(msg, "nid", reject) {
 		return
 	}
 
@@ -419,7 +467,6 @@ func callreject(peer *peer.Peer, msg map[string]interface{}, accept peer.Respond
 	callee := peer.ID()
 	caller := util.Val(msg, "caller")
 	rid := util.Val(msg, "rid")
-	biz := util.Val(msg, "biz")
 	nid := util.Val(msg, "nid")
 	code := int(msg["code"].(float64))
 
@@ -433,7 +480,7 @@ func callreject(peer *peer.Peer, msg map[string]interface{}, accept peer.Respond
 
 	// 发送消息
 	amqp.RPCCall(reg.GetRPCChannel(*dist), util.Map("method", proto.DistToDistReject,
-		"caller", caller, "callee", callee, "rid", rid, "biz", biz, "nid", nid, "code", code), "")
+		"caller", caller, "callee", callee, "rid", rid, "nid", nid, "code", code), "")
 
 	// resp
 	accept(emptyMap)
