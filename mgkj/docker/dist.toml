@@ -1,10 +1,10 @@
 [global]
-pprof = ":6060"
+pprof = ":6062"
 
 # server
 dc = "shenzhen"
-name = "biz"
-nid = "shenzhen_biz_1"
+name = "dist"
+nid = "shenzhen_dist_1"
 nip = "8.129.55.41"
 
 [log]
@@ -19,11 +19,10 @@ addrs = ["8.129.55.41:2379"]
 [signal]
 #listen ip port
 host = "0.0.0.0"
-port = "8443"
+port = "8444"
 # cert= "configs/cert.pem"
 # key= "configs/key.pem"
 
 [amqp]
 # url = "amqp://guest:guest@localhost:5672/"
 url = "amqp://zhouwq:123456@8.129.55.41:5672/admin"
-
