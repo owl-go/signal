@@ -37,11 +37,11 @@ func handleRPCMsgs() {
 					amqp.Emit(corrID, msg)
 				case proto.IslbToBizGetMediaPubs:
 					amqp.Emit(corrID, msg)
+				case proto.IslbToBizPeerLive:
+					amqp.Emit(corrID, msg)
 				case proto.SfuToBizPublish:
 					amqp.Emit(corrID, msg)
 				case proto.SfuToBizSubscribe:
-					amqp.Emit(corrID, msg)
-				case proto.SfuToBizOnStreamRemove:
 					amqp.Emit(corrID, msg)
 				default:
 					log.Warnf("biz.handleRPCMsgResp invalid protocol corrID=%s, from=%s, resp=%s msg=%v", corrID, from, resp, msg)
@@ -66,13 +66,9 @@ func handleBroadCastMsgs() {
 			if err != nil {
 				log.Errorf("biz handleBroadCastMsgs Unmarshal err = %s", err.Error())
 			}
-
-			method := util.Val(msg, "method")
-			if method == "" {
-				continue
-			}
 			log.Infof("biz.handleBroadCastMsgs msg=%v", msg)
 
+			method := util.Val(msg, "method")
 			rid := util.Val(msg, "rid")
 			uid := util.Val(msg, "uid")
 			switch method {
@@ -91,6 +87,9 @@ func handleBroadCastMsgs() {
 			case proto.IslbToBizBroadcast:
 				/* "method", proto.IslbToBizBroadcast, "rid", rid, "uid", uid, "data", data */
 				NotifyAllWithoutID(rid, uid, proto.BizToClientBroadcast, msg)
+			case proto.SfuToBizOnStreamRemove:
+				//
+
 			}
 		}
 	}()

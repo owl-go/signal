@@ -5,6 +5,10 @@ import (
 )
 
 const (
+	/*
+		客户端和dist服务器之间的通信
+	*/
+
 	// ClientToDistLoginin C->dist 登录
 	ClientToDistLoginin = "loginin"
 	// ClientToDistLoginOut C->dist 退录
@@ -42,10 +46,16 @@ const (
 	// IslbToDistPeerInfo islb->dist islb返回peer在哪个dist服务器
 	IslbToDistPeerInfo = DistToIslbPeerInfo
 
+	/*
+		客户端与biz服务器通信
+	*/
+
 	// ClientToBizJoin C->Biz 加入会议
 	ClientToBizJoin = "join"
 	// ClientToBizLeave C->Biz 离开会议
 	ClientToBizLeave = "leave"
+	// ClientToBizKeepLive C->Biz 保活
+	ClientToBizKeepLive = "keeplive"
 	// ClientToBizPublish C->Biz 发布流
 	ClientToBizPublish = "publish"
 	// ClientToBizUnPublish C->Biz 取消发布流
@@ -86,39 +96,44 @@ const (
 	// SfuToBizSubscribe Sfu->Biz 订阅流返回
 	SfuToBizSubscribe = BizToSfuSubscribe
 	// SfuToBizOnStreamRemove Sfu->Biz Sfu流被移除
-	SfuToBizOnStreamRemove = BizToClientOnStreamRemove
+	SfuToBizOnStreamRemove = "sfu-stream-remove"
 
 	// BizToIslbOnJoin biz->islb 有人加入房间
 	BizToIslbOnJoin = BizToClientOnJoin
-	// BizToIslbOnLeave biz->islb 有人离开房间
-	BizToIslbOnLeave = BizToClientOnLeave
-	// BizToIslbOnStreamAdd biz->islb 有人发布流
-	BizToIslbOnStreamAdd = BizToClientOnStreamAdd
-	// BizToIslbOnStreamRemove biz->islb 有人取消发布流
-	BizToIslbOnStreamRemove = BizToClientOnStreamRemove
-	// BizToIslbGetSfuInfo biz->islb 根据mid查询对应的sfu
-	BizToIslbGetSfuInfo = "getSfuInfo"
-	// BizToIslbGetMediaInfo biz->islb 获取mid的流信息
-	BizToIslbGetMediaInfo = "getMediaInfo"
-	// BizToIslbGetMediaPubs biz->islb 获取房间内所有的发布流
-	BizToIslbGetMediaPubs = "getMediaPubs"
-	// BizToIslbBroadcast biz->islb 有人发送广播
-	BizToIslbBroadcast = ClientToBizBroadcast
-
 	// IslbToBizOnJoin islb->biz 有人加入房间
 	IslbToBizOnJoin = BizToClientOnJoin
+	// BizToIslbOnLeave biz->islb 有人离开房间
+	BizToIslbOnLeave = BizToClientOnLeave
 	// IslbToBizOnLeave islb->biz 有人离开房间
 	IslbToBizOnLeave = BizToClientOnLeave
+	// BizToIslbOnStreamAdd biz->islb 有人发布流
+	BizToIslbOnStreamAdd = BizToClientOnStreamAdd
 	// IslbToBizOnStreamAdd islb->biz 有人发布流
 	IslbToBizOnStreamAdd = BizToClientOnStreamAdd
+	// BizToIslbOnStreamRemove biz->islb 有人取消发布流
+	BizToIslbOnStreamRemove = BizToClientOnStreamRemove
 	// IslbToBizOnStreamRemove islb->biz 有人取消发布流
 	IslbToBizOnStreamRemove = BizToClientOnStreamRemove
+	// BizToIslbKeepLive biz->islb 保活
+	BizToIslbKeepLive = ClientToBizKeepLive
+	// BizToIslbGetSfuInfo biz->islb 根据mid查询对应的sfu
+	BizToIslbGetSfuInfo = "getSfuInfo"
 	// IslbToBizGetSfuInfo islb->biz 返回mid对应的sfu
 	IslbToBizGetSfuInfo = BizToIslbGetSfuInfo
+	// BizToIslbGetMediaInfo biz->islb 获取mid的流信息
+	BizToIslbGetMediaInfo = "getMediaInfo"
 	// IslbToBizGetMediaInfo islb->biz 返回mid对应的流信息
 	IslbToBizGetMediaInfo = BizToIslbGetMediaInfo
+	// BizToIslbGetMediaPubs biz->islb 获取房间内所有的发布流
+	BizToIslbGetMediaPubs = "getMediaPubs"
 	// IslbToBizGetMediaPubs islb->biz 返回房间内的发布流信息
 	IslbToBizGetMediaPubs = BizToIslbGetMediaPubs
+	// BizToIslbPeerLive biz->islb 获取Peer是否还存活
+	BizToIslbPeerLive = "getPeerLive"
+	// IslbToBizPeerLive islb->biz islb返回peer存活状态
+	IslbToBizPeerLive = BizToIslbPeerLive
+	// BizToIslbBroadcast biz->islb 有人发送广播
+	BizToIslbBroadcast = ClientToBizBroadcast
 	// IslbToBizBroadcast islb->biz 有人发送广播
 	IslbToBizBroadcast = ClientToBizBroadcast
 )
@@ -128,22 +143,27 @@ func GetUIDFromMID(mid string) string {
 	return strings.Split(mid, "#")[0]
 }
 
-// GetUserDistKey 获取用户连接信息保存的key
+// GetUserDistKey 获取用户连接信息
 func GetUserDistKey(uid string) string {
-	return "/dist/" + uid
+	return "/dist/uid/" + uid
 }
 
-// GetUserInfoKey 获取用户信息保存的key
+// GetUserRoomKey 获取用户加入的房间
+func GetUserRoomKey(uid string) string {
+	return "/room/uid/" + uid
+}
+
+// GetUserInfoKey 获取用户的信息
 func GetUserInfoKey(rid, uid string) string {
-	return "/user/uid/" + uid + "/rid/" + rid
+	return "/user/rid/" + rid + "/uid/" + uid
 }
 
-// GetMediaInfoKey 获取媒体信息保存的key
+// GetMediaInfoKey 获取用户发布的流信息
 func GetMediaInfoKey(rid, uid, mid string) string {
-	return "/media/mid/" + mid + "/uid/" + uid + "/rid/" + rid
+	return "/media/rid/" + rid + "/uid/" + uid + "/mid/" + mid
 }
 
-// GetMediaPubKey 获取发布流服务器信息保存的key
+// GetMediaPubKey 获取用户发布流对应的sfu信息
 func GetMediaPubKey(rid, uid, mid string) string {
-	return "/sfu/mid/" + mid + "/uid/" + uid + "/rid/" + rid
+	return "/pub/rid/" + rid + "/uid/" + uid + "/mid/" + mid
 }

@@ -16,8 +16,8 @@ const (
 	codeSdpErr
 	codePubErr
 	codeSubErr
-	codeIslbErr
 	codeSfuErr
+	codeIslbErr
 	codeUnknownErr
 )
 
@@ -30,8 +30,8 @@ var codeErr = map[int]string{
 	codeSdpErr:     "sdp not found",
 	codePubErr:     "pub not found",
 	codeSubErr:     "sub not found",
-	codeIslbErr:    "islb not found",
 	codeSfuErr:     "sfu not found",
+	codeIslbErr:    "islb not found",
 	codeUnknownErr: "unknown error",
 }
 
@@ -63,6 +63,12 @@ func invalid(msg map[string]interface{}, key string, reject peer.RejectFunc) boo
 			return true
 		case "sdp":
 			reject(codeSdpErr, codeStr(codeSdpErr))
+			return true
+		case "sfu":
+			reject(codeSfuErr, codeStr(codeSfuErr))
+			return true
+		case "islb":
+			reject(codeIslbErr, codeStr(codeIslbErr))
 			return true
 		}
 	}

@@ -49,7 +49,14 @@ func checkRoom() {
 			nCount += len(node.room.GetPeers())
 			for uid := range node.room.GetPeers() {
 				bLive := FindPeerIsLive(uid)
-				if bLive {
+				if !bLive {
+					// 查询islb节点
+					islb := FindIslbNode()
+					if islb == nil {
+						log.Errorf("islb node is not find")
+					}
+					amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbOnStreamRemove, "rid", rid, "uid", uid, "mid", ""), "")
+					amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbOnLeave, "rid", rid, "uid", uid), "")
 					node.room.RemovePeer(uid)
 				}
 			}
@@ -123,6 +130,8 @@ func handleWebSocket(transport *transport.WebSocketTransport, request *http.Requ
 			join(peerObj, data, accept, reject)
 		case proto.ClientToBizLeave:
 			leave(peerObj, data, accept, reject)
+		case proto.ClientToBizKeepLive:
+			keeplive(peerObj, data, accept, reject)
 		case proto.ClientToBizPublish:
 			publish(peerObj, data, accept, reject)
 		case proto.ClientToBizUnPublish:
@@ -135,6 +144,8 @@ func handleWebSocket(transport *transport.WebSocketTransport, request *http.Requ
 			trickle(peerObj, data, accept, reject)
 		case proto.ClientToBizBroadcast:
 			broadcast(peerObj, data, accept, reject)
+		default:
+			reject(codeUnknownErr, codeStr(codeUnknownErr))
 		}
 	}
 
@@ -178,9 +189,9 @@ func handleWebSocket(transport *transport.WebSocketTransport, request *http.Requ
 	"id":3764139
 	"method":"join"
 	"data":{
-	"rid":"room1",
-	"info":{"name":"zhou","head":""}
-}
+		"rid":"room1",
+		"info":{"name":"zhou","head":""}
+	}
 */
 // join 加入房间
 func join(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
@@ -217,24 +228,25 @@ func join(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, 
 
 	// 查询房间存在的发布流
 	ch := make(chan int, 1)
-	nCount := 0
 	respIslb := func(resp map[string]interface{}) {
-		/* "method", proto.IslbToBizGetMediaPubs, "rid", rid, "len", nLen */
-		/* "method", proto.IslbToBizGetMediaPubs, "rid", rid, "uid", uid, "nid", nid, "mid", mid, "minfo", minfo, "len", nLen */
+		// "method", proto.IslbToBizGetMediaPubs, "rid", rid, "errorCode", 1, "errorReason", "mid is not find"
+		// "method", proto.IslbToBizGetMediaPubs, "rid", rid, "errorCode", 0, "uid", uid, "mid", mid, "minfo", minfo, "nid", nid, "index", index, "len", nLen
+		nErr := int(resp["errorCode"].(float64))
+		if nErr != 0 {
+			ch <- 0
+			return
+		}
+		index := int(resp["index"].(float64))
 		nLen := int(resp["len"].(float64))
-		if nLen > 0 {
-			uid := resp["uid"]
-			mid := resp["mid"]
-			nid := resp["nid"]
-			minfo := resp["minfo"]
-			if mid != "" {
-				peer.Notify(proto.BizToClientOnStreamAdd, util.Map("rid", rid, "uid", uid, "nid", nid, "mid", mid, "minfo", minfo))
-			}
-			nCount = nCount + 1
-			if nLen == nCount {
-				ch <- 0
-			}
-		} else {
+		uid := resp["uid"]
+		mid := resp["mid"]
+		nid := resp["nid"]
+		minfo := resp["minfo"]
+		if mid != "" {
+			peer.Notify(proto.BizToClientOnStreamAdd, util.Map("rid", rid, "uid", uid, "nid", nid, "mid", mid, "minfo", minfo))
+		}
+
+		if nLen == index {
 			ch <- 0
 		}
 	}
@@ -279,6 +291,37 @@ func leave(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc,
 		amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbOnLeave, "rid", ridTmp, "uid", uid), "")
 		DelPeer(ridTmp, uid)
 	}
+	accept(emptyMap)
+}
+
+/*
+	"request":true
+	"id":3764139
+	"method":"join"
+	"data":{
+		"rid":"room1",
+	}
+*/
+// keeplive 保活
+func keeplive(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
+	if invalid(msg, "rid", reject) {
+		return
+	}
+
+	// 获取参数
+	uid := peer.ID()
+	rid := util.Val(msg, "rid")
+
+	// 查询islb节点
+	islb := FindIslbNode()
+	if islb == nil {
+		log.Errorf("islb node is not find")
+		reject(codeIslbErr, codeStr(codeIslbErr))
+		return
+	}
+
+	// 通知islb
+	amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbKeepLive, "rid", rid, "uid", uid), "")
 	accept(emptyMap)
 }
 
@@ -382,7 +425,7 @@ func unpublish(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondF
 	if nid != "" {
 		sfu = FindSfuNodeByID(nid)
 	} else {
-		sfu = FindSfuNodeByMid(mid)
+		sfu = FindSfuNodeByMid(rid, mid)
 	}
 	if sfu == nil {
 		log.Errorf("sfu node is not find")
@@ -436,7 +479,7 @@ func subscribe(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondF
 	if nid != "" {
 		sfu = FindSfuNodeByID(nid)
 	} else {
-		sfu = FindSfuNodeByMid(mid)
+		sfu = FindSfuNodeByMid(rid, mid)
 	}
 	if sfu == nil {
 		log.Errorf("sfu node is not find")
@@ -448,6 +491,7 @@ func subscribe(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondF
 	ch := make(chan int, 1)
 	rsp := make(map[string]interface{})
 	respSfu := func(resp map[string]interface{}) {
+		//
 		rsp = resp
 	}
 	amqp.RPCCallWithResp(reg.GetRPCChannel(*sfu), util.Map("method", proto.BizToSfuSubscribe, "rid", rid, "uid", uid, "mid", mid), respSfu)
@@ -482,7 +526,7 @@ func unsubscribe(peer *peer.Peer, msg map[string]interface{}, accept peer.Respon
 	if nid != "" {
 		sfu = FindSfuNodeByID(nid)
 	} else {
-		sfu = FindSfuNodeByMid(mid)
+		sfu = FindSfuNodeByMid(rid, mid)
 	}
 	if sfu == nil {
 		log.Errorf("sfu node is not find")
@@ -524,7 +568,7 @@ func trickle(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 	if nid != "" {
 		sfu = FindSfuNodeByID(nid)
 	} else {
-		sfu = FindSfuNodeByMid(mid)
+		sfu = FindSfuNodeByMid(rid, mid)
 	}
 	if sfu == nil {
 		log.Errorf("sfu node is not find")

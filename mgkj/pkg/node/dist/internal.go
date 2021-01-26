@@ -168,7 +168,6 @@ func handleWebSocket(transport *transport.WebSocketTransport, request *http.Requ
 			errorReason : 'Something failed'
 		}
 	*/
-	// 处理客户端的请求
 	handleRequest := func(request peer.Request, accept peer.RespondFunc, reject peer.RejectFunc) {
 		var data = make(map[string]interface{})
 		err := json.Unmarshal(request.Data, &data)
