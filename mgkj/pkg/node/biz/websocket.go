@@ -48,7 +48,7 @@ func checkRoom() {
 		for rid, node := range rooms {
 			nCount += len(node.room.GetPeers())
 			for uid := range node.room.GetPeers() {
-				bLive := FindPeerIsLive(uid)
+				bLive := FindPeerIsLive(rid, uid)
 				if !bLive {
 					// 查询islb节点
 					islb := FindIslbNode()
@@ -297,9 +297,10 @@ func leave(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc,
 /*
 	"request":true
 	"id":3764139
-	"method":"join"
+	"method":"keeplive"
 	"data":{
 		"rid":"room1",
+		"info":$info
 	}
 */
 // keeplive 保活
@@ -311,6 +312,7 @@ func keeplive(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFu
 	// 获取参数
 	uid := peer.ID()
 	rid := util.Val(msg, "rid")
+	info := util.Val(msg, "info")
 
 	// 查询islb节点
 	islb := FindIslbNode()
@@ -321,7 +323,7 @@ func keeplive(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFu
 	}
 
 	// 通知islb
-	amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbKeepLive, "rid", rid, "uid", uid), "")
+	amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbKeepLive, "rid", rid, "uid", uid, "info", info), "")
 	accept(emptyMap)
 }
 

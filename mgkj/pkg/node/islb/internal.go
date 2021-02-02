@@ -143,17 +143,10 @@ func clientJoin(data map[string]interface{}) {
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
 	info := util.Val(data, "info")
-	// 获取用户加入的房间
-	uKey := proto.GetUserRoomKey(uid)
-	// 写入key值
-	err := redis.Set(uKey, rid, redisShort)
-	if err != nil {
-		log.Errorf("redis.Set clientJoin err = %v", err)
-	}
 	// 获取用户的信息
-	uKey = proto.GetUserInfoKey(rid, uid)
+	uKey := proto.GetUserInfoKey(rid, uid)
 	// 写入key值
-	err = redis.Set(uKey, info, redisKeyTTL)
+	err := redis.Set(uKey, info, redisShort)
 	if err != nil {
 		log.Errorf("redis.Set clientJoin err = %v", err)
 	}
@@ -169,24 +162,14 @@ func clientJoin(data map[string]interface{}) {
 func clientLeave(data map[string]interface{}) {
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
-	// 获取用户加入的房间
-	uKey := proto.GetUserRoomKey(uid)
+	// 获取用户的信息
+	uKey := proto.GetUserInfoKey(rid, uid)
 	// 删除key值
 	err := redis.Del(uKey)
 	if err != nil {
 		log.Errorf("redis.Del clientLeave err = %v", err)
-	}
-	// 获取用户的信息
-	uKey = proto.GetUserInfoKey(rid, uid)
-	// 删除key值
-	info := redis.Get(uKey)
-	err = redis.Del(uKey)
-	if err != nil {
-		log.Errorf("redis.Del clientLeave err = %v", err)
-	}
-	if info != "" {
-		// 生成resp对象
-		msg := util.Map("method", proto.IslbToBizOnLeave, "rid", rid, "uid", uid, "info", info)
+	} else {
+		msg := util.Map("method", proto.IslbToBizOnLeave, "rid", rid, "uid", uid)
 		time.Sleep(200 * time.Millisecond)
 		amqp.BroadCast(msg)
 	}
@@ -281,16 +264,17 @@ func streamRemove(data map[string]interface{}) {
 }
 
 /*
-	"method", proto.BizToIslbKeepLive, "rid", rid, "uid", uid
+	"method", proto.BizToIslbKeepLive, "rid", rid, "uid", uid, "info", info
 */
 // keeplive 保活
 func keeplive(data map[string]interface{}) {
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
-	// 获取用户加入的房间
-	uKey := proto.GetUserRoomKey(uid)
+	info := util.Val(data, "info")
+	// 获取用户的信息
+	uKey := proto.GetUserInfoKey(rid, uid)
 	// 写入key值
-	err := redis.Set(uKey, rid, redisShort)
+	err := redis.Set(uKey, info, redisShort)
 	if err != nil {
 		log.Errorf("redis.Set keeplive err = %v", err)
 	}
@@ -392,15 +376,16 @@ func parseMediaKey(key string) (string, string, error) {
 }
 
 /*
-	"method", proto.BizToIslbPeerLive, "uid", uid
+	"method", proto.BizToIslbPeerLive, "rid", rid, "uid", uid
 */
 // getPeerLive 获取peer存活状态
 func getPeerLive(data map[string]interface{}, from, corrID string) {
+	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
-	// 获取媒体信息保存的key
-	uKeys := proto.GetUserRoomKey(uid)
-	rid := redis.Get(uKeys)
-	if rid != "" {
+	// 获取用户的信息
+	uKey := proto.GetUserInfoKey(rid, uid)
+	info := redis.Get(uKey)
+	if info != "" {
 		resp := util.Map("method", proto.IslbToBizPeerLive, "errorCode", 0)
 		amqp.RPCCall(from, resp, corrID)
 	} else {

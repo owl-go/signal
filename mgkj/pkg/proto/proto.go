@@ -148,11 +148,6 @@ func GetUserDistKey(uid string) string {
 	return "/dist/uid/" + uid
 }
 
-// GetUserRoomKey 获取用户加入的房间
-func GetUserRoomKey(uid string) string {
-	return "/room/uid/" + uid
-}
-
 // GetUserInfoKey 获取用户的信息
 func GetUserInfoKey(rid, uid string) string {
 	return "/user/rid/" + rid + "/uid/" + uid

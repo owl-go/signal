@@ -127,7 +127,7 @@ func FindMediaIndoByMid(rid, mid string) (string, bool) {
 }
 
 // FindPeerIsLive 查询peer是否还存活
-func FindPeerIsLive(uid string) bool {
+func FindPeerIsLive(rid, uid string) bool {
 	islb := FindIslbNode()
 	if islb == nil {
 		log.Errorf("FindPeerIsLive islb not found")
@@ -145,7 +145,7 @@ func FindPeerIsLive(uid string) bool {
 		}
 		ch <- 0
 	}
-	amqp.RPCCallWithResp(server.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbPeerLive, "uid", uid), respIslb)
+	amqp.RPCCallWithResp(server.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbPeerLive, "rid", rid, "uid", uid), respIslb)
 	<-ch
 	close(ch)
 	return live
