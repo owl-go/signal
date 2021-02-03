@@ -16,7 +16,7 @@ var (
 func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, mqURL string) {
 	node = serviceNode
 	watch = ServiceWatcher
-	go watch.WatchServiceNode("", WatchServiceNodes)
+	go watch.WatchServiceNode("", WatchServiceCallBack)
 	amqp = mq.New(node.GetRPCChannel(), node.GetEventChannel(), mqURL)
 	// 启动消息接收
 	handleRPCMsgs()
@@ -29,12 +29,12 @@ func Close() {
 	}
 }
 
-// WatchServiceNodes 查看所有的Node节点
-func WatchServiceNodes(state server.NodeStateType, node server.Node) {
+// WatchServiceCallBack 查看所有的Node节点
+func WatchServiceCallBack(state server.NodeStateType, node server.Node) {
 	if state == server.ServerUp {
-		log.Infof("WatchServiceNodes node up %v", node)
+		log.Infof("WatchServiceCallBack node up %v", node)
 	} else if state == server.ServerDown {
-		log.Infof("WatchServiceNodes node down %v", node)
+		log.Infof("WatchServiceCallBack node down %v", node)
 	}
 }
 

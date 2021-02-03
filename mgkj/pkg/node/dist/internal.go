@@ -370,7 +370,7 @@ func call(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, 
 		ch := make(chan int, 1)
 		respIslb := func(resp map[string]interface{}) {
 			/* "method", proto.IslbToDistPeerInfo, "errorCode", 0, "nid", dist */
-			/* "method", proto.IslbToDistPeerInfo, "errorCode", 1, "errorReason", "uid is not live" */
+			/* "method", proto.IslbToDistPeerInfo, "errorCode", 1 */
 			err := int(resp["errorCode"].(float64))
 			if err == 0 {
 				// 获取节点

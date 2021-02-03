@@ -1,5 +1,5 @@
 [global]
-pprof = ":6062"
+pprof = ":6063"
 
 # server
 dc = "shenzhen"

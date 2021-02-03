@@ -76,13 +76,13 @@ func handleBroadCastMsgs() {
 				/* "method", proto.IslbToBizOnJoin, "rid", rid, "uid", uid, "info", info */
 				NotifyAllWithoutID(rid, uid, proto.BizToClientOnJoin, msg)
 			case proto.IslbToBizOnLeave:
-				/* "method", proto.IslbToBizOnLeave, "rid", rid, "uid", uid, "info", info */
+				/* "method", proto.IslbToBizOnLeave, "rid", rid, "uid", uid */
 				NotifyAllWithoutID(rid, uid, proto.BizToClientOnLeave, msg)
 			case proto.IslbToBizOnStreamAdd:
-				/* "method", proto.IslbToBizOnStreamAdd, "rid", rid, "uid", uid, "nid", nid, "mid", mid, "minfo", minfo */
+				/* "method", proto.IslbToBizOnStreamAdd, "rid", rid, "uid", uid, "mid", mid, "tracks", tracks, "nid", nid */
 				NotifyAllWithoutID(rid, uid, proto.BizToClientOnStreamAdd, msg)
 			case proto.IslbToBizOnStreamRemove:
-				/* "method", proto.IslbToBizOnStreamRemove, "rid", rid, "uid", uid, "mid", mid, "minfo", minfo */
+				/* "method", proto.IslbToBizOnStreamRemove, "rid", rid, "uid", uid, "mid", mid */
 				NotifyAllWithoutID(rid, uid, proto.BizToClientOnStreamRemove, msg)
 			case proto.IslbToBizBroadcast:
 				/* "method", proto.IslbToBizBroadcast, "rid", rid, "uid", uid, "data", data */

@@ -1,6 +1,8 @@
 package proto
 
 import (
+	"encoding/json"
+	"fmt"
 	"strings"
 )
 
@@ -161,4 +163,36 @@ func GetMediaInfoKey(rid, uid, mid string) string {
 // GetMediaPubKey 获取用户发布流对应的sfu信息
 func GetMediaPubKey(rid, uid, mid string) string {
 	return "/pub/rid/" + rid + "/uid/" + uid + "/mid/" + mid
+}
+
+// TrackInfo track信息
+type TrackInfo struct {
+	ID      string `json:"id"`
+	Ssrc    int    `json:"ssrc"`
+	Payload int    `json:"pt"`
+	Type    string `json:"type"`
+	Codec   string `json:"codec"`
+	Fmtp    string `json:"fmtp"`
+}
+
+// MarshalTrackField 分析
+func MarshalTrackField(id string, infos []TrackInfo) (string, string, error) {
+	str, err := json.Marshal(infos)
+	if err != nil {
+		return "track/" + id, "", fmt.Errorf("Marshal: %v", err)
+	}
+	return "track/" + id, string(str), nil
+}
+
+// UnmarshalTrackField 分析
+func UnmarshalTrackField(key string, value string) (string, *[]TrackInfo, error) {
+	var tracks []TrackInfo
+	if err := json.Unmarshal([]byte(value), &tracks); err != nil {
+		return "", nil, fmt.Errorf("Unmarshal: %v", err)
+	}
+	if !strings.Contains(key, "track/") {
+		return "", nil, fmt.Errorf("Invalid track failed => %s", key)
+	}
+	msid := strings.Split(key, "/")[1]
+	return msid, &tracks, nil
 }

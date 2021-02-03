@@ -127,7 +127,7 @@ func getPeerinfo(data map[string]interface{}, from, corrID string) {
 	uKey := proto.GetUserDistKey(uid)
 	dist := redis.Get(uKey)
 	if dist == "" {
-		resp := util.Map("method", proto.IslbToDistPeerInfo, "errorCode", 1, "errorReason", "uid is not live")
+		resp := util.Map("method", proto.IslbToDistPeerInfo, "errorCode", 1)
 		amqp.RPCCall(from, resp, corrID)
 	} else {
 		resp := util.Map("method", proto.IslbToDistPeerInfo, "errorCode", 0, "nid", dist)
@@ -176,31 +176,53 @@ func clientLeave(data map[string]interface{}) {
 }
 
 /*
-	"method", proto.BizToIslbOnStreamAdd, "rid", rid, "uid", uid, "mid", mid, "minfo", minfo, "nid", nid
+	"method", proto.BizToIslbOnStreamAdd, "rid", rid, "uid", uid, "mid", mid, "tracks", tracks, "nid", nid
 */
 // streamAdd 有人发布流
 func streamAdd(data map[string]interface{}) {
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
 	mid := util.Val(data, "mid")
-	minfo := util.Val(data, "minfo")
 	nid := util.Val(data, "nid")
+
 	// 获取用户发布的流信息
 	ukey := proto.GetMediaInfoKey(rid, uid, mid)
 	// 写入key值
-	err := redis.Set(ukey, minfo, redisKeyTTL)
-	if err != nil {
-		log.Errorf("redis.Set streamAdd err = %v", err)
+	tracks := data["tracks"].(map[string]interface{})
+	for msid, track := range tracks {
+		var infos []proto.TrackInfo
+		for _, tinfo := range track.([]interface{}) {
+			tmp := tinfo.(map[string]interface{})
+			infos = append(infos, proto.TrackInfo{
+				ID:      tmp["id"].(string),
+				Type:    tmp["type"].(string),
+				Ssrc:    int(tmp["ssrc"].(float64)),
+				Payload: int(tmp["pt"].(float64)),
+				Codec:   tmp["codec"].(string),
+				Fmtp:    tmp["fmtp"].(string),
+			})
+		}
+		field, value, err := proto.MarshalTrackField(msid, infos)
+		if err != nil {
+			log.Errorf("MarshalTrackField: %v ", err)
+			continue
+		}
+		log.Infof("SetTrackField: mkey, field, value = %s, %s, %s", ukey, field, value)
+		err = redis.HSet(ukey, field, value)
+		if err != nil {
+			log.Errorf("redis.HSet streamAdd err = %v", err)
+		}
+		redis.Expire(ukey, redisKeyTTL)
 	}
 	// 获取用户发布流对应的sfu信息
 	ukey = proto.GetMediaPubKey(rid, uid, mid)
 	// 写入key值
-	err = redis.Set(ukey, nid, redisKeyTTL)
+	err := redis.Set(ukey, nid, redisKeyTTL)
 	if err != nil {
 		log.Errorf("redis.Set streamAdd err = %v", err)
 	}
 	// 生成resp对象
-	msg := util.Map("method", proto.IslbToBizOnStreamAdd, "rid", rid, "uid", uid, "mid", mid, "minfo", minfo, "nid", nid)
+	msg := util.Map("method", proto.IslbToBizOnStreamAdd, "rid", rid, "uid", uid, "mid", mid, "tracks", tracks, "nid", nid)
 	amqp.BroadCast(msg)
 }
 
@@ -215,21 +237,17 @@ func streamRemove(data map[string]interface{}) {
 	// 判断mid是否为空
 	var ukey string
 	if mid == "" {
-		ukey = "/media/uid/" + uid + "/rid/" + rid + "/mid/*"
+		ukey = "/media/rid/" + rid + "/uid/" + uid + "/mid/*"
 		ukeys := redis.Keys(ukey)
 		for _, key := range ukeys {
 			ukey = key
 			// 删除key值
-			minfo := redis.Get(ukey)
 			err := redis.Del(ukey)
 			if err != nil {
 				log.Errorf("redis.Del streamRemove err = %v", err)
 			}
-			// 生成resp对象
-			msg := util.Map("method", proto.IslbToBizOnStreamRemove, "rid", rid, "uid", uid, "mid", mid, "minfo", minfo)
-			amqp.BroadCast(msg)
 		}
-		ukey = "/pub/uid/" + uid + "/rid/" + rid + "/mid/*"
+		ukey = "/pub/rid/" + rid + "/uid/" + uid + "/mid/*"
 		ukeys = redis.Keys(ukey)
 		for _, key := range ukeys {
 			ukey = key
@@ -237,13 +255,16 @@ func streamRemove(data map[string]interface{}) {
 			err := redis.Del(ukey)
 			if err != nil {
 				log.Errorf("redis.Del streamRemove err = %v", err)
+			} else {
+				// 生成resp对象
+				msg := util.Map("method", proto.IslbToBizOnStreamRemove, "rid", rid, "uid", uid, "mid", mid)
+				amqp.BroadCast(msg)
 			}
 		}
 	} else {
 		// 获取用户发布的流信息
 		ukey = proto.GetMediaInfoKey(rid, uid, mid)
 		// 删除key值
-		minfo := redis.Get(ukey)
 		err := redis.Del(ukey)
 		if err != nil {
 			log.Errorf("redis.Del streamRemove err = %v", err)
@@ -254,10 +275,9 @@ func streamRemove(data map[string]interface{}) {
 		err = redis.Del(ukey)
 		if err != nil {
 			log.Errorf("redis.Del streamRemove err = %v", err)
-		}
-		if minfo != "" {
+		} else {
 			// 生成resp对象
-			msg := util.Map("method", proto.IslbToBizOnStreamRemove, "rid", rid, "uid", uid, "mid", mid, "minfo", minfo)
+			msg := util.Map("method", proto.IslbToBizOnStreamRemove, "rid", rid, "uid", uid, "mid", mid)
 			amqp.BroadCast(msg)
 		}
 	}
@@ -305,10 +325,10 @@ func getSfuByMid(data map[string]interface{}, from, corrID string) {
 	uKey := proto.GetMediaPubKey(rid, uid, mid)
 	nid := redis.Get(uKey)
 	if nid != "" {
-		resp := util.Map("method", proto.IslbToBizGetSfuInfo, "rid", rid, "mid", mid, "errorCode", 0, "nid", nid)
+		resp := util.Map("method", proto.IslbToBizGetSfuInfo, "errorCode", 0, "rid", rid, "mid", mid, "nid", nid)
 		amqp.RPCCall(from, resp, corrID)
 	} else {
-		resp := util.Map("method", proto.IslbToBizGetSfuInfo, "rid", rid, "mid", mid, "errorCode", 1, "errorReason", "mid is not find")
+		resp := util.Map("method", proto.IslbToBizGetSfuInfo, "errorCode", 1, "rid", rid, "mid", mid)
 		amqp.RPCCall(from, resp, corrID)
 	}
 }
@@ -323,12 +343,23 @@ func getMediaInfo(data map[string]interface{}, from, corrID string) {
 	uid := proto.GetUIDFromMID(mid)
 	// 获取用户发布的流信息
 	uKey := proto.GetMediaInfoKey(rid, uid, mid)
-	minfo := redis.Get(uKey)
-	if minfo != "" {
-		resp := util.Map("method", proto.IslbToBizGetMediaInfo, "rid", rid, "mid", mid, "errorCode", 0, "minfo", minfo)
+	fields := redis.HGetAll(uKey)
+	tracks := make(map[string][]proto.TrackInfo)
+	for key, value := range fields {
+		if strings.HasPrefix(key, "track/") {
+			msid, infos, err := proto.UnmarshalTrackField(key, value)
+			if err != nil {
+				log.Errorf("getMediaInfo err = %s", err.Error())
+			}
+			log.Infof("msid => %s, tracks => %v\n", msid, infos)
+			tracks[msid] = *infos
+		}
+	}
+	if len(tracks) != 0 {
+		resp := util.Map("method", proto.IslbToBizGetMediaInfo, "errorCode", 0, "rid", rid, "mid", mid, "tracks", tracks)
 		amqp.RPCCall(from, resp, corrID)
 	} else {
-		resp := util.Map("method", proto.IslbToBizGetMediaInfo, "rid", rid, "mid", mid, "errorCode", 1, "errorReason", "mid is not find")
+		resp := util.Map("method", proto.IslbToBizGetMediaInfo, "errorCode", 1, "rid", rid, "mid", mid)
 		amqp.RPCCall(from, resp, corrID)
 	}
 }
@@ -341,26 +372,40 @@ func getMediaPubs(data map[string]interface{}, from, corrID string) {
 	rid := util.Val(data, "rid")
 	uidTmp := util.Val(data, "uid")
 	// 找到保存用户流信息的key
-	uKeys := redis.Keys("/media/rid/" + rid + "/uid/*")
-	nLen := len(uKeys)
-	if nLen == 0 {
-		resp := util.Map("method", proto.IslbToBizGetMediaPubs, "rid", rid, "errorCode", 1, "errorReason", "mid is not find")
-		amqp.RPCCall(from, resp, corrID)
-		return
-	}
-	index := 0
-	for _, key := range uKeys {
-		index = index + 1
-		minfo := redis.Get(key)
+	var pubs []map[string]interface{}
+	for _, key := range redis.Keys("/media/rid/" + rid + "/uid/*") {
 		mid, uid, err := parseMediaKey(key)
-		if err == nil && uid != uidTmp {
-			ukey := proto.GetMediaPubKey(rid, uid, mid)
-			nid := redis.Get(ukey)
-			resp := util.Map("method", proto.IslbToBizGetMediaPubs, "rid", rid, "errorCode", 0, "uid", uid, "mid", mid, "minfo", minfo, "nid", nid,
-				"index", index, "len", nLen)
+		if err != nil {
+			resp := util.Map("method", proto.IslbToBizGetMediaPubs, "errorCode", 1, "rid", rid)
 			amqp.RPCCall(from, resp, corrID)
+			return
 		}
+
+		if uidTmp == uid {
+			continue
+		}
+
+		sfu := redis.Get(proto.GetMediaPubKey(rid, uid, mid))
+		trackFields := redis.HGetAll(key)
+
+		tracks := make(map[string][]proto.TrackInfo)
+		for key, value := range trackFields {
+			if strings.HasPrefix(key, "track/") {
+				msid, infos, err := proto.UnmarshalTrackField(key, value)
+				if err != nil {
+					log.Errorf("getMediaPubs err = %s", err.Error())
+				}
+				log.Infof("msid => %s, tracks => %v\n", msid, infos)
+				tracks[msid] = *infos
+			}
+		}
+		pub := util.Map("rid", rid, "uid", uid, "mid", mid, "nid", sfu, "tracks", tracks)
+		pubs = append(pubs, pub)
 	}
+
+	resp := util.Map("method", proto.IslbToBizGetMediaPubs, "errorCode", 0, "rid", rid, "pubs", pubs)
+	amqp.RPCCall(from, resp, corrID)
+	log.Infof("getMediaPubs: resp=%v", resp)
 }
 
 // parseMediaKey 分析key "/media/rid/" + rid + "/uid/" + uid + "/mid/" + mid

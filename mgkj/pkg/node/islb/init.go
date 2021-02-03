@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"mgkj/pkg/db"
-	"mgkj/pkg/log"
 	"mgkj/pkg/mq"
 	"mgkj/pkg/server"
 )
@@ -36,14 +35,5 @@ func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher
 func Close() {
 	if amqp != nil {
 		amqp.Close()
-	}
-}
-
-// WatchServiceNodes 查看所有的Node节点
-func WatchServiceNodes(state server.NodeStateType, node server.Node) {
-	if state == server.ServerUp {
-		log.Infof("WatchServiceNodes node up %v", node)
-	} else if state == server.ServerDown {
-		log.Infof("WatchServiceNodes node down %v", node)
 	}
 }

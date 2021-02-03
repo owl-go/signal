@@ -6,6 +6,8 @@ import (
 	"mgkj/pkg/proto"
 	"mgkj/pkg/server"
 	"mgkj/pkg/util"
+
+	"github.com/cloudwebrtc/go-protoo/peer"
 )
 
 var (
@@ -18,7 +20,7 @@ var (
 func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, mqURL string) {
 	node = serviceNode
 	watch = ServiceWatcher
-	go watch.WatchServiceNode("", WatchServiceNodes)
+	go watch.WatchServiceNode("", WatchServiceCallBack)
 	amqp = mq.New(node.GetRPCChannel(), node.GetEventChannel(), mqURL)
 	// 启动
 	handleRPCMsgs()
@@ -32,12 +34,12 @@ func Close() {
 	}
 }
 
-// WatchServiceNodes 查看所有的Node节点
-func WatchServiceNodes(state server.NodeStateType, node server.Node) {
+// WatchServiceCallBack 查看所有的Node节点
+func WatchServiceCallBack(state server.NodeStateType, node server.Node) {
 	if state == server.ServerUp {
-		log.Infof("WatchServiceNodes node up %v", node)
+		log.Infof("WatchServiceCallBack node up %v", node)
 	} else if state == server.ServerDown {
-		log.Infof("WatchServiceNodes node down %v", node)
+		log.Infof("WatchServiceCallBack node down %v", node)
 	}
 }
 
@@ -78,22 +80,26 @@ func FindSfuNodeByMid(rid, mid string) *server.Node {
 		return nil
 	}
 
-	ch := make(chan int, 1)
-	var sfu *server.Node
 	find := false
+	var sfu *server.Node
+	ch := make(chan int, 1)
 	respIslb := func(resp map[string]interface{}) {
-		// "method", proto.IslbToBizGetSfuInfo, "rid", rid, "mid", mid, "errorCode", 0, "nid", nid
-		// "method", proto.IslbToBizGetSfuInfo, "rid", rid, "mid", mid, "errorCode", 1, "errorReason", "mid is not find"
-		nid := util.Val(resp, "nid")
-		if nid != "" {
-			sfu = FindSfuNodeByID(nid)
-			find = true
+		// "method", proto.IslbToBizGetSfuInfo, "errorCode", 0, "rid", rid, "mid", mid, "nid", nid
+		// "method", proto.IslbToBizGetSfuInfo, "errorCode", 1, "rid", rid, "mid", mid
+		nErr := int(resp["errorCode"].(float64))
+		if nErr == 0 {
+			nid := util.Val(resp, "nid")
+			if nid != "" {
+				sfu = FindSfuNodeByID(nid)
+				find = true
+			}
 		}
 		ch <- 0
 	}
 	amqp.RPCCallWithResp(server.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbGetSfuInfo, "rid", rid, "mid", mid), respIslb)
 	<-ch
 	close(ch)
+
 	if find {
 		return sfu
 	}
@@ -101,29 +107,76 @@ func FindSfuNodeByMid(rid, mid string) *server.Node {
 }
 
 // FindMediaIndoByMid 根据mid向islb查询指定的流信息
-func FindMediaIndoByMid(rid, mid string) (string, bool) {
+func FindMediaIndoByMid(rid, mid string) (map[string]interface{}, bool) {
 	islb := FindIslbNode()
 	if islb == nil {
 		log.Errorf("FindMediaIndoByMid islb not found")
-		return "", false
+		return nil, false
 	}
 
-	ch := make(chan int, 1)
-	var minfo string
 	find := false
+	ch := make(chan int, 1)
+	rsp := make(map[string]interface{})
 	respIslb := func(resp map[string]interface{}) {
-		// "method", proto.IslbToBizGetMediaInfo, "rid", rid, "mid", mid, "errorCode", 0, "minfo", minfo
-		// "method", proto.IslbToBizGetMediaInfo, "rid", rid, "mid", mid, "errorCode", 1, "errorReason", "mid is not find"
-		minfo := util.Val(resp, "minfo")
-		if minfo != "" {
+		// "method", proto.IslbToBizGetMediaInfo, "errorCode", 0, "rid", rid, "mid", mid, "tracks", tracks
+		// "method", proto.IslbToBizGetMediaInfo, "errorCode", 1, "rid", rid, "mid", mid
+		nErr := int(resp["errorCode"].(float64))
+		if nErr == 0 {
 			find = true
+			rsp["tracks"] = resp["tracks"]
 		}
 		ch <- 0
 	}
 	amqp.RPCCallWithResp(server.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbGetMediaInfo, "rid", rid, "mid", mid), respIslb)
 	<-ch
 	close(ch)
-	return minfo, find
+	return rsp, find
+}
+
+// FindMediaPubs 查询房间所有的其他人的发布流
+func FindMediaPubs(peer *peer.Peer, rid string) bool {
+	islb := FindIslbNode()
+	if islb == nil {
+		log.Errorf("FindMediaPubs islb not found")
+		return false
+	}
+
+	// 查询房间存在的发布流
+	find := false
+	ch := make(chan int, 1)
+	respIslb := func(resp map[string]interface{}) {
+		// "method", proto.IslbToBizGetMediaPubs, "errorCode", 1, "rid", rid
+		// "method", proto.IslbToBizGetMediaPubs, "errorCode", 0, "rid", rid, "pubs", pubs
+		nErr := int(resp["errorCode"].(float64))
+		if nErr != 0 {
+			ch <- 0
+			return
+		}
+
+		if resp["pubs"] == nil {
+			ch <- 0
+			return
+		}
+
+		rid := resp["rid"].(string)
+		pubs := resp["pubs"].([]interface{})
+		for _, pub := range pubs {
+			uid := pub.(map[string]interface{})["uid"].(string)
+			mid := pub.(map[string]interface{})["mid"].(string)
+			nid := pub.(map[string]interface{})["nid"].(string)
+			tracks := pub.(map[string]interface{})["tracks"].(map[string]interface{})
+			if mid != "" {
+				peer.Notify(proto.BizToClientOnStreamAdd, util.Map("rid", rid, "uid", uid, "mid", mid, "nid", nid, "tracks", tracks))
+			}
+		}
+		find = true
+		ch <- 0
+	}
+	// 获取房间所有人的发布流
+	amqp.RPCCallWithResp(server.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbGetMediaPubs, "rid", rid, "uid", peer.ID()), respIslb)
+	<-ch
+	close(ch)
+	return find
 }
 
 // FindPeerIsLive 查询peer是否还存活
@@ -134,19 +187,19 @@ func FindPeerIsLive(rid, uid string) bool {
 		return false
 	}
 
-	var live bool = false
+	find := false
 	ch := make(chan int, 1)
 	respIslb := func(resp map[string]interface{}) {
 		// "method", proto.IslbToBizPeerLive, "errorCode", 1
 		// "method", proto.IslbToBizPeerLive, "errorCode", 0
-		nLive := int(resp["errorCode"].(float64))
-		if nLive == 0 {
-			live = true
+		nErr := int(resp["errorCode"].(float64))
+		if nErr == 0 {
+			find = true
 		}
 		ch <- 0
 	}
 	amqp.RPCCallWithResp(server.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbPeerLive, "rid", rid, "uid", uid), respIslb)
 	<-ch
 	close(ch)
-	return live
+	return find
 }

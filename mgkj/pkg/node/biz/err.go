@@ -1,7 +1,6 @@
 package node
 
 import (
-	"fmt"
 	"mgkj/pkg/util"
 
 	"github.com/cloudwebrtc/go-protoo/peer"
@@ -40,10 +39,6 @@ func codeStr(code int) string {
 }
 
 var emptyMap = map[string]interface{}{}
-
-func getMID(uid string) string {
-	return fmt.Sprintf("%s#%s", uid, util.RandStr(6))
-}
 
 func invalid(msg map[string]interface{}, key string, reject peer.RejectFunc) bool {
 	val := util.Val(msg, key)
