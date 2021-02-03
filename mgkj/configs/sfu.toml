@@ -27,13 +27,13 @@ maxbuffertime = 1000
 # portrange = [50000, 60000]
 
 # if sfu behind nat, set iceserver
-# [[webrtc.iceserver]]
-# urls = ["stun:stun.stunprotocol.org:3478"]
+[[webrtc.iceserver]]
+urls = ["stun:115.231.90.179:3478"]
 
-# [[webrtc.iceserver]]
-# urls = ["turn:turn.awsome.org:3478"]
-# username = "awsome"
-# credential = "awsome"
+[[webrtc.iceserver]]
+urls = ["turn:115.231.90.179:3478"]
+username = "demo"
+credential = "123456"
 
 [rtp]
 # listen port

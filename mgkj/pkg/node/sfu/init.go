@@ -33,15 +33,6 @@ func Close() {
 	}
 }
 
-// WatchServiceNodes 查看所有的Node节点
-func WatchServiceNodes(state server.NodeStateType, node server.Node) {
-	if state == server.ServerUp {
-		log.Infof("WatchServiceNodes node up %v", node)
-	} else if state == server.ServerDown {
-		log.Infof("WatchServiceNodes node down %v", node)
-	}
-}
-
 // checkRTC send `stream-remove` msg to islb when some pub has been cleaned
 func checkRTC() {
 	log.Infof("SFU.checkRTC start")

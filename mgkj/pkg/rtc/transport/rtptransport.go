@@ -11,6 +11,7 @@ import (
 	"mgkj/pkg/log"
 	"mgkj/pkg/rtc/rtpengine/muxrtp"
 	"mgkj/pkg/rtc/rtpengine/muxrtp/mux"
+	"mgkj/pkg/util"
 
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
@@ -189,7 +190,7 @@ func (r *RTPTransport) receiveRTP() {
 					log.Debugf("RTPTransport.receiveRTP pkt=%v", pkt)
 					r.idLock.Lock()
 					if r.id == "" {
-						//r.id = util.GetIDFromRTP(pkt)
+						r.id = util.GetIDFromRTP(pkt)
 					}
 					r.idLock.Unlock()
 
@@ -257,7 +258,7 @@ func (r *RTPTransport) WriteRTP(rtp *rtp.Packet) error {
 
 	if r.extSent > 0 {
 		r.idLock.Lock()
-		//util.SetIDToRTP(rtp, r.id)
+		util.SetIDToRTP(rtp, r.id)
 		r.idLock.Unlock()
 	}
 

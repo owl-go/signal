@@ -1,6 +1,7 @@
 package util
 
 import (
+	"bytes"
 	"encoding/json"
 	"math/rand"
 	"runtime"
@@ -8,6 +9,7 @@ import (
 
 	"mgkj/pkg/log"
 
+	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v2"
 )
 
@@ -116,4 +118,24 @@ func IsVideo(pt uint8) bool {
 		return true
 	}
 	return false
+}
+
+func GetIDFromRTP(pkt *rtp.Packet) string {
+	if !pkt.Header.Extension || len(pkt.Header.ExtensionPayload) < 36 {
+		log.Warnf("pkt invalid extension")
+		return ""
+	}
+	return string(bytes.TrimRight(pkt.Header.ExtensionPayload, "\x00"))
+}
+
+func SetIDToRTP(pkt *rtp.Packet, id string) *rtp.Packet {
+	pkt.Header.Extension = true
+
+	//the payload must be in 32-bit words and bigger than extPayload
+	if len(pkt.Header.ExtensionPayload)%4 != 0 || len(pkt.Header.ExtensionPayload) < len(id) {
+		n := 4 * (len(id)/4 + 1)
+		pkt.Header.ExtensionPayload = make([]byte, n)
+	}
+	copy(pkt.Header.ExtensionPayload, id)
+	return pkt
 }

@@ -345,6 +345,7 @@ func publish(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 	} else {
 		sfu = FindSfuNodeByPayload()
 	}
+
 	if sfu == nil {
 		log.Errorf("sfu node is not find")
 		reject(codeSfuErr, codeStr(codeSfuErr))
@@ -388,6 +389,7 @@ func publish(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 		return
 	}
 
+	nid = sfu.Nid
 	mid := util.Val(rsp, "mid")
 	tracks := rsp["tracks"]
 	// 通知islb
@@ -473,11 +475,18 @@ func subscribe(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondF
 		return
 	}
 
-	rsp, find := FindMediaIndoByMid(rid, mid)
-	if !find {
-		log.Errorf("subscribe is not suc")
-		reject(codeSubErr, codeStr(codeSubErr))
-		return
+	find := false
+	var rsp map[string]interface{}
+	tracks := msg["tracks"].(map[string]interface{})
+	if tracks == nil {
+		rsp, find = FindMediaIndoByMid(rid, mid)
+		if !find {
+			log.Errorf("subscribe is not suc")
+			reject(codeSubErr, codeStr(codeSubErr))
+			return
+		}
+	} else {
+		find = true
 	}
 
 	var sfu *reg.Node
@@ -509,7 +518,11 @@ func subscribe(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondF
 		}
 		ch <- 0
 	}
-	amqp.RPCCallWithResp(reg.GetRPCChannel(*sfu), util.Map("method", proto.BizToSfuSubscribe, "rid", rid, "uid", uid, "mid", mid, "tracks", rsp["tracks"], "jsep", jsep), respSfu)
+	if find {
+		amqp.RPCCallWithResp(reg.GetRPCChannel(*sfu), util.Map("method", proto.BizToSfuSubscribe, "rid", rid, "uid", uid, "mid", mid, "tracks", tracks, "jsep", jsep), respSfu)
+	} else {
+		amqp.RPCCallWithResp(reg.GetRPCChannel(*sfu), util.Map("method", proto.BizToSfuSubscribe, "rid", rid, "uid", uid, "mid", mid, "tracks", rsp["tracks"], "jsep", jsep), respSfu)
+	}
 	<-ch
 	close(ch)
 

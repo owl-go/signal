@@ -5,10 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pion/rtp"
-	"github.com/pion/webrtc/v2"
 	"mgkj/pkg/rtc/rtpengine"
 	"mgkj/pkg/rtc/transport"
+
+	"github.com/pion/rtp"
+	"github.com/pion/webrtc/v2"
 )
 
 func TestRTPEngineAcceptAndRead(t *testing.T) {

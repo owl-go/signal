@@ -124,9 +124,13 @@ func publish(msg map[string]interface{}, from, corrID string) {
 					}
 				} else if track.GetMedia() == "video" {
 					codecType = strings.ToUpper(codec.GetCodec())
-					if codecType == webrtc.H264 /*|| codecType == webrtc.VP8 || codecType == webrtc.VP9*/ {
+					if codecType == webrtc.H264 || codecType == webrtc.VP8 || codecType == webrtc.VP9 {
 						pt = payload
-						break
+						if pt == 96 {
+							codecType = webrtc.VP8
+							break
+						}
+						//break
 					}
 				}
 			}
@@ -162,8 +166,8 @@ func unpublish(msg map[string]interface{}, from, corrID string) {
 // subscribe 处理订阅流
 func subscribe(msg map[string]interface{}, from, corrID string) {
 	rid := util.Val(msg, "rid")
-	uid := util.Val(msg, "uid")
 	mid := util.Val(msg, "mid")
+	uid := proto.GetUIDFromMID(mid)
 	key := proto.GetMediaPubKey(rid, uid, mid)
 	router := rtc.GetOrNewRouter(key)
 	if router == nil {

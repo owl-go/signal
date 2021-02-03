@@ -5,11 +5,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pion/webrtc/v2"
 	"mgkj/pkg/log"
 	"mgkj/pkg/rtc/plugins"
 	"mgkj/pkg/rtc/rtpengine"
 	"mgkj/pkg/rtc/transport"
+
+	"github.com/pion/webrtc/v2"
 )
 
 const (
@@ -48,7 +49,7 @@ func CheckPlugins(config plugins.Config) error {
 // InitRTP rtp port
 func InitRTP(port int, kcpKey, kcpSalt string) error {
 	// show stat about all pipelines
-	go check()
+	//go check()
 
 	var connCh chan *transport.RTPTransport
 	var err error

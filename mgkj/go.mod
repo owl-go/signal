@@ -4,6 +4,12 @@ go 1.15
 
 replace google.golang.org/grpc => google.golang.org/grpc v1.26.0
 
+replace github.com/pion/webrtc/v2 => github.com/pion/webrtc/v2 v2.2.7
+
+replace github.com/pion/rtcp => github.com/pion/rtcp v1.2.1
+
+replace github.com/pion/rtp => github.com/pion/rtp v1.4.0
+
 require (
 	github.com/chuckpreslar/emission v0.0.0-20170206194824-a7ddd980baf9
 	github.com/cloudwebrtc/go-protoo v1.0.0

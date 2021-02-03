@@ -4,12 +4,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pion/rtcp"
-	"github.com/pion/rtp"
 	"mgkj/pkg/log"
 	"mgkj/pkg/rtc/plugins"
 	"mgkj/pkg/rtc/transport"
 	"mgkj/pkg/util"
+
+	"github.com/pion/rtcp"
+	"github.com/pion/rtp"
 )
 
 const (
@@ -83,7 +84,7 @@ func (r *Router) start() {
 						continue
 					}
 
-					// log.Infof(" WriteRTP %v:%v to %v ", pkt.SSRC, pkt.SequenceNumber, t.ID())
+					//log.Infof(" WriteRTP %v:%v to %v ", pkt.SSRC, pkt.SequenceNumber, t.ID())
 					if err := t.WriteRTP(pkt); err != nil {
 						log.Errorf("wt.WriteRTP err=%v", err)
 						// del sub when err is increasing

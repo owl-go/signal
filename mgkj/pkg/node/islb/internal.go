@@ -251,6 +251,7 @@ func streamRemove(data map[string]interface{}) {
 		ukeys = redis.Keys(ukey)
 		for _, key := range ukeys {
 			ukey = key
+			mid, _, _ := parseMediaKey(ukey)
 			// 删除key值
 			err := redis.Del(ukey)
 			if err != nil {
