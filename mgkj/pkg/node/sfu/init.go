@@ -31,6 +31,12 @@ func Close() {
 	if amqp != nil {
 		amqp.Close()
 	}
+	if node != nil {
+		node.Close()
+	}
+	if watch != nil {
+		watch.Close()
+	}
 }
 
 // checkRTC send `stream-remove` msg to islb when some pub has been cleaned

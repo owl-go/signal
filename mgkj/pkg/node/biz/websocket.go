@@ -582,6 +582,7 @@ func unsubscribe(peer *peer.Peer, msg map[string]interface{}, accept peer.Respon
 	    "rid": "room1",
 		"nid":"shenzhen-sfu-1",
 	    "mid": "64236c21-21e8-4a3d-9f80-c767d1e1d67f#ABCDEF"
+		"sid": "$sid"
 		"ice": "$icecandidate"
 		"ispub": "true"
 	}
@@ -595,6 +596,7 @@ func trickle(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 	uid := peer.ID()
 	rid := util.Val(msg, "rid")
 	mid := util.Val(msg, "mid")
+	sid := util.Val(msg, "sid")
 	ice := util.Val(msg, "ice")
 	ispub := util.Val(msg, "ispub")
 	log.Infof("biz.trickle uid=%s msg=%v", uid, msg)
@@ -612,7 +614,7 @@ func trickle(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 		return
 	}
 
-	amqp.RPCCall(reg.GetRPCChannel(*sfu), util.Map("method", proto.BizToSfuTrickleICE, "rid", rid, "uid", uid, "mid", mid, "ice", ice, "ispub", ispub), "")
+	amqp.RPCCall(reg.GetRPCChannel(*sfu), util.Map("method", proto.BizToSfuTrickleICE, "rid", rid, "sid", sid, "mid", mid, "ice", ice, "ispub", ispub), "")
 	// resp
 	accept(emptyMap)
 }

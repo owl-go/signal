@@ -63,13 +63,14 @@ func handleRPCMsgs() {
 func publish(msg map[string]interface{}, from, corrID string) {
 	jsep := msg["jsep"].(map[string]interface{})
 	if jsep == nil {
-		amqp.RPCCall(from, util.Map("method", proto.SfuToBizPublish, "errorCode", 400, "errorReason", "publish: jsep failed"), corrID)
+		amqp.RPCCall(from, util.Map("method", proto.SfuToBizPublish, "errorCode", 401), corrID)
 		return
 	}
 	sdp := util.Val(jsep, "sdp")
 	rid := util.Val(msg, "rid")
 	uid := util.Val(msg, "uid")
 	mid := fmt.Sprintf("%s#%s", uid, util.RandStr(6))
+
 	offer := webrtc.SessionDescription{Type: webrtc.SDPTypeOffer, SDP: sdp}
 	rtcOptions := make(map[string]interface{})
 	rtcOptions["transport-cc"] = "false"
@@ -80,21 +81,24 @@ func publish(msg map[string]interface{}, from, corrID string) {
 		options, ok := msg["minfo"].(map[string]interface{})
 		if ok {
 			rtcOptions["codec"] = options["codec"]
+			rtcOptions["audio"] = options["audio"]
+			rtcOptions["video"] = options["video"]
+			rtcOptions["screen"] = options["screen"]
 			rtcOptions["bandwidth"] = options["bandwidth"]
 		}
 	}
 	pub := transport.NewWebRTCTransport(mid, rtcOptions)
 	if pub == nil {
-		amqp.RPCCall(from, util.Map("method", proto.SfuToBizPublish, "errorCode", 401, "errorReason", "publish: transport.NewWebRTCTransport failed"), corrID)
+		amqp.RPCCall(from, util.Map("method", proto.SfuToBizPublish, "errorCode", 402), corrID)
 		return
 	}
 
 	key := proto.GetMediaPubKey(rid, uid, mid)
 	router := rtc.GetOrNewRouter(key)
-	answer, err := pub.Answer(offer, rtcOptions)
+	answer, err := pub.Answer(offer, true)
 	if err != nil {
 		log.Errorf("err=%v answer=%v", err, answer)
-		amqp.RPCCall(from, util.Map("method", proto.SfuToBizPublish, "errorCode", 402, "errorReason", "publish: pub.Answer failed"), corrID)
+		amqp.RPCCall(from, util.Map("method", proto.SfuToBizPublish, "errorCode", 403), corrID)
 		return
 	}
 
@@ -103,7 +107,7 @@ func publish(msg map[string]interface{}, from, corrID string) {
 	sdpObj, err := sdptransform.Parse(offer.SDP)
 	if err != nil {
 		log.Errorf("err=%v sdpObj=%v", err, sdpObj)
-		amqp.RPCCall(from, util.Map("method", proto.SfuToBizPublish, "errorCode", 403, "errorReason", "publish: sdp parse failed"), corrID)
+		amqp.RPCCall(from, util.Map("method", proto.SfuToBizPublish, "errorCode", 404), corrID)
 		return
 	}
 
@@ -171,13 +175,13 @@ func subscribe(msg map[string]interface{}, from, corrID string) {
 	key := proto.GetMediaPubKey(rid, uid, mid)
 	router := rtc.GetOrNewRouter(key)
 	if router == nil {
-		amqp.RPCCall(from, util.Map("method", proto.SfuToBizSubscribe, "errorCode", 404, "errorReason", "subscribe: Router not found"), corrID)
+		amqp.RPCCall(from, util.Map("method", proto.SfuToBizSubscribe, "errorCode", 411), corrID)
 		return
 	}
 
 	jsep := msg["jsep"].(map[string]interface{})
 	if jsep == nil {
-		amqp.RPCCall(from, util.Map("method", proto.SfuToBizSubscribe, "errorCode", 415, "errorReason", "subscribe: Unsupported Media Type"), corrID)
+		amqp.RPCCall(from, util.Map("method", proto.SfuToBizSubscribe, "errorCode", 412), corrID)
 		return
 	}
 
@@ -187,15 +191,6 @@ func subscribe(msg map[string]interface{}, from, corrID string) {
 	rtcOptions["transport-cc"] = "false"
 	rtcOptions["subscribe"] = "true"
 
-	options := msg["options"]
-	if options != nil {
-		options, ok := msg["options"].(map[string]interface{})
-		if ok {
-			rtcOptions["codec"] = options["codec"]
-			rtcOptions["bandwidth"] = options["bandwidth"]
-		}
-	}
-
 	subID := fmt.Sprintf("%s#%s", uid, util.RandStr(6))
 
 	tracksMap := msg["tracks"].(map[string]interface{})
@@ -204,7 +199,7 @@ func subscribe(msg map[string]interface{}, from, corrID string) {
 	rtcOptions["ssrcpt"] = ssrcPT
 	sub := transport.NewWebRTCTransport(subID, rtcOptions)
 	if sub == nil {
-		amqp.RPCCall(from, util.Map("method", proto.SfuToBizSubscribe, "errorCode", 415, "errorReason", "subscribe: transport.NewWebRTCTransport failed"), corrID)
+		amqp.RPCCall(from, util.Map("method", proto.SfuToBizSubscribe, "errorCode", 413), corrID)
 		return
 	}
 
@@ -240,10 +235,10 @@ func subscribe(msg map[string]interface{}, from, corrID string) {
 	}
 
 	offer := webrtc.SessionDescription{Type: webrtc.SDPTypeOffer, SDP: sdp}
-	answer, err := sub.Answer(offer, rtcOptions)
+	answer, err := sub.Answer(offer, false)
 	if err != nil {
 		log.Errorf("err=%v answer=%v", err, answer)
-		amqp.RPCCall(from, util.Map("method", proto.SfuToBizSubscribe, "errorCode", 415, "errorReason", "subscribe: Unsupported Media Type"), corrID)
+		amqp.RPCCall(from, util.Map("method", proto.SfuToBizSubscribe, "errorCode", 414), corrID)
 		return
 	}
 	router.AddSub(subID, sub)
@@ -270,13 +265,14 @@ func unsubscribe(msg map[string]interface{}, from, corrID string) {
 }
 
 /*
-	"method", proto.BizToSfuTrickleICE, "rid", rid, "uid", uid, "mid", mid, "ice", ice, "ispub", ispub
+	"method", proto.BizToSfuTrickleICE, "rid", rid, "mid", mid, "sid", sid, "ice", ice, "ispub", ispub
 */
 // trickle 处理ice数据
 func trickle(msg map[string]interface{}, from, corrID string) {
 	rid := util.Val(msg, "rid")
-	uid := util.Val(msg, "uid")
 	mid := util.Val(msg, "mid")
+	sid := util.Val(msg, "sid")
+	uid := proto.GetUIDFromMID(mid)
 	key := proto.GetMediaPubKey(rid, uid, mid)
 	router := rtc.GetOrNewRouter(key)
 	cand := msg["ice"].(string)
@@ -287,7 +283,7 @@ func trickle(msg map[string]interface{}, from, corrID string) {
 			t.(*transport.WebRTCTransport).AddCandidate(cand)
 		}
 	} else {
-		t := router.GetSub(mid)
+		t := router.GetSub(sid)
 		if t != nil {
 			t.(*transport.WebRTCTransport).AddCandidate(cand)
 		}

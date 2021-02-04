@@ -32,6 +32,12 @@ func Close() {
 	if amqp != nil {
 		amqp.Close()
 	}
+	if node != nil {
+		node.Close()
+	}
+	if watch != nil {
+		watch.Close()
+	}
 }
 
 // WatchServiceCallBack 查看所有的Node节点

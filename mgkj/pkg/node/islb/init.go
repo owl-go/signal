@@ -36,4 +36,10 @@ func Close() {
 	if amqp != nil {
 		amqp.Close()
 	}
+	if node != nil {
+		node.Close()
+	}
+	if watch != nil {
+		watch.Close()
+	}
 }

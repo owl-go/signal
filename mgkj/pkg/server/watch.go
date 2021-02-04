@@ -30,6 +30,13 @@ func NewServiceWatcher(endpoints []string) *ServiceWatcher {
 	return serviceWatcher
 }
 
+// Close 关闭资源
+func (serviceWatcher *ServiceWatcher) Close() {
+	if serviceWatcher.etcd != nil {
+		serviceWatcher.etcd.Close()
+	}
+}
+
 // GetNodes 根据服务名称获取所有该服务节点的所有对象
 func (serviceWatcher *ServiceWatcher) GetNodes(serviceName string) (map[string]Node, bool) {
 	nodes, found := serviceWatcher.nodesMap[serviceName]
@@ -114,7 +121,6 @@ func (serviceWatcher *ServiceWatcher) WatchNode(ch clientv3.WatchChan) {
 
 // WatchServiceNode 监控指定服务名称的所有服务节点的状态
 func (serviceWatcher *ServiceWatcher) WatchServiceNode(prefix string, callback ServiceWatchCallback) {
-	log.Infof("Start service watcher => [%s]", prefix)
 	serviceWatcher.callback = callback
 	for {
 		nodes, err := serviceWatcher.GetServiceNodes(prefix)
@@ -134,11 +140,11 @@ func (serviceWatcher *ServiceWatcher) WatchServiceNode(prefix string, callback S
 			if _, found := serviceWatcher.GetNodeByID(nid); !found {
 				log.Infof("New %s node UP => [%s]", name, nid)
 				callback(ServerUp, node)
-				serviceWatcher.etcd.Watch(node.GetPrefixByNid(), serviceWatcher.WatchNode, true)
+				serviceWatcher.etcd.Watch(node.GetPrefixByNid(), serviceWatcher.WatchNode, false)
 				serviceWatcher.nodesMap[name][nid] = node
 			}
 		}
-		time.Sleep(2 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
 }
 

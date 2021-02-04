@@ -3,7 +3,6 @@ package transport
 import (
 	"errors"
 	"io"
-
 	"sync"
 
 	"mgkj/pkg/log"
@@ -15,7 +14,7 @@ import (
 
 const (
 	maxChanSize = 100
-	IOSH264Fmtp = "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f"
+	fmtp        = "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f"
 )
 
 var (
@@ -33,7 +32,7 @@ var (
 	errInvalidOptions = errors.New("invalid options")
 )
 
-// InitWebRTC init WebRTCTransport setting
+// InitWebRTC 初始化webrtc
 func InitWebRTC(iceServers []webrtc.ICEServer, icePortStart, icePortEnd uint16) error {
 	var err error
 	if icePortStart != 0 || icePortEnd != 0 {
@@ -44,11 +43,11 @@ func InitWebRTC(iceServers []webrtc.ICEServer, icePortStart, icePortEnd uint16) 
 	return err
 }
 
-// WebRTCTransport contains pc incoming and outgoing tracks
+// WebRTCTransport webrtc对象
 type WebRTCTransport struct {
+	id           string
 	mediaEngine  webrtc.MediaEngine
 	api          *webrtc.API
-	id           string
 	pc           *webrtc.PeerConnection
 	outTracks    map[uint32]*webrtc.Track
 	outTrackLock sync.RWMutex
@@ -56,45 +55,41 @@ type WebRTCTransport struct {
 	inTrackLock  sync.RWMutex
 	writeErrCnt  int
 
-	rtpCh             chan *rtp.Packet
-	rtcpCh            chan rtcp.Packet
-	stop              bool
-	pendingCandidates []*webrtc.ICECandidate
-	candidateLock     sync.RWMutex
-	candidateCh       chan *webrtc.ICECandidate
-	alive             bool
-	bandwidth         int
-	isPub             bool
+	rtpCh  chan *rtp.Packet
+	rtcpCh chan rtcp.Packet
+	stop   bool
+	alive  bool
+	isPub  bool
+
+	stopTrack [2]bool
+	nIndex    int
+	nCount    int
+	bandwidth int
 }
 
 func (w *WebRTCTransport) init(options map[string]interface{}) error {
-	w.mediaEngine = webrtc.MediaEngine{}
-	w.mediaEngine.RegisterCodec(webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 48000))
+	w.bandwidth = 1000
 
-	rtcpfb := []webrtc.RTCPFeedback{
-		webrtc.RTCPFeedback{
-			Type: webrtc.TypeRTCPFBGoogREMB,
-		},
-		webrtc.RTCPFeedback{
-			Type: webrtc.TypeRTCPFBCCM,
-		},
-		webrtc.RTCPFeedback{
-			Type: webrtc.TypeRTCPFBNACK,
-		},
-		webrtc.RTCPFeedback{
-			Type: "nack pli",
-		},
-	}
 	publish := KvOK(options, "publish", "true")
+	//audio := KvOK(options, "audio", "true")
+	//video := KvOK(options, "video", "true")
 	tcc := KvOK(options, "transport-cc", "true")
 	dc := KvOK(options, "data-channel", "true")
 	codec := GetUpperString(options, "codec")
-	bandwidth, err := GetInt(options, "bandwidth")
-	if err == nil {
-		if publish {
-			w.bandwidth = bandwidth
-		}
-	}
+
+	rtcpfb := make([]webrtc.RTCPFeedback, 0)
+	rtcpfb = append(rtcpfb, webrtc.RTCPFeedback{
+		Type: webrtc.TypeRTCPFBGoogREMB,
+	})
+	rtcpfb = append(rtcpfb, webrtc.RTCPFeedback{
+		Type: webrtc.TypeRTCPFBCCM,
+	})
+	rtcpfb = append(rtcpfb, webrtc.RTCPFeedback{
+		Type: webrtc.TypeRTCPFBNACK,
+	})
+	rtcpfb = append(rtcpfb, webrtc.RTCPFeedback{
+		Type: "nack pli",
+	})
 
 	if tcc {
 		rtcpfb = append(rtcpfb, webrtc.RTCPFeedback{
@@ -102,18 +97,25 @@ func (w *WebRTCTransport) init(options map[string]interface{}) error {
 		})
 	}
 
+	w.mediaEngine = webrtc.MediaEngine{}
 	if publish {
+		//if audio {
+		w.mediaEngine.RegisterCodec(webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 48000))
+		//}
+		//if video {
 		if codec == webrtc.H264 {
-			w.mediaEngine.RegisterCodec(webrtc.NewRTPH264CodecExt(webrtc.DefaultPayloadTypeH264, 90000, rtcpfb, IOSH264Fmtp))
+			w.mediaEngine.RegisterCodec(webrtc.NewRTPH264CodecExt(webrtc.DefaultPayloadTypeH264, 90000, rtcpfb, fmtp))
 		} else if codec == webrtc.VP8 {
 			w.mediaEngine.RegisterCodec(webrtc.NewRTPVP8CodecExt(webrtc.DefaultPayloadTypeVP8, 90000, rtcpfb, ""))
 		} else if codec == webrtc.VP9 {
 			w.mediaEngine.RegisterCodec(webrtc.NewRTPVP9Codec(webrtc.DefaultPayloadTypeVP9, 90000))
 		} else {
-			w.mediaEngine.RegisterCodec(webrtc.NewRTPH264CodecExt(webrtc.DefaultPayloadTypeH264, 90000, rtcpfb, IOSH264Fmtp))
+			w.mediaEngine.RegisterCodec(webrtc.NewRTPH264CodecExt(webrtc.DefaultPayloadTypeH264, 90000, rtcpfb, fmtp))
 		}
+		//}
 	} else {
-		w.mediaEngine.RegisterCodec(webrtc.NewRTPH264CodecExt(webrtc.DefaultPayloadTypeH264, 90000, rtcpfb, IOSH264Fmtp))
+		w.mediaEngine.RegisterCodec(webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 48000))
+		w.mediaEngine.RegisterCodec(webrtc.NewRTPH264CodecExt(webrtc.DefaultPayloadTypeH264, 90000, rtcpfb, fmtp))
 		w.mediaEngine.RegisterCodec(webrtc.NewRTPVP8CodecExt(webrtc.DefaultPayloadTypeVP8, 90000, rtcpfb, ""))
 		w.mediaEngine.RegisterCodec(webrtc.NewRTPVP9Codec(webrtc.DefaultPayloadTypeVP9, 90000))
 	}
@@ -133,13 +135,15 @@ func (w *WebRTCTransport) init(options map[string]interface{}) error {
 //   "data-channel"  = "true" or "false"[default]
 func NewWebRTCTransport(id string, options map[string]interface{}) *WebRTCTransport {
 	w := &WebRTCTransport{
-		id:          id,
-		outTracks:   make(map[uint32]*webrtc.Track),
-		inTracks:    make(map[uint32]*webrtc.Track),
-		rtpCh:       make(chan *rtp.Packet, maxChanSize),
-		rtcpCh:      make(chan rtcp.Packet, maxChanSize),
-		candidateCh: make(chan *webrtc.ICECandidate, maxChanSize),
-		alive:       true,
+		id:        id,
+		outTracks: make(map[uint32]*webrtc.Track),
+		inTracks:  make(map[uint32]*webrtc.Track),
+		rtpCh:     make(chan *rtp.Packet, maxChanSize),
+		rtcpCh:    make(chan rtcp.Packet, maxChanSize),
+		stopTrack: [2]bool{false, false},
+		nIndex:    0,
+		nCount:    0,
+		alive:     true,
 	}
 	err := w.init(options)
 	if err != nil {
@@ -164,23 +168,6 @@ func NewWebRTCTransport(id string, options map[string]interface{}) *WebRTCTransp
 		log.Errorf("w.pc.AddTransceiver audio %v", err)
 		return nil
 	}
-
-	w.pc.OnICECandidate(func(c *webrtc.ICECandidate) {
-		if c == nil {
-			return
-		}
-
-		remoteSDP := w.pc.RemoteDescription()
-		if remoteSDP == nil {
-			w.candidateLock.Lock()
-			defer w.candidateLock.Unlock()
-			w.pendingCandidates = append(w.pendingCandidates, c)
-			log.Infof("w.pc.OnICECandidate remoteSDP == nil c=%v", c)
-		} else {
-			log.Infof("w.pc.OnICECandidate remoteSDP != nil c=%v", c)
-			w.candidateCh <- c
-		}
-	})
 
 	w.pc.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
 		if connectionState == webrtc.ICEConnectionStateDisconnected {
@@ -218,14 +205,6 @@ func (w *WebRTCTransport) Offer() (webrtc.SessionDescription, error) {
 	return offer, nil
 }
 
-// SetRemoteSDP after Offer()
-func (w *WebRTCTransport) SetRemoteSDP(sdp webrtc.SessionDescription) error {
-	if w.pc == nil {
-		return errInvalidPC
-	}
-	return w.pc.SetRemoteDescription(sdp)
-}
-
 // AddTrack add track to pc
 func (w *WebRTCTransport) AddTrack(ssrc uint32, pt uint8, streamID string, trackID string) (*webrtc.Track, error) {
 	if w.pc == nil {
@@ -259,42 +238,45 @@ func (w *WebRTCTransport) AddCandidate(candidate string) error {
 }
 
 // Answer answer to pub or sub
-func (w *WebRTCTransport) Answer(offer webrtc.SessionDescription, options map[string]interface{}) (webrtc.SessionDescription, error) {
-	w.isPub = KvOK(options, "publish", "true")
+func (w *WebRTCTransport) Answer(offer webrtc.SessionDescription, bPub bool) (webrtc.SessionDescription, error) {
+	w.isPub = bPub
 	if w.isPub {
+		// 推流，那么只负责接收流
 		w.pc.OnTrack(func(remoteTrack *webrtc.Track, receiver *webrtc.RTPReceiver) {
 			w.inTrackLock.Lock()
 			w.inTracks[remoteTrack.SSRC()] = remoteTrack
 			w.inTrackLock.Unlock()
-			// TODO replace with broadcast when receiving rtp failed
-			// etcdKeepFunc(remoteTrack.SSRC(), remoteTrack.PayloadType())
+			// 启动接收推流RTP包协程
 			w.receiveInTrackRTP(remoteTrack)
 		})
 	} else {
-		ssrcPT := options["ssrcpt"]
-		if ssrcPT == nil {
-			return webrtc.SessionDescription{}, errInvalidOptions
-		}
-		ssrcPTMap, _ := ssrcPT.(map[uint32]uint8)
-		if len(ssrcPTMap) == 0 {
-			return webrtc.SessionDescription{}, errInvalidOptions
-		}
+		/*
+			ssrcPT := options["ssrcpt"]
+			if ssrcPT == nil {
+				return webrtc.SessionDescription{}, errInvalidOptions
+			}
+			ssrcPTMap, _ := ssrcPT.(map[uint32]uint8)
+			if len(ssrcPTMap) == 0 {
+				return webrtc.SessionDescription{}, errInvalidOptions
+			}
 
-		for ssrc, pt := range ssrcPTMap {
-			if _, found := w.outTracks[ssrc]; !found {
-				track, _ := w.pc.NewTrack(pt, ssrc, "pion", "pion")
-				if track != nil {
-					_, err := w.pc.AddTrack(track)
-					if err == nil {
-						w.outTrackLock.Lock()
-						w.outTracks[ssrc] = track
-						w.outTrackLock.Unlock()
-					} else {
-						log.Errorf("w.pc.AddTrack err=%v", err)
+			for ssrc, pt := range ssrcPTMap {
+				if _, found := w.outTracks[ssrc]; !found {
+					track, _ := w.pc.NewTrack(pt, ssrc, "pion", "pion")
+					if track != nil {
+						_, err := w.pc.AddTrack(track)
+						if err == nil {
+							w.outTrackLock.Lock()
+							w.outTracks[ssrc] = track
+							w.outTrackLock.Unlock()
+						} else {
+							log.Errorf("w.pc.AddTrack err=%v", err)
+						}
 					}
 				}
-			}
-		}
+			}*/
+
+		// 启动接收拉流rtcp包协程
 		w.receiveOutTrackRTCP()
 	}
 
@@ -314,33 +296,71 @@ func (w *WebRTCTransport) Answer(offer webrtc.SessionDescription, options map[st
 	if err != nil {
 		log.Errorf("pc.SetLocalDescription answer=%v err=%v", answer, err)
 	}
-	go func() {
-		w.candidateLock.Lock()
-		defer w.candidateLock.Unlock()
-		for _, candidate := range w.pendingCandidates {
-			log.Infof("WebRTCTransport.Answer candidate=%v", candidate)
-			w.candidateCh <- candidate
-		}
-		w.pendingCandidates = nil
-	}()
+
 	return answer, err
 }
 
 // receiveInTrackRTP receive all incoming tracks' rtp and sent to one channel
 func (w *WebRTCTransport) receiveInTrackRTP(remoteTrack *webrtc.Track) {
+	go func() {
+		for {
+			if w.stop {
+				return
+			}
+
+			rtp, err := remoteTrack.ReadRTP()
+			if err != nil {
+				if err == io.EOF {
+					if remoteTrack.PayloadType() == 111 {
+						w.stopTrack[0] = true
+					} else {
+						w.stopTrack[1] = true
+					}
+
+					if w.stopTrack[0] && w.stopTrack[1] {
+						log.Infof("track audio and video both, close rtpCh")
+						close(w.rtpCh)
+					}
+					return
+				}
+				log.Errorf("ReadRTP err => %s", err.Error())
+			}
+			w.rtpCh <- rtp
+		}
+	}()
+}
+
+// receiveOutTrackRTCP 接收所有路的rtcp包
+func (w *WebRTCTransport) receiveOutTrackRTCP() {
+	w.nIndex = 0
+	w.nCount = len(w.pc.GetSenders())
+	for _, sender := range w.pc.GetSenders() {
+		go w.receiveRTCP(sender)
+	}
+}
+
+// receiveRTCP 接收一路rtcp包
+func (w *WebRTCTransport) receiveRTCP(sender *webrtc.RTPSender) {
 	for {
 		if w.stop {
 			return
 		}
 
-		rtp, err := remoteTrack.ReadRTP()
+		pkts, err := sender.ReadRTCP()
 		if err != nil {
 			if err == io.EOF {
+				w.nIndex++
+				if w.nIndex == w.nCount {
+					close(w.rtcpCh)
+				}
 				return
 			}
-			log.Errorf("rtp err => %v", err)
+			log.Errorf("ReadRTCP err => %v", err)
 		}
-		w.rtpCh <- rtp
+
+		for _, pkt := range pkts {
+			w.rtcpCh <- pkt
+		}
 	}
 }
 
@@ -367,7 +387,7 @@ func (w *WebRTCTransport) WriteRTP(pkt *rtp.Packet) error {
 		return errInvalidTrack
 	}
 
-	log.Debugf("WebRTCTransport.WriteRTP pkt=%v", pkt)
+	//log.Debugf("WebRTCTransport.WriteRTP pkt=%v", pkt)
 	err := track.WriteRTP(pkt)
 	if err != nil {
 		log.Errorf(err.Error())
@@ -377,41 +397,12 @@ func (w *WebRTCTransport) WriteRTP(pkt *rtp.Packet) error {
 	return nil
 }
 
-// Close all
-func (w *WebRTCTransport) Close() {
-	if w.stop {
-		return
+// WriteRTCP write rtcp packet to pc
+func (w *WebRTCTransport) WriteRTCP(pkt rtcp.Packet) error {
+	if w.pc == nil {
+		return errInvalidPC
 	}
-	log.Infof("WebRTCTransport.Close t.ID()=%v", w.ID())
-	// close pc first, otherwise remoteTrack.ReadRTP will be blocked
-	w.pc.Close()
-	w.stop = true
-}
-
-// receive rtcp from outgoing tracks
-func (w *WebRTCTransport) receiveOutTrackRTCP() {
-	go func() {
-		for _, sender := range w.pc.GetSenders() {
-			for {
-				if w.stop {
-					return
-				}
-
-				pkts, err := sender.ReadRTCP()
-				if err != nil {
-					if err == io.EOF {
-						return
-					}
-					log.Errorf("rtcp err => %v", err)
-				}
-
-				for _, pkt := range pkts {
-					w.rtcpCh <- pkt
-				}
-			}
-
-		}
-	}()
+	return w.pc.WriteRTCP([]rtcp.Packet{pkt})
 }
 
 // GetInTracks return incoming tracks
@@ -428,13 +419,13 @@ func (w *WebRTCTransport) GetOutTracks() map[uint32]*webrtc.Track {
 	return w.outTracks
 }
 
-// WriteRTCP write rtcp packet to pc
-func (w *WebRTCTransport) WriteRTCP(pkt rtcp.Packet) error {
-	if w.pc == nil {
-		return errInvalidPC
+// Close all
+func (w *WebRTCTransport) Close() {
+	if w.stop {
+		return
 	}
-	// log.Infof("WebRTCTransport.WriteRTCP pkt=%+v", pkt)
-	return w.pc.WriteRTCP([]rtcp.Packet{pkt})
+	w.pc.Close()
+	w.stop = true
 }
 
 // WriteErrTotal return write error
@@ -450,11 +441,6 @@ func (w *WebRTCTransport) WriteErrReset() {
 // GetRTCPChan return a rtcp channel
 func (w *WebRTCTransport) GetRTCPChan() chan rtcp.Packet {
 	return w.rtcpCh
-}
-
-// GetCandidateChan return a candidate channel
-func (w *WebRTCTransport) GetCandidateChan() chan *webrtc.ICECandidate {
-	return w.candidateCh
 }
 
 // GetBandwidth return bandwidth

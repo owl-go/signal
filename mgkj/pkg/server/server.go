@@ -29,6 +29,13 @@ func NewServiceNode(endpoints []string, dc, nid, name, nip string) *ServiceNode 
 	return &serverNode
 }
 
+// Close 关闭资源
+func (serverNode *ServiceNode) Close() {
+	if serverNode.etcd != nil {
+		serverNode.etcd.Close()
+	}
+}
+
 // NodeInfo 返回服务节点信息
 func (serverNode *ServiceNode) NodeInfo() Node {
 	return serverNode.node
@@ -70,7 +77,7 @@ func (serverNode *ServiceNode) keepRegistered(node Node) {
 			log.Errorf("keepRegistered err = %s", err)
 			time.Sleep(5 * time.Second)
 		} else {
-			log.Infof("Node [%v] keepRegistered success!", node)
+			log.Infof("Node [%s] keepRegistered success!", node.Nid)
 			return
 		}
 	}
@@ -84,7 +91,7 @@ func (serverNode *ServiceNode) updateRegistered(node Node) {
 			log.Errorf("updateRegistered err = %s", err)
 			time.Sleep(5 * time.Second)
 		} else {
-			log.Infof("Node [%v] updateRegistered success!", node)
+			log.Infof("Node [%s] updateRegistered success!", node.Nid)
 			return
 		}
 	}

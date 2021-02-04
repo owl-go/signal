@@ -3,6 +3,8 @@ package main
 import (
 	"net/http"
 	_ "net/http/pprof"
+	"os"
+	"os/signal"
 
 	conf "mgkj/pkg/conf/sfu"
 	"mgkj/pkg/log"
@@ -36,9 +38,10 @@ func init() {
 		panic(err)
 	}
 
-	if err := rtc.InitRTP(conf.Rtp.Port, conf.Rtp.KcpKey, conf.Rtp.KcpSalt); err != nil {
-		panic(err)
-	}
+	/*
+		if err := rtc.InitRTP(conf.Rtp.Port, conf.Rtp.KcpKey, conf.Rtp.KcpSalt); err != nil {
+			panic(err)
+		}*/
 
 	pluginConfig := plugins.Config{
 		On: conf.Plugins.On,
@@ -64,6 +67,9 @@ func close() {
 func main() {
 	defer close()
 
+	ch := make(chan os.Signal)
+	signal.Notify(ch)
+
 	if conf.Global.Pprof != "" {
 		go func() {
 			log.Infof("Start pprof on %s", conf.Global.Pprof)
@@ -76,9 +82,9 @@ func main() {
 
 	serviceNode := server.NewServiceNode(conf.Etcd.Addrs, conf.Global.Ndc, conf.Global.Nid, conf.Global.Name, conf.Global.Nip)
 	serviceNode.RegisterNode()
-
 	serviceWatcher := server.NewServiceWatcher(conf.Etcd.Addrs)
-
 	sfu.Init(serviceNode, serviceWatcher, conf.Amqp.URL)
-	select {}
+
+	sig := <-ch
+	log.Infof("sfu exit %v", sig)
 }

@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"time"
 
@@ -51,17 +52,17 @@ func NewEtcd(endpoints []string) (*Etcd, error) {
 func (e *Etcd) Keep(key, value string) error {
 	resp, err := e.client.Grant(context.TODO(), defaultGrantTimeout)
 	if err != nil {
-		log.Errorf("Etcd.keep Grant %s %v", key, err)
+		log.Errorf("Etcd Grant err = %s %v", key, err)
 		return err
 	}
 	_, err = e.client.Put(context.TODO(), key, value, clientv3.WithLease(resp.ID))
 	if err != nil {
-		log.Errorf("Etcd.keep Put %s %v", key, err)
+		log.Errorf("Etcd Put err = %s %v", key, err)
 		return err
 	}
 	ch, err := e.client.KeepAlive(context.TODO(), resp.ID)
 	if err != nil {
-		log.Errorf("Etcd.keep %s %v", key, err)
+		log.Errorf("Etcd KeepAlive err = %s %v", key, err)
 		return err
 	}
 	go func() {
@@ -69,29 +70,47 @@ func (e *Etcd) Keep(key, value string) error {
 			if e.stop {
 				return
 			}
-
-			//just read, fix etcd-server warning "lease keepalive response queue is full; dropping response send""
 			<-ch
-			time.Sleep(time.Millisecond * 100)
 		}
 	}()
 	// 加入map
 	e.liveKeyIDLock.Lock()
 	e.liveKeyID[key] = resp.ID
 	e.liveKeyIDLock.Unlock()
-	log.Infof("Etcd.keep %s %v %v", key, value, err)
+	log.Infof("Etcd keep ok = %s %v", key, value)
 	return nil
+}
+
+// Update 更新key-value
+func (e *Etcd) Update(key, value string) error {
+	e.liveKeyIDLock.Lock()
+	id := e.liveKeyID[key]
+	e.liveKeyIDLock.Unlock()
+	_, err := e.client.Put(context.TODO(), key, value, clientv3.WithLease(id))
+	if err != nil {
+		// 出错就重新来keep
+		err = e.Keep(key, value)
+		if err != nil {
+			log.Errorf("Etcd Update err = %s %s %v", key, value, err)
+		}
+	}
+	return err
 }
 
 // Delete 删除key，prefix是否前缀
 func (e *Etcd) Delete(key string, prefix bool) error {
-	e.liveKeyIDLock.Lock()
-	delete(e.liveKeyID, key)
-	e.liveKeyIDLock.Unlock()
 	var err error
 	if prefix {
+		for k := range e.liveKeyID {
+			if strings.HasPrefix(k, key) {
+				delete(e.liveKeyID, k)
+			}
+		}
 		_, err = e.client.Delete(context.TODO(), key, clientv3.WithPrefix())
 	} else {
+		e.liveKeyIDLock.Lock()
+		delete(e.liveKeyID, key)
+		e.liveKeyIDLock.Unlock()
 		_, err = e.client.Delete(context.TODO(), key)
 	}
 	return err
@@ -118,25 +137,11 @@ func (e *Etcd) Close() error {
 	e.stop = true
 	e.liveKeyIDLock.Lock()
 	for k := range e.liveKeyID {
+		delete(e.liveKeyID, k)
 		e.client.Delete(context.TODO(), k)
 	}
 	e.liveKeyIDLock.Unlock()
 	return e.client.Close()
-}
-
-// Update 更新key-value
-func (e *Etcd) Update(key, value string) error {
-	e.liveKeyIDLock.Lock()
-	id := e.liveKeyID[key]
-	e.liveKeyIDLock.Unlock()
-	_, err := e.client.Put(context.TODO(), key, value, clientv3.WithLease(id))
-	if err != nil {
-		err = e.Keep(key, value)
-		if err != nil {
-			log.Errorf("Etcd.Keep %s %s %v", key, value, err)
-		}
-	}
-	return err
 }
 
 // GetValue 获取指定key对应的值,key不带前缀

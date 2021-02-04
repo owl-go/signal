@@ -2,6 +2,8 @@ package main
 
 import (
 	"net/http"
+	"os"
+	"os/signal"
 
 	_ "net/http/pprof"
 
@@ -18,6 +20,9 @@ func close() {
 func main() {
 	defer close()
 
+	ch := make(chan os.Signal)
+	signal.Notify(ch)
+
 	log.Init(conf.Log.Level)
 	if conf.Global.Pprof != "" {
 		go func() {
@@ -28,10 +33,10 @@ func main() {
 
 	serviceNode := server.NewServiceNode(conf.Etcd.Addrs, conf.Global.Ndc, conf.Global.Nid, conf.Global.Name, conf.Global.Nip)
 	serviceNode.RegisterNode()
-
 	serviceWatcher := server.NewServiceWatcher(conf.Etcd.Addrs)
-
 	biz.Init(serviceNode, serviceWatcher, conf.Amqp.URL)
 	biz.InitWebSocket(conf.Signal.Host, conf.Signal.Port, conf.Signal.Cert, conf.Signal.Key)
-	select {}
+
+	sig := <-ch
+	log.Infof("biz exit %v", sig)
 }
