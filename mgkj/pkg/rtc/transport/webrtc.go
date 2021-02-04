@@ -3,6 +3,7 @@ package transport
 import (
 	"errors"
 	"io"
+	"strings"
 	"sync"
 
 	"mgkj/pkg/log"
@@ -31,6 +32,18 @@ var (
 	errInvalidPC      = errors.New("pc is nil")
 	errInvalidOptions = errors.New("invalid options")
 )
+
+// GetUpperString get upper string by key
+func GetUpperString(m map[string]interface{}, k string) string {
+	val, ok := m[k]
+	if ok {
+		str, ok := val.(string)
+		if ok {
+			return strings.ToUpper(str)
+		}
+	}
+	return ""
+}
 
 // InitWebRTC 初始化webrtc
 func InitWebRTC(iceServers []webrtc.ICEServer, icePortStart, icePortEnd uint16) error {
@@ -68,15 +81,7 @@ type WebRTCTransport struct {
 }
 
 func (w *WebRTCTransport) init(options map[string]interface{}) error {
-	w.bandwidth = 1000
-
-	publish := KvOK(options, "publish", "true")
-	//audio := KvOK(options, "audio", "true")
-	//video := KvOK(options, "video", "true")
-	tcc := KvOK(options, "transport-cc", "true")
-	dc := KvOK(options, "data-channel", "true")
-	codec := GetUpperString(options, "codec")
-
+	w.mediaEngine = webrtc.MediaEngine{}
 	rtcpfb := make([]webrtc.RTCPFeedback, 0)
 	rtcpfb = append(rtcpfb, webrtc.RTCPFeedback{
 		Type: webrtc.TypeRTCPFBGoogREMB,
@@ -91,28 +96,32 @@ func (w *WebRTCTransport) init(options map[string]interface{}) error {
 		Type: "nack pli",
 	})
 
-	if tcc {
-		rtcpfb = append(rtcpfb, webrtc.RTCPFeedback{
-			Type: webrtc.TypeRTCPFBTransportCC,
-		})
-	}
+	/*
+		if tcc {
+			rtcpfb = append(rtcpfb, webrtc.RTCPFeedback{
+				Type: webrtc.TypeRTCPFBTransportCC,
+			})
+		}*/
 
-	w.mediaEngine = webrtc.MediaEngine{}
-	if publish {
-		//if audio {
-		w.mediaEngine.RegisterCodec(webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 48000))
-		//}
-		//if video {
-		if codec == webrtc.H264 {
-			w.mediaEngine.RegisterCodec(webrtc.NewRTPH264CodecExt(webrtc.DefaultPayloadTypeH264, 90000, rtcpfb, fmtp))
-		} else if codec == webrtc.VP8 {
-			w.mediaEngine.RegisterCodec(webrtc.NewRTPVP8CodecExt(webrtc.DefaultPayloadTypeVP8, 90000, rtcpfb, ""))
-		} else if codec == webrtc.VP9 {
-			w.mediaEngine.RegisterCodec(webrtc.NewRTPVP9Codec(webrtc.DefaultPayloadTypeVP9, 90000))
-		} else {
-			w.mediaEngine.RegisterCodec(webrtc.NewRTPH264CodecExt(webrtc.DefaultPayloadTypeH264, 90000, rtcpfb, fmtp))
+	ispub := options["publish"].(bool)
+	if ispub {
+		audio := options["audio"].(bool)
+		video := options["video"].(bool)
+		if audio {
+			w.mediaEngine.RegisterCodec(webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 48000))
 		}
-		//}
+		if video {
+			codec := GetUpperString(options, "codec")
+			if codec == webrtc.H264 {
+				w.mediaEngine.RegisterCodec(webrtc.NewRTPH264CodecExt(webrtc.DefaultPayloadTypeH264, 90000, rtcpfb, fmtp))
+			} else if codec == webrtc.VP8 {
+				w.mediaEngine.RegisterCodec(webrtc.NewRTPVP8CodecExt(webrtc.DefaultPayloadTypeVP8, 90000, rtcpfb, ""))
+			} else if codec == webrtc.VP9 {
+				w.mediaEngine.RegisterCodec(webrtc.NewRTPVP9Codec(webrtc.DefaultPayloadTypeVP9, 90000))
+			} else {
+				w.mediaEngine.RegisterCodec(webrtc.NewRTPH264CodecExt(webrtc.DefaultPayloadTypeH264, 90000, rtcpfb, fmtp))
+			}
+		}
 	} else {
 		w.mediaEngine.RegisterCodec(webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 48000))
 		w.mediaEngine.RegisterCodec(webrtc.NewRTPH264CodecExt(webrtc.DefaultPayloadTypeH264, 90000, rtcpfb, fmtp))
@@ -120,9 +129,6 @@ func (w *WebRTCTransport) init(options map[string]interface{}) error {
 		w.mediaEngine.RegisterCodec(webrtc.NewRTPVP9Codec(webrtc.DefaultPayloadTypeVP9, 90000))
 	}
 
-	if !dc {
-		setting.DetachDataChannels()
-	}
 	w.api = webrtc.NewAPI(webrtc.WithMediaEngine(w.mediaEngine), webrtc.WithSettingEngine(setting))
 	return nil
 }
@@ -143,6 +149,8 @@ func NewWebRTCTransport(id string, options map[string]interface{}) *WebRTCTransp
 		stopTrack: [2]bool{false, false},
 		nIndex:    0,
 		nCount:    0,
+		bandwidth: 1000,
+		stop:      false,
 		alive:     true,
 	}
 	err := w.init(options)
@@ -250,32 +258,6 @@ func (w *WebRTCTransport) Answer(offer webrtc.SessionDescription, bPub bool) (we
 			w.receiveInTrackRTP(remoteTrack)
 		})
 	} else {
-		/*
-			ssrcPT := options["ssrcpt"]
-			if ssrcPT == nil {
-				return webrtc.SessionDescription{}, errInvalidOptions
-			}
-			ssrcPTMap, _ := ssrcPT.(map[uint32]uint8)
-			if len(ssrcPTMap) == 0 {
-				return webrtc.SessionDescription{}, errInvalidOptions
-			}
-
-			for ssrc, pt := range ssrcPTMap {
-				if _, found := w.outTracks[ssrc]; !found {
-					track, _ := w.pc.NewTrack(pt, ssrc, "pion", "pion")
-					if track != nil {
-						_, err := w.pc.AddTrack(track)
-						if err == nil {
-							w.outTrackLock.Lock()
-							w.outTracks[ssrc] = track
-							w.outTrackLock.Unlock()
-						} else {
-							log.Errorf("w.pc.AddTrack err=%v", err)
-						}
-					}
-				}
-			}*/
-
 		// 启动接收拉流rtcp包协程
 		w.receiveOutTrackRTCP()
 	}

@@ -73,9 +73,7 @@ func publish(msg map[string]interface{}, from, corrID string) {
 
 	offer := webrtc.SessionDescription{Type: webrtc.SDPTypeOffer, SDP: sdp}
 	rtcOptions := make(map[string]interface{})
-	rtcOptions["transport-cc"] = "false"
-	rtcOptions["publish"] = "true"
-
+	rtcOptions["publish"] = true
 	options := msg["minfo"]
 	if options != nil {
 		options, ok := msg["minfo"].(map[string]interface{})
@@ -84,7 +82,6 @@ func publish(msg map[string]interface{}, from, corrID string) {
 			rtcOptions["audio"] = options["audio"]
 			rtcOptions["video"] = options["video"]
 			rtcOptions["screen"] = options["screen"]
-			rtcOptions["bandwidth"] = options["bandwidth"]
 		}
 	}
 	pub := transport.NewWebRTCTransport(mid, rtcOptions)
@@ -188,15 +185,13 @@ func subscribe(msg map[string]interface{}, from, corrID string) {
 	sdp := util.Val(jsep, "sdp")
 
 	rtcOptions := make(map[string]interface{})
-	rtcOptions["transport-cc"] = "false"
-	rtcOptions["subscribe"] = "true"
+	rtcOptions["publish"] = false
 
 	subID := fmt.Sprintf("%s#%s", uid, util.RandStr(6))
 
 	tracksMap := msg["tracks"].(map[string]interface{})
 	log.Infof("subscribe tracks=%v", tracksMap)
-	ssrcPT := make(map[uint32]uint8)
-	rtcOptions["ssrcpt"] = ssrcPT
+
 	sub := transport.NewWebRTCTransport(subID, rtcOptions)
 	if sub == nil {
 		amqp.RPCCall(from, util.Map("method", proto.SfuToBizSubscribe, "errorCode", 413), corrID)
@@ -215,7 +210,6 @@ func subscribe(msg map[string]interface{}, from, corrID string) {
 				Codec:   info["codec"].(string),
 				Fmtp:    info["fmtp"].(string),
 			}
-			ssrcPT[uint32(trackInfo.Ssrc)] = uint8(trackInfo.Payload)
 			tracks[msid] = trackInfo
 		}
 	}

@@ -18,7 +18,6 @@ import (
 
 func init() {
 	var icePortStart, icePortEnd uint16
-
 	if len(conf.WebRTC.ICEPortRange) == 2 {
 		icePortStart = conf.WebRTC.ICEPortRange[0]
 		icePortEnd = conf.WebRTC.ICEPortRange[1]
@@ -38,11 +37,6 @@ func init() {
 		panic(err)
 	}
 
-	/*
-		if err := rtc.InitRTP(conf.Rtp.Port, conf.Rtp.KcpKey, conf.Rtp.KcpSalt); err != nil {
-			panic(err)
-		}*/
-
 	pluginConfig := plugins.Config{
 		On: conf.Plugins.On,
 		JitterBuffer: plugins.JitterBufferConfig{
@@ -57,6 +51,7 @@ func init() {
 	if err := rtc.CheckPlugins(pluginConfig); err != nil {
 		panic(err)
 	}
+
 	rtc.InitPlugins(pluginConfig)
 }
 

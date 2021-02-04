@@ -12,10 +12,10 @@ var (
 	cfg = config{}
 	// Global 全局设置
 	Global = &cfg.Global
-	//
+	// Plugins 插件参数
 	Plugins = &cfg.Plugins
-	WebRTC  = &cfg.WebRTC
-	Rtp     = &cfg.Rtp
+	// WebRTC rtc参数
+	WebRTC = &cfg.WebRTC
 	// Log 日志级别设置
 	Log = &cfg.Log
 	// Etcd Etcd设置
@@ -39,7 +39,7 @@ type global struct {
 	Nip   string `mapstructure:"nip"`
 }
 
-type JitterBuffer struct {
+type jitterBuffer struct {
 	On            bool `mapstructure:"on"`
 	REMBCycle     int  `mapstructure:"rembcycle"`
 	PLICycle      int  `mapstructure:"plicycle"`
@@ -49,7 +49,7 @@ type JitterBuffer struct {
 
 type plugins struct {
 	On           bool         `mapstructure:"on"`
-	JitterBuffer JitterBuffer `mapstructure:"jitterbuffer"`
+	JitterBuffer jitterBuffer `mapstructure:"jitterbuffer"`
 }
 
 type log struct {
@@ -71,12 +71,6 @@ type webrtc struct {
 	ICEServers   []iceserver `mapstructure:"iceserver"`
 }
 
-type rtp struct {
-	Port    int    `mapstructure:"port"`
-	KcpKey  string `mapstructure:"kcpkey"`
-	KcpSalt string `mapstructure:"kcpsalt"`
-}
-
 type amqp struct {
 	URL string `mapstructure:"url"`
 }
@@ -85,7 +79,6 @@ type config struct {
 	Global  global  `mapstructure:"global"`
 	Plugins plugins `mapstructure:"plugins"`
 	WebRTC  webrtc  `mapstructure:"webrtc"`
-	Rtp     rtp     `mapstructure:"rtp"`
 	Log     log     `mapstructure:"log"`
 	Etcd    etcd    `mapstructure:"etcd"`
 	Amqp    amqp    `mapstructure:"amqp"`

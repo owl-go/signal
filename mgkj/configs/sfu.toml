@@ -35,12 +35,6 @@ urls = ["turn:115.231.90.179:3478"]
 username = "demo"
 credential = "123456"
 
-[rtp]
-# listen port
-port = 6666
-# kcpkey = ""
-# kcpsalt = ""
-
 [log]
 level = "info"
 # level = "debug"
