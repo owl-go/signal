@@ -117,7 +117,7 @@ func clientPeerHeart(data map[string]interface{}) {
 }
 
 /*
-	"method", proto.DistToIslbPeerInfo, "uid", callee
+	"method", proto.DistToIslbPeerInfo, "uid", uid
 */
 // getPeerinfo 获取Peer在哪个Dist服务器
 func getPeerinfo(data map[string]interface{}, from, corrID string) {

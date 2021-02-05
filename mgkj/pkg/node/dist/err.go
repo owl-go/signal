@@ -10,8 +10,6 @@ const (
 	codeOK int = -iota
 	codeUIDErr
 	codeRIDErr
-	codeBizErr
-	codeSfuErr
 	codeIslbErr
 	codeDistErr
 	codeUnknownErr
@@ -21,8 +19,6 @@ var codeErr = map[int]string{
 	codeOK:         "OK",
 	codeUIDErr:     "uid not found",
 	codeRIDErr:     "rid not found",
-	codeBizErr:     "biz not found",
-	codeSfuErr:     "sfu not found",
 	codeIslbErr:    "islb not found",
 	codeDistErr:    "dist not found",
 	codeUnknownErr: "unknown error",
@@ -43,12 +39,6 @@ func invalid(msg map[string]interface{}, key string, reject peer.RejectFunc) boo
 			return true
 		case "rid":
 			reject(codeRIDErr, codeStr(codeRIDErr))
-			return true
-		case "biz":
-			reject(codeBizErr, codeStr(codeBizErr))
-			return true
-		case "sfu":
-			reject(codeSfuErr, codeStr(codeSfuErr))
 			return true
 		case "islb":
 			reject(codeIslbErr, codeStr(codeIslbErr))

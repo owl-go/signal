@@ -106,6 +106,7 @@ func handleRPCMsgs() {
 
 // InitWebSocket 初始化ws服务
 func InitWebSocket(host string, port int, cert, key string) {
+	peers = make(map[string]*peer.Peer)
 	wsServer = server.NewWebSocketServer(handleWebSocket)
 	config := server.DefaultConfig()
 	config.Host = host
@@ -218,6 +219,7 @@ func handleWebSocket(transport *transport.WebSocketTransport, request *http.Requ
 		}
 		delete(peers, uid)
 		peerLock.Unlock()
+
 	}
 
 	_, _, _ = handleRequest, handleNotification, handleClose
@@ -244,7 +246,6 @@ func handleWebSocket(transport *transport.WebSocketTransport, request *http.Requ
 */
 // loginin 登录服务器
 func loginin(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
-	log.Infof("dist handle loginin uid = %s, msg = %v", peer.ID(), msg)
 	// 获取参数
 	uid := peer.ID()
 	// 查询islb节点
@@ -254,28 +255,11 @@ func loginin(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 		reject(codeIslbErr, codeStr(codeIslbErr))
 		return
 	}
-	// 查询biz节点
-	biz := FindBizNodeByPayload()
-	if biz == nil {
-		log.Errorf("biz node is not find")
-		reject(codeBizErr, codeStr(codeBizErr))
-		return
-	}
-	// 查询sfu节点
-	sfu := FindSfuNodeByPayload()
-	if sfu == nil {
-		log.Errorf("sfu node is not find")
-		reject(codeSfuErr, codeStr(codeSfuErr))
-		return
-	}
 	// 通知islb更新数据库
 	nid := node.NodeInfo().Nid
 	amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.DistToIslbLoginin, "uid", uid, "nid", nid), "")
 	// resp
-	resp := make(map[string]interface{})
-	resp["biz"] = biz.Nip
-	resp["sfu"] = sfu.Nid
-	accept(resp)
+	accept(emptyMap)
 }
 
 /*
@@ -286,7 +270,6 @@ func loginin(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 */
 // loginout 退录服务器
 func loginout(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
-	log.Infof("dist handle loginout uid = %s, msg = %v", peer.ID(), msg)
 	// 获取参数
 	uid := peer.ID()
 	// 查询islb节点
@@ -311,7 +294,6 @@ func loginout(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFu
 */
 // heart 心跳
 func heart(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
-	log.Infof("dist handle heart uid = %s, msg = %v", peer.ID(), msg)
 	// 获取参数
 	uid := peer.ID()
 	// 查询islb节点
@@ -344,7 +326,6 @@ func heart(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc,
 */
 // call 发送呼叫
 func call(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
-	log.Infof("dist handle call uid = %s, msg = %v", peer.ID(), msg)
 	// 判断参数正确性
 	if invalid(msg, "rid", reject) {
 		return
@@ -353,7 +334,7 @@ func call(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, 
 	// 获取参数
 	caller := peer.ID()
 	rid := msg["rid"]
-	peers := msg["peers"].([]string)
+	peers := msg["peers"].([]interface{})
 
 	// 查询islb节点
 	islb := FindIslbNode()
@@ -366,7 +347,8 @@ func call(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, 
 	// 分析数据
 	nCount := 0
 	peersTmp := make([]string, 0)
-	for _, callee := range peers {
+	for _, calleer := range peers {
+		callee := calleer.(string)
 		ch := make(chan int, 1)
 		respIslb := func(resp map[string]interface{}) {
 			/* "method", proto.IslbToDistPeerInfo, "errorCode", 0, "nid", dist */
@@ -415,7 +397,6 @@ func call(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, 
 */
 // callanswer 接受呼叫
 func callanswer(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
-	log.Infof("dist handle callanswer uid = %s, msg = %v", peer.ID(), msg)
 	// 判断参数正确性
 	if invalid(msg, "rid", reject) || invalid(msg, "nid", reject) {
 		return
@@ -456,7 +437,6 @@ func callanswer(peer *peer.Peer, msg map[string]interface{}, accept peer.Respond
 */
 // callreject 拒绝呼叫
 func callreject(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
-	log.Infof("dist handle callreject uid = %s, msg = %v", peer.ID(), msg)
 	// 判断参数正确性
 	if invalid(msg, "rid", reject) || invalid(msg, "nid", reject) {
 		return
