@@ -38,56 +38,13 @@ func InitIce(iceServers []webrtc.ICEServer, icePortStart, icePortEnd uint16) err
 func InitPlugins(config plugins.Config) {
 	pluginsConfig = config
 	log.Infof("InitPlugins pluginsConfig=%+v", pluginsConfig)
+	go check()
 }
 
 // CheckPlugins plugins config
 func CheckPlugins(config plugins.Config) error {
 	return plugins.CheckPlugins(config)
 }
-
-// InitRTP rtp port
-/*
-func InitRTP(port int, kcpKey, kcpSalt string) error {
-	// show stat about all pipelines
-	//go check()
-
-	var connCh chan *transport.RTPTransport
-	var err error
-	// accept relay rtptransport
-	if kcpKey != "" && kcpSalt != "" {
-		connCh, err = rtpengine.ServeWithKCP(port, kcpKey, kcpSalt)
-	} else {
-		connCh, err = rtpengine.Serve(port)
-	}
-	if err != nil {
-		log.Errorf("rtc.InitRPC err=%v", err)
-		return err
-	}
-	go func() {
-		for {
-			if stop {
-				return
-			}
-			rtpTransport := <-connCh
-			id := rtpTransport.ID()
-			cnt := 0
-			for id == "" && cnt < 100 {
-				id = rtpTransport.ID()
-				time.Sleep(time.Millisecond)
-				cnt++
-			}
-			if id == "" && cnt >= 100 {
-				log.Errorf("invalid id from incoming rtp transport")
-				return
-			}
-			log.Infof("accept new rtp id=%s conn=%s", id, rtpTransport.RemoteAddr().String())
-			if router := AddRouter(id); router != nil {
-				router.AddPub(id, rtpTransport)
-			}
-		}
-	}()
-	return nil
-}*/
 
 func GetOrNewRouter(id string) *Router {
 	log.Infof("rtc.GetOrNewRouter id=%s", id)

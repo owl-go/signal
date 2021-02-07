@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"mgkj/pkg/log"
 	"mgkj/pkg/proto"
+	"mgkj/pkg/server"
 	"mgkj/pkg/util"
 )
 
@@ -88,9 +89,24 @@ func handleBroadCastMsgs() {
 				/* "method", proto.IslbToBizBroadcast, "rid", rid, "uid", uid, "data", data */
 				NotifyAllWithoutID(rid, uid, proto.BizToClientBroadcast, msg)
 			case proto.SfuToBizOnStreamRemove:
-				//
-
+				mid := util.Val(msg, "mid")
+				SfuRemoveStream(mid)
 			}
 		}
 	}()
+}
+
+// SfuRemoveStream 处理移除流
+func SfuRemoveStream(mid string) {
+	islb := FindIslbNode()
+	if islb == nil {
+		log.Errorf("islb node is not find")
+		return
+	}
+
+	uid := proto.GetUIDFromMID(mid)
+	for _, room := range GetRoomsByPeer(uid) {
+		rid := room.room.ID()
+		amqp.RPCCall(server.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbOnStreamRemove, "rid", rid, "uid", uid, "mid", ""), "")
+	}
 }

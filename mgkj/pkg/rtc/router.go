@@ -120,18 +120,18 @@ func (r *Router) DelPub() {
 	r.pub = nil
 }
 
+// GetPub get pub
+func (r *Router) GetPub() transport.Transport {
+	// log.Infof("Router.GetPub %v", r.pub)
+	return r.pub
+}
+
 func MapRouter(fn func(id string, r *Router)) {
 	routerLock.RLock()
 	defer routerLock.RUnlock()
 	for id, r := range routers {
 		fn(id, r)
 	}
-}
-
-// GetPub get pub
-func (r *Router) GetPub() transport.Transport {
-	// log.Infof("Router.GetPub %v", r.pub)
-	return r.pub
 }
 
 // AddSub add a pub to router
