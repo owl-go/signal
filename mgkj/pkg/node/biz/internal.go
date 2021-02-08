@@ -6,6 +6,7 @@ import (
 	"mgkj/pkg/proto"
 	"mgkj/pkg/server"
 	"mgkj/pkg/util"
+	"strings"
 )
 
 // handleRPCMsgs 处理其他模块发送过来的消息
@@ -97,16 +98,20 @@ func handleBroadCastMsgs() {
 }
 
 // SfuRemoveStream 处理移除流
-func SfuRemoveStream(mid string) {
+func SfuRemoveStream(key string) {
 	islb := FindIslbNode()
 	if islb == nil {
 		log.Errorf("islb node is not find")
 		return
 	}
 
-	uid := proto.GetUIDFromMID(mid)
-	for _, room := range GetRoomsByPeer(uid) {
-		rid := room.room.ID()
-		amqp.RPCCall(server.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbOnStreamRemove, "rid", rid, "uid", uid, "mid", ""), "")
+	msid := strings.Split(key, "/")
+	if len(msid) < 6 {
+		log.Errorf("key is err")
+		return
 	}
+	rid := msid[3]
+	uid := msid[5]
+	mid := msid[7]
+	amqp.RPCCall(server.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbOnStreamRemove, "rid", rid, "uid", uid, "mid", mid), "")
 }
