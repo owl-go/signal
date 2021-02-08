@@ -1,0 +1,50 @@
+[global]
+pprof = ":6062"
+
+# server
+dc = "shenzhen"
+name = "sfu"
+nid = "shenzhen_sfu_1"
+nip = "8.129.55.41"
+
+[plugins]
+on = true
+
+[plugins.jitterbuffer]
+on = true
+# the remb cycle sending to pub, this told the pub it's bandwidth
+rembcycle = 2
+# pli cycle sending to pub, and pub will send a key frame
+plicycle = 1
+# this limit the remb bandwidth
+maxbandwidth = 1000
+# max buffer time by ms
+maxbuffertime = 1000
+
+[webrtc]
+# Range of ports that ion accepts WebRTC traffic on
+# Format: [min, max]   and max - min >= 100
+# portrange = [50000, 60000]
+
+# if sfu behind nat, set iceserver
+[[webrtc.iceserver]]
+urls = ["stun:115.231.90.179:3478"]
+
+[[webrtc.iceserver]]
+urls = ["turn:115.231.90.179:3478"]
+username = "demo"
+credential = "123456"
+
+[log]
+level = "info"
+# level = "debug"
+
+[etcd]
+# ["ip:port", "ip:port"]
+# addrs = ["127.0.0.1:2379"]
+addrs = ["8.129.55.41:2379"]
+
+[amqp]
+# url = "amqp://guest:guest@localhost:5672/"
+url = "amqp://zhouwq:123456@8.129.55.41:5672/admin"
+
