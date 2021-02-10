@@ -3,8 +3,6 @@ package main
 import (
 	"net/http"
 	_ "net/http/pprof"
-	"os"
-	"os/signal"
 
 	conf "mgkj/pkg/conf/sfu"
 	"mgkj/pkg/log"
@@ -62,9 +60,6 @@ func close() {
 func main() {
 	defer close()
 
-	ch := make(chan os.Signal)
-	signal.Notify(ch)
-
 	if conf.Global.Pprof != "" {
 		go func() {
 			log.Infof("Start pprof on %s", conf.Global.Pprof)
@@ -80,6 +75,5 @@ func main() {
 	serviceWatcher := server.NewServiceWatcher(conf.Etcd.Addrs)
 	sfu.Init(serviceNode, serviceWatcher, conf.Amqp.URL)
 
-	sig := <-ch
-	log.Infof("sfu exit %v", sig)
+	select {}
 }

@@ -2,8 +2,6 @@ package main
 
 import (
 	"net/http"
-	"os"
-	"os/signal"
 
 	conf "mgkj/pkg/conf/islb"
 	"mgkj/pkg/db"
@@ -18,9 +16,6 @@ func close() {
 
 func main() {
 	defer close()
-
-	ch := make(chan os.Signal)
-	signal.Notify(ch)
 
 	log.Init(conf.Log.Level)
 	if conf.Global.Pprof != "" {
@@ -40,6 +35,5 @@ func main() {
 	}
 	ilsb.Init(serviceNode, serviceWatcher, conf.Amqp.URL, config)
 
-	sig := <-ch
-	log.Infof("islb exit %v", sig)
+	select {}
 }

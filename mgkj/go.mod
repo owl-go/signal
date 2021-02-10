@@ -9,7 +9,7 @@ require (
 	github.com/cloudwebrtc/go-protoo v1.0.0
 	github.com/coreos/etcd v3.3.25+incompatible // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
-	github.com/go-redis/redis/v7 v7.4.0
+	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/notedit/sdp v0.0.4
 	github.com/pion/ion-log v1.0.0
 	github.com/pion/rtcp v1.2.6

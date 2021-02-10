@@ -5,7 +5,7 @@ import (
 
 	"mgkj/pkg/log"
 
-	"github.com/go-redis/redis/v7"
+	"github.com/go-redis/redis"
 )
 
 // Config Redis配置对象
