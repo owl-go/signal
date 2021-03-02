@@ -18,8 +18,8 @@ var (
 	Etcd = &cfg.Etcd
 	// Signal 信令服务设置
 	Signal = &cfg.Signal
-	// Amqp 消息中间件设置
-	Amqp = &cfg.Amqp
+	// nats-server 消息中间件设置
+	Nats = &cfg.Nats
 )
 
 func init() {
@@ -52,7 +52,7 @@ type signal struct {
 	Key  string `mapstructure:"key"`
 }
 
-type amqp struct {
+type nats struct {
 	URL string `mapstructure:"url"`
 }
 
@@ -61,7 +61,7 @@ type config struct {
 	Log     log    `mapstructure:"log"`
 	Etcd    etcd   `mapstructure:"etcd"`
 	Signal  signal `mapstructure:"signal"`
-	Amqp    amqp   `mapstructure:"amqp"`
+	Nats    nats   `mapstructure:"nats"`
 	CfgFile string
 }
 

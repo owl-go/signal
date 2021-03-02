@@ -33,7 +33,7 @@ func main() {
 		Pwd:   conf.Redis.Pwd,
 		DB:    conf.Redis.DB,
 	}
-	ilsb.Init(serviceNode, serviceWatcher, conf.Amqp.URL, config)
+	ilsb.Init(serviceNode, serviceWatcher, conf.Nats.URL, config)
 
 	select {}
 }

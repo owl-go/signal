@@ -8,6 +8,7 @@ import (
 
 	"mgkj/pkg/log"
 
+	nprotoo "github.com/cloudwebrtc/nats-protoo"
 	"github.com/pion/webrtc/v2"
 )
 
@@ -116,4 +117,12 @@ func IsVideo(pt uint8) bool {
 		return true
 	}
 	return false
+}
+
+func NewNpError(code int, reason string) *nprotoo.Error {
+	err := nprotoo.Error{
+		Code:   code,
+		Reason: reason,
+	}
+	return &err
 }

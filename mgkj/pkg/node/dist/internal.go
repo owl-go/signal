@@ -2,16 +2,17 @@ package node
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/cloudwebrtc/go-protoo/peer"
+	"github.com/cloudwebrtc/go-protoo/server"
+	"github.com/cloudwebrtc/go-protoo/transport"
+	nprotoo "github.com/cloudwebrtc/nats-protoo"
 	"mgkj/pkg/log"
 	"mgkj/pkg/proto"
 	reg "mgkj/pkg/server"
 	"mgkj/pkg/util"
 	"net/http"
 	"sync"
-
-	"github.com/cloudwebrtc/go-protoo/peer"
-	"github.com/cloudwebrtc/go-protoo/server"
-	"github.com/cloudwebrtc/go-protoo/transport"
 )
 
 var (
@@ -23,7 +24,7 @@ var (
 /*
 	"method", proto.DistToDistCall, "caller", caller, "callee", callee, "rid", rid, "nid", nid
 */
-func dist2distCall(msg map[string]interface{}) {
+func dist2distCall(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	callee := msg["callee"].(string)
 	peer := peers[callee]
 	if peer != nil {
@@ -33,12 +34,13 @@ func dist2distCall(msg map[string]interface{}) {
 		data["nid"] = msg["nid"]
 		peer.Notify(proto.DistToClientCall, data)
 	}
+	return util.Map(), nil
 }
 
 /*
 	"method", proto.DistToDistAnswer, "caller", caller, "callee", callee, "rid", rid, "nid", nid
 */
-func dist2distAnswer(msg map[string]interface{}) {
+func dist2distAnswer(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	caller := msg["caller"].(string)
 	peer := peers[caller]
 	if peer != nil {
@@ -48,12 +50,13 @@ func dist2distAnswer(msg map[string]interface{}) {
 		data["nid"] = msg["nid"]
 		peer.Notify(proto.DistToClientAnswer, data)
 	}
+	return util.Map(), nil
 }
 
 /*
 	"method", proto.DistToDistReject, "caller", caller, "callee", callee, "rid", rid, "nid", nid, "code", code
 */
-func dist2distReject(msg map[string]interface{}) {
+func dist2distReject(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	caller := msg["caller"].(string)
 	peer := peers[caller]
 	if peer != nil {
@@ -64,44 +67,44 @@ func dist2distReject(msg map[string]interface{}) {
 		data["code"] = msg["code"]
 		peer.Notify(proto.DistToClientReject, data)
 	}
+	return util.Map(), nil
 }
 
 // handleRPCMsgs 处理其他模块发送过来的消息
-func handleRPCMsgs() {
-	rpcMsgs, err := amqp.ConsumeRPC()
-	if err != nil {
-		log.Errorf("dist handleRPCMsgs ConsumeRPC err = %s", err.Error())
-		return
-	}
+func handleRPCRequest(rpcID string) {
 
-	go func() {
-		defer util.Recover("dist.handleRPCMsgs")
-		for rpcm := range rpcMsgs {
-			var msg map[string]interface{}
-			err := json.Unmarshal(rpcm.Body, &msg)
-			if err != nil {
-				log.Errorf("dist handleRPCMsgs Unmarshal err = %s", err.Error())
-			}
+	log.Infof("handleRPCRequest: rpcID => [%v]", rpcID)
 
-			from := rpcm.ReplyTo
-			corrID := rpcm.CorrelationId
-			log.Infof("dist.handleRPCMsgs recv msg=%v, from=%s, corrID=%s", msg, from, corrID)
+	protoo.OnRequest(rpcID, func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
+		go func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
 
-			method := util.Val(msg, "method")
+			defer util.Recover("dist.handleRPCRequest")
+
+			log.Infof("dist.handleRPCRequest recv request=%v", request)
+			method := request["method"].(string)
+			data := request["data"].(map[string]interface{})
+			log.Infof("method => %s, data => %v", method, data)
+
+			var result map[string]interface{}
+			err := util.NewNpError(400, fmt.Sprintf("Unkown method [%s]", method))
+
 			switch method {
-			case proto.IslbToDistPeerInfo:
-				amqp.Emit(corrID, msg)
 			case proto.DistToDistCall:
-				dist2distCall(msg)
+				result, err = dist2distCall(data)
 			case proto.DistToDistAnswer:
-				dist2distAnswer(msg)
+				result, err = dist2distAnswer(data)
 			case proto.DistToDistReject:
-				dist2distReject(msg)
+				result, err = dist2distReject(data)
 			default:
 				log.Warnf("dist.handleRPCMsgs invalid protocol method=%s", method)
 			}
-		}
-	}()
+			if err != nil {
+				reject(err.Code, err.Reason)
+			} else {
+				accept(result)
+			}
+		}(request, accept, reject)
+	})
 }
 
 // InitWebSocket 初始化ws服务
@@ -257,7 +260,8 @@ func loginin(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 	}
 	// 通知islb更新数据库
 	nid := node.NodeInfo().Nid
-	amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.DistToIslbLoginin, "uid", uid, "nid", nid), "")
+	rpc := protoo.NewRequestor(reg.GetRPCChannel(*islb))
+	rpc.AsyncRequest(proto.DistToIslbLoginin, util.Map("uid", uid, "nid", nid))
 	// resp
 	accept(emptyMap)
 }
@@ -281,7 +285,8 @@ func loginout(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFu
 	}
 	// 通知islb更新数据库
 	nid := node.NodeInfo().Nid
-	amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.DistToIslbLoginOut, "uid", uid, "nid", nid), "")
+	rpc := protoo.NewRequestor(reg.GetRPCChannel(*islb))
+	rpc.AsyncRequest(proto.DistToIslbLoginOut, util.Map("uid", uid, "nid", nid))
 	// resp
 	accept(emptyMap)
 }
@@ -305,7 +310,8 @@ func heart(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc,
 	}
 	// 通知islb更新数据库
 	nid := node.NodeInfo().Nid
-	amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.DistToIslbPeerHeart, "uid", uid, "nid", nid), "")
+	rpc := protoo.NewRequestor(reg.GetRPCChannel(*islb))
+	rpc.AsyncRequest(proto.DistToIslbPeerHeart, util.Map("uid", uid, "nid", nid))
 	// resp
 	accept(emptyMap)
 }
@@ -349,31 +355,30 @@ func call(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, 
 	peersTmp := make([]string, 0)
 	for _, calleer := range peers {
 		callee := calleer.(string)
-		ch := make(chan int, 1)
-		respIslb := func(resp map[string]interface{}) {
-			/* "method", proto.IslbToDistPeerInfo, "errorCode", 0, "nid", dist */
-			/* "method", proto.IslbToDistPeerInfo, "errorCode", 1 */
-			err := int(resp["errorCode"].(float64))
-			if err == 0 {
-				// 获取节点
-				nid := resp["nid"].(string)
-				dist := FindDistNodeByID(nid)
-				if dist != nil {
-					amqp.RPCCall(reg.GetRPCChannel(*dist), util.Map("method", proto.DistToDistCall,
-						"caller", caller, "callee", callee, "rid", rid, "nid", node.NodeInfo().Nid), "")
-				} else {
-					nCount = nCount + 1
-					peersTmp = append(peersTmp, callee)
-				}
+
+		rpc := protoo.NewRequestor(reg.GetRPCChannel(*islb))
+		resp, err := rpc.SyncRequest(proto.DistToIslbPeerInfo, util.Map("uid", callee))
+		if err != nil {
+			return
+		}
+		/* "method", proto.IslbToDistPeerInfo, "errorCode", 0, "nid", dist */
+		/* "method", proto.IslbToDistPeerInfo, "errorCode", 1 */
+		nErr := int(resp["errorCode"].(float64))
+		if nErr == 0 {
+			// 获取节点
+			nid := resp["nid"].(string)
+			dist := FindDistNodeByID(nid)
+			if dist != nil {
+				rpc := protoo.NewRequestor(reg.GetRPCChannel(*dist))
+				rpc.AsyncRequest(proto.DistToDistCall, util.Map("caller", caller, "callee", callee, "rid", rid, "nid", node.NodeInfo().Nid))
 			} else {
 				nCount = nCount + 1
 				peersTmp = append(peersTmp, callee)
 			}
-			ch <- 0
+		} else {
+			nCount = nCount + 1
+			peersTmp = append(peersTmp, callee)
 		}
-		amqp.RPCCallWithResp(reg.GetRPCChannel(*islb), util.Map("method", proto.DistToIslbPeerInfo, "uid", callee), respIslb)
-		<-ch
-		close(ch)
 	}
 
 	// resp
@@ -417,8 +422,8 @@ func callanswer(peer *peer.Peer, msg map[string]interface{}, accept peer.Respond
 	}
 
 	// 发送消息
-	amqp.RPCCall(reg.GetRPCChannel(*dist), util.Map("method", proto.DistToDistAnswer,
-		"caller", caller, "callee", callee, "rid", rid, "nid", nid), "")
+	rpc := protoo.NewRequestor(reg.GetRPCChannel(*dist))
+	rpc.AsyncRequest(proto.DistToDistAnswer, util.Map("caller", caller, "callee", callee, "rid", rid, "nid", nid))
 
 	// resp
 	accept(emptyMap)
@@ -458,8 +463,8 @@ func callreject(peer *peer.Peer, msg map[string]interface{}, accept peer.Respond
 	}
 
 	// 发送消息
-	amqp.RPCCall(reg.GetRPCChannel(*dist), util.Map("method", proto.DistToDistReject,
-		"caller", caller, "callee", callee, "rid", rid, "nid", nid, "code", code), "")
+	rpc := protoo.NewRequestor(reg.GetRPCChannel(*dist))
+	rpc.AsyncRequest(proto.DistToDistReject, util.Map("caller", caller, "callee", callee, "rid", rid, "nid", nid, "code", code))
 
 	// resp
 	accept(emptyMap)

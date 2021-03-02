@@ -1,8 +1,8 @@
 package sfu
 
 import (
+	nprotoo "github.com/cloudwebrtc/nats-protoo"
 	"mgkj/pkg/log"
-	"mgkj/pkg/mq"
 	"mgkj/pkg/proto"
 	"mgkj/pkg/rtc"
 	"mgkj/pkg/server"
@@ -10,26 +10,28 @@ import (
 )
 
 var (
-	amqp  *mq.Amqp
-	node  *server.ServiceNode
-	watch *server.ServiceWatcher
+	protoo      *nprotoo.NatsProtoo
+	broadcaster *nprotoo.Broadcaster
+	node        *server.ServiceNode
+	watch       *server.ServiceWatcher
 )
 
 // Init 初始化服务
-func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, mqURL string) {
+func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, natsURL string) {
 	// 赋值
 	node = serviceNode
 	watch = ServiceWatcher
-	amqp = mq.New(node.GetRPCChannel(), node.GetEventChannel(), mqURL)
+	protoo = nprotoo.NewNatsProtoo(natsURL)
+	broadcaster = protoo.NewBroadcaster(node.GetEventChannel())
 	// 启动
-	handleRPCMsgs()
+	handleRPCRequest(node.GetRPCChannel())
 	checkRTC()
 }
 
 // Close 关闭连接
 func Close() {
-	if amqp != nil {
-		amqp.Close()
+	if protoo != nil {
+		protoo.Close()
 	}
 	if node != nil {
 		node.Close()
@@ -44,8 +46,7 @@ func checkRTC() {
 	log.Infof("SFU.checkRTC start")
 	go func() {
 		for mid := range rtc.CleanChannel {
-			msg := util.Map("method", proto.SfuToBizOnStreamRemove, "mid", mid)
-			amqp.BroadCast(msg)
+			broadcaster.Say(proto.SfuToBizOnStreamRemove, util.Map("mid", mid))
 		}
 	}()
 }

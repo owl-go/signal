@@ -1,31 +1,31 @@
 package node
 
 import (
+	nprotoo "github.com/cloudwebrtc/nats-protoo"
 	"mgkj/pkg/log"
-	"mgkj/pkg/mq"
 	"mgkj/pkg/server"
 )
 
 var (
-	amqp  *mq.Amqp
-	node  *server.ServiceNode
-	watch *server.ServiceWatcher
+	protoo *nprotoo.NatsProtoo
+	node   *server.ServiceNode
+	watch  *server.ServiceWatcher
 )
 
 // Init 初始化服务
-func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, mqURL string) {
+func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, natsURL string) {
 	node = serviceNode
 	watch = ServiceWatcher
 	go watch.WatchServiceNode("", WatchServiceCallBack)
-	amqp = mq.New(node.GetRPCChannel(), node.GetEventChannel(), mqURL)
+	protoo = nprotoo.NewNatsProtoo(natsURL)
 	// 启动消息接收
-	handleRPCMsgs()
+	handleRPCRequest(node.GetRPCChannel())
 }
 
 // Close 关闭连接
 func Close() {
-	if amqp != nil {
-		amqp.Close()
+	if protoo != nil {
+		protoo.Close()
 	}
 	if node != nil {
 		node.Close()

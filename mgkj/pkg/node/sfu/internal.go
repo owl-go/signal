@@ -1,7 +1,6 @@
 package sfu
 
 import (
-	"encoding/json"
 	"fmt"
 	"mgkj/pkg/log"
 	"mgkj/pkg/proto"
@@ -10,61 +9,63 @@ import (
 	"mgkj/pkg/util"
 	"strings"
 
+	nprotoo "github.com/cloudwebrtc/nats-protoo"
 	sdptransform "github.com/notedit/sdp"
 	"github.com/pion/webrtc/v2"
 )
 
 // handleRPCMsgs 处理其他模块发送过来的消息
-func handleRPCMsgs() {
-	rpcMsgs, err := amqp.ConsumeRPC()
-	if err != nil {
-		log.Errorf(err.Error())
-		return
-	}
+func handleRPCRequest(rpcID string) {
 
-	go func() {
-		defer util.Recover("sfu.handleRPCMsgs")
-		for rpcm := range rpcMsgs {
-			var msg map[string]interface{}
-			err := json.Unmarshal(rpcm.Body, &msg)
-			if err != nil {
-				log.Errorf("sfu handleRPCMsgs Unmarshal err = %s", err.Error())
-			}
+	log.Infof("handleRequest: rpcID => [%v]", rpcID)
 
-			from := rpcm.ReplyTo
-			corrID := rpcm.CorrelationId
-			log.Infof("sfu.handleRPCMsgs msg=%v", msg)
+	protoo.OnRequest(rpcID, func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
 
-			resp := util.Val(msg, "method")
-			if resp != "" {
-				switch resp {
+		go func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
+
+			defer util.Recover("sfu.handleRPCRequest")
+
+			log.Infof("sfu.handleRPCRequest recv request=%v", request)
+			method := request["method"].(string)
+			data := request["data"].(map[string]interface{})
+			log.Infof("method => %s, data => %v", method, data)
+
+			var result map[string]interface{}
+			err := util.NewNpError(400, fmt.Sprintf("Unkown method [%s]", method))
+
+			if method != "" {
+				switch method {
 				case proto.BizToSfuPublish:
-					publish(msg, from, corrID)
+					result, err = publish(data)
 				case proto.BizToSfuUnPublish:
-					unpublish(msg, from, corrID)
+					result, err = unpublish(data)
 				case proto.BizToSfuSubscribe:
-					subscribe(msg, from, corrID)
+					result, err = subscribe(data)
 				case proto.BizToSfuUnSubscribe:
-					unsubscribe(msg, from, corrID)
+					result, err = unsubscribe(data)
 				case proto.BizToSfuTrickleICE:
-					trickle(msg, from, corrID)
+					result, err = trickle(data)
 				default:
-					log.Warnf("sfu.handleRPCMsgResp invalid protocol corrID=%s, from=%s, resp=%s msg=%v", corrID, from, resp, msg)
+					log.Warnf("sfu.handleRPCRequest invalid protocol method=%s data=%v", method, data)
 				}
 			}
-		}
-	}()
+			if err != nil {
+				reject(err.Code, err.Reason)
+			} else {
+				accept(result)
+			}
+		}(request, accept, reject)
+	})
 }
 
 /*
 	"method", proto.BizToSfuPublish, "rid", rid, "uid", uid, "minfo", minfo, "jsep", jsep
 */
 // publish 处理发布流
-func publish(msg map[string]interface{}, from, corrID string) {
+func publish(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	jsep := msg["jsep"].(map[string]interface{})
 	if jsep == nil {
-		amqp.RPCCall(from, util.Map("method", proto.SfuToBizPublish, "errorCode", 401), corrID)
-		return
+		return util.Map("errorCode", 401), nil
 	}
 	sdp := util.Val(jsep, "sdp")
 	rid := util.Val(msg, "rid")
@@ -86,8 +87,7 @@ func publish(msg map[string]interface{}, from, corrID string) {
 	}
 	pub := transport.NewWebRTCTransport(mid, rtcOptions)
 	if pub == nil {
-		amqp.RPCCall(from, util.Map("method", proto.SfuToBizPublish, "errorCode", 402), corrID)
-		return
+		return util.Map("errorCode", 402), nil
 	}
 
 	key := proto.GetMediaPubKey(rid, uid, mid)
@@ -95,8 +95,7 @@ func publish(msg map[string]interface{}, from, corrID string) {
 	answer, err := pub.Answer(offer, true)
 	if err != nil {
 		log.Errorf("err=%v answer=%v", err, answer)
-		amqp.RPCCall(from, util.Map("method", proto.SfuToBizPublish, "errorCode", 403), corrID)
-		return
+		return util.Map("errorCode", 403), nil
 	}
 
 	router.AddPub(uid, pub)
@@ -104,8 +103,7 @@ func publish(msg map[string]interface{}, from, corrID string) {
 	sdpObj, err := sdptransform.Parse(offer.SDP)
 	if err != nil {
 		log.Errorf("err=%v sdpObj=%v", err, sdpObj)
-		amqp.RPCCall(from, util.Map("method", proto.SfuToBizPublish, "errorCode", 404), corrID)
-		return
+		return util.Map("errorCode", 404), nil
 	}
 
 	tracks := make(map[string][]proto.TrackInfo)
@@ -141,14 +139,15 @@ func publish(msg map[string]interface{}, from, corrID string) {
 		}
 	}
 	log.Infof("publish tracks %v, answer = %v", tracks, answer)
-	amqp.RPCCall(from, util.Map("method", proto.SfuToBizPublish, "errorCode", 0, "jsep", answer, "mid", mid, "tracks", tracks), corrID)
+	resp := util.Map("errorCode", 0, "jsep", answer, "mid", mid, "tracks", tracks)
+	return resp, nil
 }
 
 /*
 	"method", proto.BizToSfuUnPublish, "rid", rid, "uid", uid, "mid", mid
 */
 // unpublish 处理取消发布流
-func unpublish(msg map[string]interface{}, from, corrID string) {
+func unpublish(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(msg, "rid")
 	uid := util.Val(msg, "uid")
 	mid := util.Val(msg, "mid")
@@ -159,27 +158,28 @@ func unpublish(msg map[string]interface{}, from, corrID string) {
 		router.Close()
 		rtc.DelRouter(mid)
 	}
+	return util.Map(), nil
 }
 
 /*
 	"method", proto.BizToSfuSubscribe, "rid", rid, "uid", uid, "mid", mid, "tracks", rsp["tracks"], "jsep", jsep
 */
 // subscribe 处理订阅流
-func subscribe(msg map[string]interface{}, from, corrID string) {
+func subscribe(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
+	log.Infof("sfu.subscribe msg => %v", msg)
+
 	rid := util.Val(msg, "rid")
 	mid := util.Val(msg, "mid")
 	uid := proto.GetUIDFromMID(mid)
 	key := proto.GetMediaPubKey(rid, uid, mid)
 	router := rtc.GetOrNewRouter(key)
 	if router == nil {
-		amqp.RPCCall(from, util.Map("method", proto.SfuToBizSubscribe, "errorCode", 411), corrID)
-		return
+		return util.Map("errorCode", 411), nil
 	}
 
 	jsep := msg["jsep"].(map[string]interface{})
 	if jsep == nil {
-		amqp.RPCCall(from, util.Map("method", proto.SfuToBizSubscribe, "errorCode", 412), corrID)
-		return
+		return util.Map("errorCode", 412), nil
 	}
 
 	sdp := util.Val(jsep, "sdp")
@@ -194,8 +194,7 @@ func subscribe(msg map[string]interface{}, from, corrID string) {
 
 	sub := transport.NewWebRTCTransport(subID, rtcOptions)
 	if sub == nil {
-		amqp.RPCCall(from, util.Map("method", proto.SfuToBizSubscribe, "errorCode", 413), corrID)
-		return
+		return util.Map("errorCode", 413), nil
 	}
 
 	tracks := make(map[string]proto.TrackInfo)
@@ -232,20 +231,20 @@ func subscribe(msg map[string]interface{}, from, corrID string) {
 	answer, err := sub.Answer(offer, false)
 	if err != nil {
 		log.Errorf("err=%v answer=%v", err, answer)
-		amqp.RPCCall(from, util.Map("method", proto.SfuToBizSubscribe, "errorCode", 414), corrID)
-		return
+		return util.Map("errorCode", 414), nil
 	}
 	router.AddSub(subID, sub)
 
 	log.Infof("subscribe mid %s, answer = %v", subID, answer)
-	amqp.RPCCall(from, util.Map("method", proto.SfuToBizSubscribe, "errorCode", 0, "jsep", answer, "mid", subID), corrID)
+	resp := util.Map("errorCode", 0, "jsep", answer, "mid", subID)
+	return resp, nil
 }
 
 /*
 	"method", proto.BizToSfuUnSubscribe, "rid", rid, "uid", uid, "mid", mid
 */
 // unsubscribe 处理取消订阅流
-func unsubscribe(msg map[string]interface{}, from, corrID string) {
+func unsubscribe(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	mid := util.Val(msg, "mid")
 	rtc.MapRouter(func(id string, r *rtc.Router) {
 		subs := r.GetSubs()
@@ -256,13 +255,14 @@ func unsubscribe(msg map[string]interface{}, from, corrID string) {
 			}
 		}
 	})
+	return util.Map(), nil
 }
 
 /*
 	"method", proto.BizToSfuTrickleICE, "rid", rid, "mid", mid, "sid", sid, "ice", ice, "ispub", ispub
 */
 // trickle 处理ice数据
-func trickle(msg map[string]interface{}, from, corrID string) {
+func trickle(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(msg, "rid")
 	mid := util.Val(msg, "mid")
 	sid := util.Val(msg, "sid")
@@ -282,4 +282,5 @@ func trickle(msg map[string]interface{}, from, corrID string) {
 			t.(*transport.WebRTCTransport).AddCandidate(cand)
 		}
 	}
+	return util.Map(), nil
 }

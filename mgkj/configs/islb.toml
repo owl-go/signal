@@ -15,9 +15,8 @@ level = "info"
 # addrs = ["127.0.0.1:2379"]
 addrs = ["8.129.55.41:2379"]
 
-[amqp]
-# url = "amqp://guest:guest@localhost:5672/"
-url = "amqp://zhouwq:123456@8.129.55.41:5672/admin"
+[nats]
+url = "nats://127.0.0.1:4222"
 
 [redis]
 # addrs = [":6379"]

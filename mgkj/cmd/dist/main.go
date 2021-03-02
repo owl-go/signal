@@ -29,7 +29,7 @@ func main() {
 	serviceNode := server.NewServiceNode(conf.Etcd.Addrs, conf.Global.Ndc, conf.Global.Nid, conf.Global.Name, conf.Global.Nip)
 	serviceNode.RegisterNode()
 	serviceWatcher := server.NewServiceWatcher(conf.Etcd.Addrs)
-	dist.Init(serviceNode, serviceWatcher, conf.Amqp.URL)
+	dist.Init(serviceNode, serviceWatcher, conf.Nats.URL)
 	dist.InitWebSocket(conf.Signal.Host, conf.Signal.Port, conf.Signal.Cert, conf.Signal.Key)
 
 	select {}

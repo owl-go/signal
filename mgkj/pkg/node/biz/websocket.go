@@ -55,8 +55,9 @@ func checkRoom() {
 					if islb == nil {
 						log.Errorf("islb node is not find")
 					}
-					amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbOnStreamRemove, "rid", rid, "uid", uid, "mid", ""), "")
-					amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbOnLeave, "rid", rid, "uid", uid), "")
+					rpc := protoo.NewRequestor(reg.GetRPCChannel(*islb))
+					rpc.AsyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", ""))
+					rpc.AsyncRequest(proto.BizToIslbOnLeave, util.Map("rid", rid, "uid", uid))
 					node.room.RemovePeer(uid)
 				}
 			}
@@ -213,18 +214,19 @@ func join(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, 
 		return
 	}
 
+	rpc := protoo.NewRequestor(reg.GetRPCChannel(*islb))
 	// 删除以前加入过的房间数据
 	for _, room := range GetRoomsByPeer(uid) {
 		ridTmp := room.GetID()
-		amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbOnStreamRemove, "rid", ridTmp, "uid", uid, "mid", ""), "")
-		amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbOnLeave, "rid", ridTmp, "uid", uid), "")
+		rpc.AsyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", ridTmp, "uid", uid, "mid", ""))
+		rpc.AsyncRequest(proto.BizToIslbOnLeave, util.Map("rid", ridTmp, "uid", uid))
 		DelPeer(ridTmp, uid)
 	}
 
 	// 重新加入房间
 	AddPeer(rid, peer)
 	// 通知房间其他人
-	amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbOnJoin, "rid", rid, "uid", uid, "info", info), "")
+	rpc.AsyncRequest(proto.BizToIslbOnJoin, util.Map("rid", rid, "uid", uid, "info", info))
 	// 查询房间存在的发布流
 	FindMediaPubs(peer, rid)
 	// resp
@@ -261,8 +263,9 @@ func leave(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc,
 	// 删除加入的房间和流
 	for _, room := range GetRoomsByPeer(uid) {
 		ridTmp := room.GetID()
-		amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbOnStreamRemove, "rid", ridTmp, "uid", uid, "mid", ""), "")
-		amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbOnLeave, "rid", ridTmp, "uid", uid), "")
+		rpc := protoo.NewRequestor(reg.GetRPCChannel(*islb))
+		rpc.AsyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", ridTmp, "uid", uid, "mid", ""))
+		rpc.AsyncRequest(proto.BizToIslbOnLeave, util.Map("rid", ridTmp, "uid", uid))
 		DelPeer(ridTmp, uid)
 	}
 	// resp
@@ -298,7 +301,8 @@ func keeplive(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFu
 	}
 
 	// 通知islb
-	amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbKeepLive, "rid", rid, "uid", uid, "info", info), "")
+	rpc := protoo.NewRequestor(reg.GetRPCChannel(*islb))
+	rpc.AsyncRequest(proto.BizToIslbKeepLive, util.Map("rid", rid, "uid", uid, "info", info))
 	// resp
 	accept(emptyMap)
 }
@@ -329,15 +333,12 @@ func publish(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 	if invalid(jsep, "sdp", reject) {
 		return
 	}
-
 	room := GetRoom(rid)
 	if room == nil {
 		reject(codeRIDErr, codeStr(codeRIDErr))
 		return
 	}
-
 	minfo := msg["minfo"].(map[string]interface{})
-
 	var sfu *reg.Node
 	nid := util.Val(msg, "nid")
 	if nid != "" {
@@ -345,7 +346,6 @@ func publish(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 	} else {
 		sfu = FindSfuNodeByPayload()
 	}
-
 	if sfu == nil {
 		log.Errorf("sfu node is not find")
 		reject(codeSfuErr, codeStr(codeSfuErr))
@@ -362,27 +362,27 @@ func publish(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 
 	// 获取sfu节点的resp
 	bPublish := false
-	ch := make(chan int, 1)
 	rsp := make(map[string]interface{})
-	respsfu := func(resp map[string]interface{}) {
-		// "method", proto.SfuToBizPublish, "errorCode", 0, "jsep", answer, "mid", mid, "tracks", tracks
-		// "method", proto.SfuToBizPublish, "errorCode", 403, "errorReason", "publish: sdp parse failed"
-		log.Infof("biz.publish respHandler resp=%v", resp)
-		code := int(resp["errorCode"].(float64))
-		if code == 0 {
-			bPublish = true
-			rsp["jsep"] = resp["jsep"]
-			rsp["mid"] = resp["mid"]
-			rsp["tracks"] = resp["tracks"]
-		} else {
-			bPublish = false
-		}
-		ch <- 0
-	}
-	amqp.RPCCallWithResp(reg.GetRPCChannel(*sfu), util.Map("method", proto.BizToSfuPublish, "rid", rid, "uid", uid, "minfo", minfo, "jsep", jsep), respsfu)
-	<-ch
-	close(ch)
 
+	rpc := protoo.NewRequestor(reg.GetRPCChannel(*sfu))
+	resp, err := rpc.SyncRequest(proto.BizToSfuPublish, util.Map("rid", rid, "uid", uid, "minfo", minfo, "jsep", jsep))
+	if err != nil {
+		log.Errorf("rpc to sfu fail")
+		reject(codePubErr, codeStr(codePubErr))
+		return
+	}
+	// "method", proto.SfuToBizPublish, "errorCode", 0, "jsep", answer, "mid", mid, "tracks", tracks
+	// "method", proto.SfuToBizPublish, "errorCode", 403, "errorReason", "publish: sdp parse failed"
+	log.Infof("biz.publish respHandler resp=%v", resp)
+	code := int(resp["errorCode"].(float64))
+	if code == 0 {
+		bPublish = true
+		rsp["jsep"] = resp["jsep"]
+		rsp["mid"] = resp["mid"]
+		rsp["tracks"] = resp["tracks"]
+	} else {
+		bPublish = false
+	}
 	if !bPublish {
 		log.Errorf("publish is not suc")
 		reject(codePubErr, codeStr(codePubErr))
@@ -393,7 +393,8 @@ func publish(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 	mid := util.Val(rsp, "mid")
 	tracks := rsp["tracks"]
 	// 通知islb
-	amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbOnStreamAdd, "rid", rid, "uid", uid, "mid", mid, "tracks", tracks, "nid", nid), "")
+	rpc = protoo.NewRequestor(reg.GetRPCChannel(*islb))
+	rpc.AsyncRequest(proto.BizToIslbOnStreamAdd, util.Map("rid", rid, "uid", uid, "mid", mid, "tracks", tracks, "nid", nid))
 	// resp
 	accept(rsp)
 }
@@ -440,9 +441,9 @@ func unpublish(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondF
 		reject(codeIslbErr, codeStr(codeIslbErr))
 		return
 	}
-
-	amqp.RPCCall(reg.GetRPCChannel(*sfu), util.Map("method", proto.BizToSfuUnPublish, "rid", rid, "uid", uid, "mid", mid), "")
-	amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbOnStreamRemove, "rid", rid, "uid", uid, "mid", mid), "")
+	rpc := protoo.NewRequestor(reg.GetRPCChannel(*sfu))
+	rpc.AsyncRequest(proto.BizToSfuUnPublish, util.Map("rid", rid, "uid", uid, "mid", mid))
+	rpc.AsyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", mid))
 	// resp
 	accept(emptyMap)
 }
@@ -460,6 +461,8 @@ func unpublish(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondF
 */
 // subscribe 订阅流
 func subscribe(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
+	log.Infof("biz.subscribe msg=%v", msg)
+
 	if invalid(msg, "rid", reject) || invalid(msg, "mid", reject) || invalid(msg, "jsep", reject) {
 		return
 	}
@@ -468,7 +471,7 @@ func subscribe(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondF
 	uid := peer.ID()
 	rid := util.Val(msg, "rid")
 	mid := util.Val(msg, "mid")
-	log.Infof("biz.subscribe uid=%s msg=%v", uid, msg)
+	log.Infof("biz.subscribe uid=%s", uid)
 
 	jsep := msg["jsep"].(map[string]interface{})
 	if invalid(jsep, "sdp", reject) {
@@ -503,11 +506,16 @@ func subscribe(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondF
 	}
 
 	// 订阅流回调
-	ch := make(chan int, 1)
 	rspSfu := make(map[string]interface{})
-	respSfu := func(resp map[string]interface{}) {
-		// "method", proto.SfuToBizSubscribe, "errorCode", 0, "jsep", answer, "mid", subID
-		// "method", proto.SfuToBizSubscribe, "errorCode", 415, "errorReason", "subscribe: Unsupported Media Type"
+
+	rpc := protoo.NewRequestor(reg.GetRPCChannel(*sfu))
+	if find {
+		resp, err := rpc.SyncRequest(proto.BizToSfuSubscribe, util.Map("rid", rid, "uid", uid, "mid", mid, "tracks", tracks, "jsep", jsep))
+		if err != nil {
+			log.Errorf("rpc to sfu fail")
+			reject(codeSubErr, codeStr(codeSubErr))
+			return
+		}
 		code := int(resp["errorCode"].(float64))
 		if code == 0 {
 			find = true
@@ -516,15 +524,22 @@ func subscribe(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondF
 		} else {
 			find = false
 		}
-		ch <- 0
-	}
-	if find {
-		amqp.RPCCallWithResp(reg.GetRPCChannel(*sfu), util.Map("method", proto.BizToSfuSubscribe, "rid", rid, "uid", uid, "mid", mid, "tracks", tracks, "jsep", jsep), respSfu)
 	} else {
-		amqp.RPCCallWithResp(reg.GetRPCChannel(*sfu), util.Map("method", proto.BizToSfuSubscribe, "rid", rid, "uid", uid, "mid", mid, "tracks", rsp["tracks"], "jsep", jsep), respSfu)
+		resp, err := rpc.SyncRequest(proto.BizToSfuSubscribe, util.Map("rid", rid, "uid", uid, "mid", mid, "tracks", rsp["tracks"], "jsep", jsep))
+		if err != nil {
+			log.Errorf("rpc to sfu fail")
+			reject(codeSubErr, codeStr(codeSubErr))
+			return
+		}
+		code := int(resp["errorCode"].(float64))
+		if code == 0 {
+			find = true
+			rspSfu["jsep"] = resp["jsep"]
+			rspSfu["sid"] = resp["mid"]
+		} else {
+			find = false
+		}
 	}
-	<-ch
-	close(ch)
 
 	if !find {
 		log.Errorf("subscribe is not suc")
@@ -568,8 +583,8 @@ func unsubscribe(peer *peer.Peer, msg map[string]interface{}, accept peer.Respon
 		reject(codeSfuErr, codeStr(codeSfuErr))
 		return
 	}
-
-	amqp.RPCCall(reg.GetRPCChannel(*sfu), util.Map("method", proto.BizToSfuUnSubscribe, "rid", rid, "uid", uid, "mid", mid), "")
+	rpc := protoo.NewRequestor(reg.GetRPCChannel(*sfu))
+	rpc.AsyncRequest(proto.BizToSfuUnSubscribe, util.Map("rid", rid, "uid", uid, "mid", mid))
 	// resp
 	accept(emptyMap)
 }
@@ -614,7 +629,8 @@ func trickle(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 		return
 	}
 
-	amqp.RPCCall(reg.GetRPCChannel(*sfu), util.Map("method", proto.BizToSfuTrickleICE, "rid", rid, "sid", sid, "mid", mid, "ice", ice, "ispub", ispub), "")
+	rpc := protoo.NewRequestor(reg.GetRPCChannel(*sfu))
+	rpc.AsyncRequest(proto.BizToSfuTrickleICE, util.Map("rid", rid, "sid", sid, "mid", mid, "ice", ice, "ispub", ispub))
 	// resp
 	accept(emptyMap)
 }
@@ -646,7 +662,8 @@ func broadcast(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondF
 		return
 	}
 
-	amqp.RPCCall(reg.GetRPCChannel(*islb), util.Map("method", proto.BizToIslbBroadcast, "rid", rid, "uid", uid, "data", data), "")
+	rpc := protoo.NewRequestor(reg.GetRPCChannel(*islb))
+	rpc.AsyncRequest(proto.BizToIslbBroadcast, util.Map("rid", rid, "uid", uid, "data", data))
 	// resp
 	accept(emptyMap)
 }

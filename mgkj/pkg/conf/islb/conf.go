@@ -16,8 +16,8 @@ var (
 	Log = &cfg.Log
 	// Etcd Etcd设置
 	Etcd = &cfg.Etcd
-	// Amqp 消息中间件设置
-	Amqp = &cfg.Amqp
+	// Nats 消息中间件设置
+	Nats = &cfg.Nats
 	// Redis Redis设置
 	Redis = &cfg.Redis
 )
@@ -45,7 +45,7 @@ type etcd struct {
 	Addrs []string `mapstructure:"addrs"`
 }
 
-type amqp struct {
+type nats struct {
 	URL string `mapstructure:"url"`
 }
 
@@ -59,7 +59,7 @@ type config struct {
 	Global  global `mapstructure:"global"`
 	Log     log    `mapstructure:"log"`
 	Etcd    etcd   `mapstructure:"etcd"`
-	Amqp    amqp   `mapstructure:"amqp"`
+	Nats    nats   `mapstructure:"nats"`
 	Redis   redis  `mapstructure:"redis"`
 	CfgFile string
 }

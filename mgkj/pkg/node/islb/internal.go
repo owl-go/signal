@@ -1,8 +1,8 @@
 package node
 
 import (
-	"encoding/json"
 	"fmt"
+	nprotoo "github.com/cloudwebrtc/nats-protoo"
 	"strings"
 	"time"
 
@@ -11,69 +11,68 @@ import (
 	"mgkj/pkg/util"
 )
 
-// handleRPCMsgs 接收消息处理
-func handleRPCMsgs() {
-	rpcMsgs, err := amqp.ConsumeRPC()
-	if err != nil {
-		log.Errorf(err.Error())
-		return
-	}
+// handleRPCRequest 接收消息处理
+func handleRPCRequest(rpcID string) {
+	log.Infof("handleRPCRequest: rpcID => [%v]", rpcID)
 
-	go func() {
-		defer util.Recover("islb.handleRPCMsgs")
-		for rpcm := range rpcMsgs {
-			var msg map[string]interface{}
-			err := json.Unmarshal(rpcm.Body, &msg)
-			if err != nil {
-				log.Errorf("islb handleRPCMsgs Unmarshal err = %s", err.Error())
-			}
+	protoo.OnRequest(rpcID, func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
+		go func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
+			defer util.Recover("islb.handleRPCRequest")
 
-			from := rpcm.ReplyTo
-			corrID := rpcm.CorrelationId
-			log.Infof("islb.handleRPCMsgs recv msg=%v, from=%s, corrID=%s", msg, from, corrID)
+			log.Infof("islb.handleRPCRequest recv request=%v", request)
+			method := request["method"].(string)
+			data := request["data"].(map[string]interface{})
+			log.Infof("method => %s, data => %v", method, data)
 
-			method := util.Val(msg, "method")
+			var result map[string]interface{}
+			err := util.NewNpError(400, fmt.Sprintf("Unkown method [%s]", method))
+
 			switch method {
 			/* 处理和dist服务器通信 */
 			case proto.DistToIslbLoginin:
-				clientloginin(msg)
+				result, err = clientloginin(data)
 			case proto.DistToIslbLoginOut:
-				clientloginout(msg)
+				result, err = clientloginout(data)
 			case proto.DistToIslbPeerHeart:
-				clientPeerHeart(msg)
+				result, err = clientPeerHeart(data)
 			case proto.DistToIslbPeerInfo:
-				getPeerinfo(msg, from, corrID)
+				result, err = getPeerinfo(data)
 			/* 处理和biz服务器通信 */
 			case proto.BizToIslbOnJoin:
-				clientJoin(msg)
+				result, err = clientJoin(data)
 			case proto.BizToIslbOnLeave:
-				clientLeave(msg)
+				result, err = clientLeave(data)
 			case proto.BizToIslbOnStreamAdd:
-				streamAdd(msg)
+				result, err = streamAdd(data)
 			case proto.BizToIslbOnStreamRemove:
-				streamRemove(msg)
+				result, err = streamRemove(data)
 			case proto.BizToIslbKeepLive:
-				keeplive(msg)
+				result, err = keeplive(data)
 			case proto.BizToIslbBroadcast:
-				broadcast(msg)
+				result, err = broadcast(data)
 			case proto.BizToIslbGetSfuInfo:
-				getSfuByMid(msg, from, corrID)
+				result, err = getSfuByMid(data)
 			case proto.BizToIslbGetMediaInfo:
-				getSfuByMid(msg, from, corrID)
+				result, err = getSfuByMid(data)
 			case proto.BizToIslbGetMediaPubs:
-				getMediaPubs(msg, from, corrID)
+				result, err = getMediaPubs(data)
 			case proto.BizToIslbPeerLive:
-				getPeerLive(msg, from, corrID)
+				result, err = getPeerLive(data)
 			}
-		}
-	}()
+			if err != nil {
+				reject(err.Code, err.Reason)
+			} else {
+				accept(result)
+			}
+		}(request, accept, reject)
+	})
 }
 
 /*
 	"method", proto.DistToIslbLoginin, "uid", uid, "nid", nid
 */
 // clientloginin 有人登录到dist服务器
-func clientloginin(data map[string]interface{}) {
+func clientloginin(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	uid := util.Val(data, "uid")
 	dist := util.Val(data, "nid")
 	// 获取用户信息保存的key
@@ -83,13 +82,14 @@ func clientloginin(data map[string]interface{}) {
 	if err != nil {
 		log.Errorf("redis.Set clientloginin err = %v", err)
 	}
+	return util.Map(), nil
 }
 
 /*
 	"method", proto.DistToIslbLoginOut, "uid", uid, "nid", nid
 */
 // clientloginin 有人退录到dist服务器
-func clientloginout(data map[string]interface{}) {
+func clientloginout(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	uid := util.Val(data, "uid")
 	// 获取用户信息保存的key
 	uKey := proto.GetUserDistKey(uid)
@@ -98,13 +98,14 @@ func clientloginout(data map[string]interface{}) {
 	if err != nil {
 		log.Errorf("redis.Del clientloginout err = %v", err)
 	}
+	return util.Map(), nil
 }
 
 /*
 	"method", proto.DistToIslbPeerHeart, "uid", uid, "nid", nid
 */
 // clientPeerHeart 有人发送心跳到dist服务器,更新key的时间
-func clientPeerHeart(data map[string]interface{}) {
+func clientPeerHeart(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	uid := util.Val(data, "uid")
 	dist := util.Val(data, "nid")
 	// 获取用户信息保存的key
@@ -114,32 +115,33 @@ func clientPeerHeart(data map[string]interface{}) {
 	if err != nil {
 		log.Errorf("redis.Set clientPeerHeart err = %v", err)
 	}
+	return util.Map(), nil
 }
 
 /*
 	"method", proto.DistToIslbPeerInfo, "uid", uid
 */
 // getPeerinfo 获取Peer在哪个Dist服务器
-func getPeerinfo(data map[string]interface{}, from, corrID string) {
+func getPeerinfo(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	// 获取参数
 	uid := util.Val(data, "uid")
 	// 获取用户信息保存的key
 	uKey := proto.GetUserDistKey(uid)
 	dist := redis.Get(uKey)
+	resp := make(map[string]interface{})
 	if dist == "" {
-		resp := util.Map("method", proto.IslbToDistPeerInfo, "errorCode", 1)
-		amqp.RPCCall(from, resp, corrID)
+		resp = util.Map("errorCode", 1)
 	} else {
-		resp := util.Map("method", proto.IslbToDistPeerInfo, "errorCode", 0, "nid", dist)
-		amqp.RPCCall(from, resp, corrID)
+		resp = util.Map("errorCode", 0, "nid", dist)
 	}
+	return resp, nil
 }
 
 /*
 	"method", proto.BizToIslbOnJoin, "rid", rid, "uid", uid, "info", info
 */
 // clientJoin 有人加入房间
-func clientJoin(data map[string]interface{}) {
+func clientJoin(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
 	info := util.Val(data, "info")
@@ -151,15 +153,15 @@ func clientJoin(data map[string]interface{}) {
 		log.Errorf("redis.Set clientJoin err = %v", err)
 	}
 	// 生成resp对象
-	msg := util.Map("method", proto.IslbToBizOnJoin, "rid", rid, "uid", uid, "info", info)
-	amqp.BroadCast(msg)
+	broadcaster.Say(proto.IslbToBizOnJoin, util.Map("rid", rid, "uid", uid, "info", info))
+	return util.Map(), nil
 }
 
 /*
 	"method", proto.BizToIslbOnLeave, "rid", rid, "uid", uid
 */
 // clientLeave 有人退出房间
-func clientLeave(data map[string]interface{}) {
+func clientLeave(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
 	// 获取用户的信息
@@ -169,17 +171,17 @@ func clientLeave(data map[string]interface{}) {
 	if err != nil {
 		log.Errorf("redis.Del clientLeave err = %v", err)
 	} else {
-		msg := util.Map("method", proto.IslbToBizOnLeave, "rid", rid, "uid", uid)
 		time.Sleep(200 * time.Millisecond)
-		amqp.BroadCast(msg)
+		broadcaster.Say(proto.IslbToBizOnLeave, util.Map("rid", rid, "uid", uid))
 	}
+	return util.Map(), nil
 }
 
 /*
 	"method", proto.BizToIslbOnStreamAdd, "rid", rid, "uid", uid, "mid", mid, "tracks", tracks, "nid", nid
 */
 // streamAdd 有人发布流
-func streamAdd(data map[string]interface{}) {
+func streamAdd(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
 	mid := util.Val(data, "mid")
@@ -222,15 +224,15 @@ func streamAdd(data map[string]interface{}) {
 		log.Errorf("redis.Set streamAdd err = %v", err)
 	}
 	// 生成resp对象
-	msg := util.Map("method", proto.IslbToBizOnStreamAdd, "rid", rid, "uid", uid, "mid", mid, "tracks", tracks, "nid", nid)
-	amqp.BroadCast(msg)
+	broadcaster.Say(proto.IslbToBizOnStreamAdd, util.Map("rid", rid, "uid", uid, "mid", mid, "tracks", tracks, "nid", nid))
+	return util.Map(), nil
 }
 
 /*
 	"method", proto.BizToIslbOnStreamRemove, "rid", rid, "uid", uid, "mid", ""
 */
 // streamRemove 有人取消发布流
-func streamRemove(data map[string]interface{}) {
+func streamRemove(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
 	mid := util.Val(data, "mid")
@@ -258,8 +260,7 @@ func streamRemove(data map[string]interface{}) {
 				log.Errorf("redis.Del streamRemove err = %v", err)
 			} else {
 				// 生成resp对象
-				msg := util.Map("method", proto.IslbToBizOnStreamRemove, "rid", rid, "uid", uid, "mid", mid)
-				amqp.BroadCast(msg)
+				broadcaster.Say(proto.IslbToBizOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", mid))
 			}
 		}
 	} else {
@@ -278,17 +279,17 @@ func streamRemove(data map[string]interface{}) {
 			log.Errorf("redis.Del streamRemove err = %v", err)
 		} else {
 			// 生成resp对象
-			msg := util.Map("method", proto.IslbToBizOnStreamRemove, "rid", rid, "uid", uid, "mid", mid)
-			amqp.BroadCast(msg)
+			broadcaster.Say(proto.IslbToBizOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", mid))
 		}
 	}
+	return util.Map(), nil
 }
 
 /*
 	"method", proto.BizToIslbKeepLive, "rid", rid, "uid", uid, "info", info
 */
 // keeplive 保活
-func keeplive(data map[string]interface{}) {
+func keeplive(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
 	info := util.Val(data, "info")
@@ -299,46 +300,47 @@ func keeplive(data map[string]interface{}) {
 	if err != nil {
 		log.Errorf("redis.Set keeplive err = %v", err)
 	}
+	return util.Map(), nil
 }
 
 /*
 	"method", proto.BizToIslbBroadcast, "rid", rid, "uid", uid, "data", data
 */
 // broadcast 发送广播
-func broadcast(data map[string]interface{}) {
+func broadcast(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
 	dataTmp := util.Val(data, "data")
 
-	msg := util.Map("method", proto.IslbToBizBroadcast, "rid", rid, "uid", uid, "data", dataTmp)
-	amqp.BroadCast(msg)
+	broadcaster.Say(proto.IslbToBizBroadcast, util.Map("rid", rid, "uid", uid, "data", dataTmp))
+	return util.Map(), nil
 }
 
 /*
 	"method", proto.BizToIslbGetSfuInfo, "rid", rid, "mid", mid
 */
 // getSfuByMid 获取指定mid对应的sfu节点
-func getSfuByMid(data map[string]interface{}, from, corrID string) {
+func getSfuByMid(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	mid := util.Val(data, "mid")
 	uid := proto.GetUIDFromMID(mid)
 	// 获取用户发布流对应的sfu信息
 	uKey := proto.GetMediaPubKey(rid, uid, mid)
 	nid := redis.Get(uKey)
+	resp := make(map[string]interface{})
 	if nid != "" {
-		resp := util.Map("method", proto.IslbToBizGetSfuInfo, "errorCode", 0, "rid", rid, "mid", mid, "nid", nid)
-		amqp.RPCCall(from, resp, corrID)
+		resp = util.Map("errorCode", 0, "rid", rid, "mid", mid, "nid", nid)
 	} else {
-		resp := util.Map("method", proto.IslbToBizGetSfuInfo, "errorCode", 1, "rid", rid, "mid", mid)
-		amqp.RPCCall(from, resp, corrID)
+		resp = util.Map("errorCode", 1, "rid", rid, "mid", mid)
 	}
+	return resp, nil
 }
 
 /*
 	"method", proto.BizToIslbGetMediaInfo, "rid", rid, "mid", mid
 */
 // getMediaInfo 获取指定mid对应的流的信息
-func getMediaInfo(data map[string]interface{}, from, corrID string) {
+func getMediaInfo(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	mid := util.Val(data, "mid")
 	uid := proto.GetUIDFromMID(mid)
@@ -356,20 +358,20 @@ func getMediaInfo(data map[string]interface{}, from, corrID string) {
 			tracks[msid] = *infos
 		}
 	}
+	resp := make(map[string]interface{})
 	if len(tracks) != 0 {
-		resp := util.Map("method", proto.IslbToBizGetMediaInfo, "errorCode", 0, "rid", rid, "mid", mid, "tracks", tracks)
-		amqp.RPCCall(from, resp, corrID)
+		resp = util.Map("errorCode", 0, "rid", rid, "mid", mid, "tracks", tracks)
 	} else {
-		resp := util.Map("method", proto.IslbToBizGetMediaInfo, "errorCode", 1, "rid", rid, "mid", mid)
-		amqp.RPCCall(from, resp, corrID)
+		resp = util.Map("errorCode", 1, "rid", rid, "mid", mid)
 	}
+	return resp, nil
 }
 
 /*
 	"method", proto.BizToIslbGetMediaPubs, "rid", rid, "uid", uid
 */
 // getMediaPubs 获取房间所有人的发布流
-func getMediaPubs(data map[string]interface{}, from, corrID string) {
+func getMediaPubs(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	uidTmp := util.Val(data, "uid")
 	// 找到保存用户流信息的key
@@ -377,9 +379,8 @@ func getMediaPubs(data map[string]interface{}, from, corrID string) {
 	for _, key := range redis.Keys("/media/rid/" + rid + "/uid/*") {
 		mid, uid, err := parseMediaKey(key)
 		if err != nil {
-			resp := util.Map("method", proto.IslbToBizGetMediaPubs, "errorCode", 1, "rid", rid)
-			amqp.RPCCall(from, resp, corrID)
-			return
+			resp := util.Map("errorCode", 1, "rid", rid)
+			return resp, nil
 		}
 
 		if uidTmp == uid {
@@ -404,9 +405,9 @@ func getMediaPubs(data map[string]interface{}, from, corrID string) {
 		pubs = append(pubs, pub)
 	}
 
-	resp := util.Map("method", proto.IslbToBizGetMediaPubs, "errorCode", 0, "rid", rid, "pubs", pubs)
-	amqp.RPCCall(from, resp, corrID)
+	resp := util.Map("errorCode", 0, "rid", rid, "pubs", pubs)
 	log.Infof("getMediaPubs: resp=%v", resp)
+	return resp, nil
 }
 
 // parseMediaKey 分析key "/media/rid/" + rid + "/uid/" + uid + "/mid/" + mid
@@ -425,17 +426,17 @@ func parseMediaKey(key string) (string, string, error) {
 	"method", proto.BizToIslbPeerLive, "rid", rid, "uid", uid
 */
 // getPeerLive 获取peer存活状态
-func getPeerLive(data map[string]interface{}, from, corrID string) {
+func getPeerLive(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
 	// 获取用户的信息
 	uKey := proto.GetUserInfoKey(rid, uid)
 	info := redis.Get(uKey)
+	resp := make(map[string]interface{})
 	if info != "" {
-		resp := util.Map("method", proto.IslbToBizPeerLive, "errorCode", 0)
-		amqp.RPCCall(from, resp, corrID)
+		resp = util.Map("errorCode", 0)
 	} else {
-		resp := util.Map("method", proto.IslbToBizPeerLive, "errorCode", 1)
-		amqp.RPCCall(from, resp, corrID)
+		resp = util.Map("errorCode", 1)
 	}
+	return resp, nil
 }
