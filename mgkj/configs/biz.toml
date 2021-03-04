@@ -24,5 +24,6 @@ port = "8443"
 # key= "configs/key.pem"
 
 [nats]
-url = "nats://127.0.0.1:4222"
+# url = "nats://127.0.0.1:4222"
+url = "nats://8.129.55.41:4222"
 

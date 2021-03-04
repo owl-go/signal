@@ -363,7 +363,6 @@ func publish(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 	// 获取sfu节点的resp
 	bPublish := false
 	rsp := make(map[string]interface{})
-
 	rpc := protoo.NewRequestor(reg.GetRPCChannel(*sfu))
 	resp, err := rpc.SyncRequest(proto.BizToSfuPublish, util.Map("rid", rid, "uid", uid, "minfo", minfo, "jsep", jsep))
 	if err != nil {
@@ -443,6 +442,7 @@ func unpublish(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondF
 	}
 	rpc := protoo.NewRequestor(reg.GetRPCChannel(*sfu))
 	rpc.AsyncRequest(proto.BizToSfuUnPublish, util.Map("rid", rid, "uid", uid, "mid", mid))
+	rpc = protoo.NewRequestor(reg.GetRPCChannel(*islb))
 	rpc.AsyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", mid))
 	// resp
 	accept(emptyMap)
@@ -507,10 +507,9 @@ func subscribe(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondF
 
 	// 订阅流回调
 	rspSfu := make(map[string]interface{})
-
 	rpc := protoo.NewRequestor(reg.GetRPCChannel(*sfu))
-	if find {
-		resp, err := rpc.SyncRequest(proto.BizToSfuSubscribe, util.Map("rid", rid, "uid", uid, "mid", mid, "tracks", tracks, "jsep", jsep))
+	if tracks == nil {
+		resp, err := rpc.SyncRequest(proto.BizToSfuSubscribe, util.Map("rid", rid, "uid", uid, "mid", mid, "tracks", rsp["tracks"], "jsep", jsep))
 		if err != nil {
 			log.Errorf("rpc to sfu fail")
 			reject(codeSubErr, codeStr(codeSubErr))
@@ -525,7 +524,7 @@ func subscribe(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondF
 			find = false
 		}
 	} else {
-		resp, err := rpc.SyncRequest(proto.BizToSfuSubscribe, util.Map("rid", rid, "uid", uid, "mid", mid, "tracks", rsp["tracks"], "jsep", jsep))
+		resp, err := rpc.SyncRequest(proto.BizToSfuSubscribe, util.Map("rid", rid, "uid", uid, "mid", mid, "tracks", tracks, "jsep", jsep))
 		if err != nil {
 			log.Errorf("rpc to sfu fail")
 			reject(codeSubErr, codeStr(codeSubErr))

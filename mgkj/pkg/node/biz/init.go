@@ -1,11 +1,12 @@
 package node
 
 import (
-	nprotoo "github.com/cloudwebrtc/nats-protoo"
 	"mgkj/pkg/log"
 	"mgkj/pkg/proto"
 	"mgkj/pkg/server"
 	"mgkj/pkg/util"
+
+	nprotoo "github.com/cloudwebrtc/nats-protoo"
 
 	"github.com/cloudwebrtc/go-protoo/peer"
 )
@@ -21,9 +22,8 @@ var (
 func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, natsURL string) {
 	node = serviceNode
 	watch = ServiceWatcher
-	go watch.WatchServiceNode("", WatchServiceCallBack)
 	protoo = nprotoo.NewNatsProtoo(natsURL)
-	// 启动
+	go watch.WatchServiceNode("", WatchServiceCallBack)
 }
 
 // Close 关闭连接
@@ -43,7 +43,7 @@ func Close() {
 func WatchServiceCallBack(state server.NodeStateType, node server.Node) {
 	if state == server.ServerUp {
 		log.Infof("WatchServiceCallBack node up %v", node)
-		if node.Name == "islb" {
+		if node.Name == "islb" || node.Name == "sfu" {
 			eventID := server.GetEventChannel(node)
 			log.Infof("handleIslbBroadCast: eventID => [%s]", eventID)
 			protoo.OnBroadcast(eventID, handleBroadcast)
@@ -171,7 +171,6 @@ func FindMediaPubs(peer *peer.Peer, rid string) bool {
 		}
 	}
 	find = true
-
 	return find
 }
 
@@ -184,7 +183,6 @@ func FindPeerIsLive(rid, uid string) bool {
 	}
 
 	find := false
-
 	rpc := protoo.NewRequestor(server.GetRPCChannel(*islb))
 	resp, err := rpc.SyncRequest(proto.BizToIslbPeerLive, util.Map("rid", rid, "uid", uid))
 	if err != nil {
