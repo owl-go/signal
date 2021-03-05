@@ -55,6 +55,13 @@ func GetOrNewRouter(id string) *Router {
 	return router
 }
 
+// Get All Routers
+func GetRouters() map[string]*Router {
+	routerLock.RLock()
+	defer routerLock.RUnlock()
+	return routers
+}
+
 // GetRouter get router from map
 func GetRouter(id string) *Router {
 	log.Infof("rtc.GetRouter id=%s", id)

@@ -7,6 +7,12 @@ import (
 	"mgkj/pkg/rtc"
 	"mgkj/pkg/server"
 	"mgkj/pkg/util"
+	"sync"
+	"time"
+)
+
+const (
+	statCycle = time.Second * 5
 )
 
 var (
@@ -14,6 +20,7 @@ var (
 	broadcaster *nprotoo.Broadcaster
 	node        *server.ServiceNode
 	watch       *server.ServiceWatcher
+	routersLock sync.RWMutex
 )
 
 // Init 初始化服务
@@ -26,6 +33,7 @@ func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher
 	// 启动
 	handleRPCRequest(node.GetRPCChannel())
 	checkRTC()
+	go updatePayload()
 }
 
 // Close 关闭连接
@@ -49,4 +57,22 @@ func checkRTC() {
 			broadcaster.Say(proto.SfuToBizOnStreamRemove, util.Map("mid", mid))
 		}
 	}()
+}
+
+// update node's payload
+func updatePayload() {
+	t := time.NewTicker(statCycle)
+	defer t.Stop()
+	for range t.C {
+		var streamcnt int = 0
+		routersLock.RLock()
+		pubs := rtc.GetRouters()
+		for _, pub := range pubs {
+			streamcnt++
+			subs := pub.GetSubs()
+			streamcnt += len(subs)
+		}
+		routersLock.RUnlock()
+		node.UpdateNodePayload(streamcnt)
+	}
 }
