@@ -64,7 +64,7 @@ func NewWebSocketServer(handler func(ws *transport.WebSocketTransport, request *
 
 func (server *WebSocketServer) handleWebSocketRequest(writer http.ResponseWriter, request *http.Request) {
 	responseHeader := http.Header{}
-	//responseHeader.Add("Sec-WebSocket-Protocol", "protoo")
+	responseHeader.Add("Sec-WebSocket-Protocol", "protoo")
 	socket, err := server.upgrader.Upgrade(writer, request, responseHeader)
 	if err != nil {
 		panic(err)
