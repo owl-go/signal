@@ -30,7 +30,7 @@ func main() {
 	serviceNode.RegisterNode()
 	serviceWatcher := server.NewServiceWatcher(conf.Etcd.Addrs)
 	biz.Init(serviceNode, serviceWatcher, conf.Nats.URL)
-	biz.InitWebSocket(conf.Signal.Host, conf.Signal.Port, conf.Signal.Cert, conf.Signal.Key)
+	biz.InitSignalServer(conf.Signal.Host, conf.Signal.Port, conf.Signal.Cert, conf.Signal.Key)
 
 	select {}
 }

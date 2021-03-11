@@ -1,9 +1,8 @@
-package node
+package biz
 
 import (
 	"mgkj/pkg/util"
-
-	"github.com/cloudwebrtc/go-protoo/peer"
+	"mgkj/pkg/ws"
 )
 
 const (
@@ -40,7 +39,7 @@ func codeStr(code int) string {
 
 var emptyMap = map[string]interface{}{}
 
-func invalid(msg map[string]interface{}, key string, reject peer.RejectFunc) bool {
+func invalid(msg map[string]interface{}, key string, reject ws.RejectFunc) bool {
 	val := util.Val(msg, key)
 	if val == "" {
 		switch key {

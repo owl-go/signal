@@ -1,15 +1,13 @@
-package node
+package biz
 
 import (
 	"mgkj/pkg/log"
-
-	"github.com/cloudwebrtc/go-protoo/peer"
-	"github.com/cloudwebrtc/go-protoo/room"
+	"mgkj/pkg/ws"
 )
 
 // RoomNode 房间对象
 type RoomNode struct {
-	room *room.Room
+	room *ws.Room
 }
 
 // GetID 获取房间rid
@@ -20,7 +18,7 @@ func (r *RoomNode) GetID() string {
 // NewRoom 创建一个房间
 func NewRoom(rid string) *RoomNode {
 	node := new(RoomNode)
-	node.room = room.NewRoom(rid)
+	node.room = ws.NewRoom(rid)
 	roomLock.Lock()
 	rooms[rid] = node
 	roomLock.Unlock()
@@ -62,7 +60,7 @@ func GetRoomsByPeer(id string) []*RoomNode {
 }
 
 // AddPeer 房间增加指定的人
-func AddPeer(rid string, peer *peer.Peer) {
+func AddPeer(rid string, peer *ws.Peer) {
 	node := GetRoom(rid)
 	if node == nil {
 		node = NewRoom(rid)
@@ -88,7 +86,7 @@ func DelPeer(rid, uid string) {
 }
 
 // HasPeer 判断房间是否有指定的人
-func HasPeer(rid string, peer *peer.Peer) bool {
+func HasPeer(rid string, peer *ws.Peer) bool {
 	node := GetRoom(rid)
 	if node == nil {
 		return false
@@ -119,7 +117,7 @@ func NotifyAll(rid string, method string, msg map[string]interface{}) {
 }
 
 // NotifyAllWithoutPeer 通知房间所有人除去peer
-func NotifyAllWithoutPeer(rid string, peer *peer.Peer, method string, msg map[string]interface{}) {
+func NotifyAllWithoutPeer(rid string, peer *ws.Peer, method string, msg map[string]interface{}) {
 	log.Infof("biz.NotifyAllWithoutPeer rid=%s uid=%s method=%s msg=%v", rid, peer.ID(), method, msg)
 	node := GetRoom(rid)
 	if node != nil {

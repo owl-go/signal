@@ -1,201 +1,50 @@
-package node
+package biz
 
 import (
-	"encoding/json"
-	"net/http"
-	"sync"
-	"time"
-
 	"mgkj/pkg/log"
 	"mgkj/pkg/proto"
 	reg "mgkj/pkg/server"
 	"mgkj/pkg/util"
-
-	"github.com/cloudwebrtc/go-protoo/peer"
-	"github.com/cloudwebrtc/go-protoo/server"
-	"github.com/cloudwebrtc/go-protoo/transport"
+	"mgkj/pkg/ws"
 )
 
-const (
-	statCycle = time.Second * 5
-)
-
-var (
-	wsServer *server.WebSocketServer
-	rooms    = make(map[string]*RoomNode)
-	roomLock sync.RWMutex
-)
-
-// InitWebSocket 初始化ws服务
-func InitWebSocket(host string, port int, cert, key string) {
-	wsServer = server.NewWebSocketServer(handleWebSocket)
-	config := server.DefaultConfig()
-	config.Host = host
-	config.Port = port
-	config.CertFile = cert
-	config.KeyFile = key
-	go wsServer.Bind(config)
-	go checkRoom()
-}
-
-// checkRoom 检查所有的房间
-func checkRoom() {
-	t := time.NewTicker(statCycle)
-	defer t.Stop()
-	for range t.C {
-		var nCount int = 0
-		roomLock.Lock()
-		for rid, node := range rooms {
-			nCount += len(node.room.GetPeers())
-			for uid := range node.room.GetPeers() {
-				bLive := FindPeerIsLive(rid, uid)
-				if !bLive {
-					// 查询islb节点
-					islb := FindIslbNode()
-					if islb == nil {
-						log.Errorf("islb node is not find")
-					}
-					rpc := protoo.NewRequestor(reg.GetRPCChannel(*islb))
-					rpc.AsyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", ""))
-					rpc.AsyncRequest(proto.BizToIslbOnLeave, util.Map("rid", rid, "uid", uid))
-					node.room.RemovePeer(uid)
-				}
-			}
-			if len(node.room.GetPeers()) == 0 {
-				node.room.Close()
-				delete(rooms, rid)
-			}
-		}
-		roomLock.Unlock()
-		// 更新负载
-		node.UpdateNodePayload(nCount)
-	}
-}
-
-func handleWebSocket(transport *transport.WebSocketTransport, request *http.Request) {
-	//ws://127.0.0.1:8443/ws?peer=alice
-	params := request.URL.Query()
-	peers := params["peer"]
-	if peers == nil || len(peers) < 1 {
-		log.Errorf("biz handleWebSocket not find peer id")
-		return
-	}
-	// 创建peer对象
-	uid := peers[0]
-	peerObj := peer.NewPeer(uid, transport)
-	log.Infof("biz handleWebSocket peer = %s", uid)
-
-	/*
-		request
-		{
-		  request : true,
-		  id      : 12345678,
-		  method  : 'chatmessage',
-		  data    :
-		  {
-		    type  : 'text',
-		    value : 'Hi there!'
-		  }
-		}
-
-		Success response
-		{
-			response : true,
-			id       : 12345678,
-			ok       : true,
-			data     :
-			{
-				foo : 'lalala'
-			}
-		}
-
-		Error response
-		{
-			response    : true,
-			id          : 12345678,
-			ok          : false,
-			errorCode   : 123,
-			errorReason : 'Something failed'
-		}
-	*/
-	handleRequest := func(request peer.Request, accept peer.RespondFunc, reject peer.RejectFunc) {
-		var data = make(map[string]interface{})
-		err := json.Unmarshal(request.Data, &data)
-		if err != nil {
-			log.Errorf("biz handleRequest error = %s", err.Error())
-		}
-
-		method := request.Method
-		switch method {
-		case proto.ClientToBizJoin:
-			join(peerObj, data, accept, reject)
-		case proto.ClientToBizLeave:
-			leave(peerObj, data, accept, reject)
-		case proto.ClientToBizKeepLive:
-			keeplive(peerObj, data, accept, reject)
-		case proto.ClientToBizPublish:
-			publish(peerObj, data, accept, reject)
-		case proto.ClientToBizUnPublish:
-			unpublish(peerObj, data, accept, reject)
-		case proto.ClientToBizSubscribe:
-			subscribe(peerObj, data, accept, reject)
-		case proto.ClientToBizUnSubscribe:
-			unsubscribe(peerObj, data, accept, reject)
-		case proto.ClientToBizTrickleICE:
-			trickle(peerObj, data, accept, reject)
-		case proto.ClientToBizBroadcast:
-			broadcast(peerObj, data, accept, reject)
-		default:
-			reject(codeUnknownErr, codeStr(codeUnknownErr))
-		}
-	}
-
-	/*
-		Notification
-		{
-			notification : true,
-			method       : 'chatmessage',
-			data         :
-			{
-				foo : 'bar'
-			}
-		}
-	*/
-	handleNotification := func(notification bool, method string, Data json.RawMessage) {
-		log.Infof("handleNotification method = %s, data = %s", method, string(Data))
-	}
-
-	handleClose := func(code int, err string) {
-		log.Infof("handleClose err = %d, %s", code, err)
-	}
-
-	_, _, _ = handleRequest, handleNotification, handleClose
-
-	for {
-		select {
-		case resp := <-peerObj.OnNotification:
-			handleNotification(resp.Notification, resp.Method, resp.Data)
-		case resp := <-peerObj.OnRequest:
-			handleRequest(resp.Request, resp.Accept, resp.Reject)
-		case resp := <-peerObj.OnClose:
-			handleClose(resp.Code, resp.Text)
-		case resp := <-peerObj.OnError:
-			handleClose(resp.Code, resp.Text)
-		}
+func Entry(method string, peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
+	switch method {
+	case proto.ClientToBizJoin:
+		join(peer, msg, accept, reject)
+	case proto.ClientToBizLeave:
+		leave(peer, msg, accept, reject)
+	case proto.ClientToBizKeepAlive:
+		keepalive(peer, msg, accept, reject)
+	case proto.ClientToBizPublish:
+		publish(peer, msg, accept, reject)
+	case proto.ClientToBizUnPublish:
+		unpublish(peer, msg, accept, reject)
+	case proto.ClientToBizSubscribe:
+		subscribe(peer, msg, accept, reject)
+	case proto.ClientToBizUnSubscribe:
+		unsubscribe(peer, msg, accept, reject)
+	case proto.ClientToBizTrickleICE:
+		trickle(peer, msg, accept, reject)
+	case proto.ClientToBizBroadcast:
+		broadcast(peer, msg, accept, reject)
+	default:
+		ws.DefaultReject(codeUnknownErr, codeStr(codeUnknownErr))
 	}
 }
 
 /*
-	"request":true
-	"id":3764139
-	"method":"join"
-	"data":{
-		"rid":"room1",
-		"info":{"name":"zhou","head":""}
-	}
+  "request":true
+  "id":3764139
+  "method":"join"
+  "data":{
+    "rid":"room1",
+    "info":{"name":"zhou","head":""}
+  }
 */
 // join 加入房间
-func join(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
+func join(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
+	log.Infof("biz.join", "msg => %v", msg)
 	if invalid(msg, "rid", reject) {
 		return
 	}
@@ -234,15 +83,15 @@ func join(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, 
 }
 
 /*
-	"request":true
-	"id":3764139
-	"method":"leave"
-	"data":{
-	    "rid":"room1"
-	}
+  "request":true
+  "id":3764139
+  "method":"leave"
+  "data":{
+      "rid":"room1"
+  }
 */
 // leave 离开房间
-func leave(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
+func leave(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
 	if invalid(msg, "rid", reject) {
 		return
 	}
@@ -273,16 +122,16 @@ func leave(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc,
 }
 
 /*
-	"request":true
-	"id":3764139
-	"method":"keeplive"
-	"data":{
-		"rid":"room1",
-		"info":$info
-	}
+  "request":true
+  "id":3764139
+  "method":"keepalive"
+  "data":{
+    "rid":"room1",
+    "info":$info
+  }
 */
-// keeplive 保活
-func keeplive(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
+// keepalive 保活
+func keepalive(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
 	if invalid(msg, "rid", reject) {
 		return
 	}
@@ -308,18 +157,18 @@ func keeplive(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFu
 }
 
 /*
-	"request":true
-	"id":3764139
-	"method":"publish"
-	"data":{
-	    "rid":"room1",
-		"nid":"shenzhen-sfu-1",
-		"jsep": {"type": "offer","sdp": "..."},
-	    "minfo": {"codec": "h264", "video": true, "audio": true, "screen": false}
-	}
+  "request":true
+  "id":3764139
+  "method":"publish"
+  "data":{
+      "rid":"room1",
+    "nid":"shenzhen-sfu-1",
+    "jsep": {"type": "offer","sdp": "..."},
+      "minfo": {"codec": "h264", "video": true, "audio": true, "screen": false}
+  }
 */
 // publish 发布流
-func publish(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
+func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
 	if invalid(msg, "rid", reject) || invalid(msg, "jsep", reject) {
 		return
 	}
@@ -327,6 +176,7 @@ func publish(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 	// 获取参数
 	uid := peer.ID()
 	rid := util.Val(msg, "rid")
+
 	log.Infof("biz.publish uid=%s msg=%v", uid, msg)
 
 	jsep := msg["jsep"].(map[string]interface{})
@@ -359,7 +209,6 @@ func publish(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 		reject(codeIslbErr, codeStr(codeIslbErr))
 		return
 	}
-
 	// 获取sfu节点的resp
 	bPublish := false
 	rsp := make(map[string]interface{})
@@ -399,17 +248,17 @@ func publish(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 }
 
 /*
-	"request":true
-	"id":3764139
-	"method":"unpublish"
-	"data":{
-	    "rid": "room1",
-		"nid":"shenzhen-sfu-1",
-	    "mid": "64236c21-21e8-4a3d-9f80-c767d1e1d67f#ABCDEF"
-	}
+  "request":true
+  "id":3764139
+  "method":"unpublish"
+  "data":{
+      "rid": "room1",
+    "nid":"shenzhen-sfu-1",
+      "mid": "64236c21-21e8-4a3d-9f80-c767d1e1d67f#ABCDEF"
+  }
 */
 // unpublish 取消发布流
-func unpublish(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
+func unpublish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
 	if invalid(msg, "rid", reject) || invalid(msg, "mid", reject) {
 		return
 	}
@@ -449,18 +298,18 @@ func unpublish(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondF
 }
 
 /*
-	"request":true
-	"id":3764139
-	"method":"subscribe"
-	"data":{
-	    "rid":"room1",
-		"mid": "64236c21-21e8-4a3d-9f80-c767d1e1d67f#ABCDEF"
-		"nid":"shenzhen-sfu-1",
-		"jsep": {"type": "offer","sdp": "..."},
-	}
+  "request":true
+  "id":3764139
+  "method":"subscribe"
+  "data":{
+      "rid":"room1",
+    "mid": "64236c21-21e8-4a3d-9f80-c767d1e1d67f#ABCDEF"
+    "nid":"shenzhen-sfu-1",
+    "jsep": {"type": "offer","sdp": "..."},
+  }
 */
 // subscribe 订阅流
-func subscribe(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
+func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
 	log.Infof("biz.subscribe msg=%v", msg)
 
 	if invalid(msg, "rid", reject) || invalid(msg, "mid", reject) || invalid(msg, "jsep", reject) {
@@ -550,17 +399,17 @@ func subscribe(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondF
 }
 
 /*
-	"request":true
-	"id":3764139
-	"method":"unsubscribe"
-	"data":{
-	    "rid": "room1",
-		"nid":"shenzhen-sfu-1",
-	    "mid": "64236c21-21e8-4a3d-9f80-c767d1e1d67f#ABCDEF" (sid)
-	}
+  "request":true
+  "id":3764139
+  "method":"unsubscribe"
+  "data":{
+      "rid": "room1",
+    "nid":"shenzhen-sfu-1",
+      "mid": "64236c21-21e8-4a3d-9f80-c767d1e1d67f#ABCDEF" (sid)
+  }
 */
 // unsubscribe 取消订阅流
-func unsubscribe(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
+func unsubscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
 	if invalid(msg, "rid", reject) || invalid(msg, "mid", reject) {
 		return
 	}
@@ -589,20 +438,20 @@ func unsubscribe(peer *peer.Peer, msg map[string]interface{}, accept peer.Respon
 }
 
 /*
-	"request":true
-	"id":3764139
-	"method":"trickle"
-	"data":{
-	    "rid": "room1",
-		"nid":"shenzhen-sfu-1",
-	    "mid": "64236c21-21e8-4a3d-9f80-c767d1e1d67f#ABCDEF"
-		"sid": "$sid"
-		"ice": "$icecandidate"
-		"ispub": "true"
-	}
+  "request":true
+  "id":3764139
+  "method":"trickle"
+  "data":{
+      "rid": "room1",
+    "nid":"shenzhen-sfu-1",
+      "mid": "64236c21-21e8-4a3d-9f80-c767d1e1d67f#ABCDEF"
+    "sid": "$sid"
+    "ice": "$icecandidate"
+    "ispub": "true"
+  }
 */
 // trickle ice数据
-func trickle(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
+func trickle(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
 	if invalid(msg, "rid", reject) || invalid(msg, "mid", reject) {
 		return
 	}
@@ -635,16 +484,16 @@ func trickle(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFun
 }
 
 /*
-	"request":true
-	"id":3764139
-	"method":"broadcast"
-	"data":{
-	    "rid": "room1",
-		"data": "$date"
-	}
+  "request":true
+  "id":3764139
+  "method":"broadcast"
+  "data":{
+      "rid": "room1",
+    "data": "$date"
+  }
 */
 // broadcast 客户端发送广播给对方
-func broadcast(peer *peer.Peer, msg map[string]interface{}, accept peer.RespondFunc, reject peer.RejectFunc) {
+func broadcast(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
 	if invalid(msg, "rid", reject) {
 		return
 	}

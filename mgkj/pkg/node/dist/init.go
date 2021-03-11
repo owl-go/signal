@@ -1,4 +1,4 @@
-package node
+package dist
 
 import (
 	nprotoo "github.com/cloudwebrtc/nats-protoo"

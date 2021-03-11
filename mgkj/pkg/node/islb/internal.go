@@ -29,12 +29,12 @@ func handleRPCRequest(rpcID string) {
 
 			switch method {
 			/* 处理和dist服务器通信 */
-			case proto.DistToIslbLoginin:
-				result, err = clientloginin(data)
-			case proto.DistToIslbLoginOut:
-				result, err = clientloginout(data)
-			case proto.DistToIslbPeerHeart:
-				result, err = clientPeerHeart(data)
+			case proto.DistToIslbLogin:
+				result, err = clientlogin(data)
+			case proto.DistToIslbLogout:
+				result, err = clientlogout(data)
+			case proto.DistToIslbPeerHeartbeat:
+				result, err = clientPeerHeartbeat(data)
 			case proto.DistToIslbPeerInfo:
 				result, err = getPeerinfo(data)
 			/* 处理和biz服务器通信 */
@@ -69,10 +69,10 @@ func handleRPCRequest(rpcID string) {
 }
 
 /*
-	"method", proto.DistToIslbLoginin, "uid", uid, "nid", nid
+	"method", proto.DistToIslbLogin, "uid", uid, "nid", nid
 */
-// clientloginin 有人登录到dist服务器
-func clientloginin(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
+// clientlogin 有人登录到dist服务器
+func clientlogin(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	uid := util.Val(data, "uid")
 	dist := util.Val(data, "nid")
 	// 获取用户信息保存的key
@@ -80,16 +80,16 @@ func clientloginin(data map[string]interface{}) (map[string]interface{}, *nproto
 	// 写入key值
 	err := redis.Set(uKey, dist, redisShort)
 	if err != nil {
-		log.Errorf("redis.Set clientloginin err = %v", err)
+		log.Errorf("redis.Set clientlogin err = %v", err)
 	}
 	return util.Map(), nil
 }
 
 /*
-	"method", proto.DistToIslbLoginOut, "uid", uid, "nid", nid
+	"method", proto.DistToIslbLogout, "uid", uid, "nid", nid
 */
-// clientloginin 有人退录到dist服务器
-func clientloginout(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
+// clientlogout 有人退录到dist服务器
+func clientlogout(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	uid := util.Val(data, "uid")
 	// 获取用户信息保存的key
 	uKey := proto.GetUserDistKey(uid)
@@ -102,10 +102,10 @@ func clientloginout(data map[string]interface{}) (map[string]interface{}, *nprot
 }
 
 /*
-	"method", proto.DistToIslbPeerHeart, "uid", uid, "nid", nid
+	"method", proto.DistToIslbPeerHeartbeat, "uid", uid, "nid", nid
 */
-// clientPeerHeart 有人发送心跳到dist服务器,更新key的时间
-func clientPeerHeart(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
+// clientPeerHeartbeat 有人发送心跳到dist服务器,更新key的时间
+func clientPeerHeartbeat(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	uid := util.Val(data, "uid")
 	dist := util.Val(data, "nid")
 	// 获取用户信息保存的key
@@ -327,6 +327,7 @@ func getSfuByMid(data map[string]interface{}) (map[string]interface{}, *nprotoo.
 	// 获取用户发布流对应的sfu信息
 	uKey := proto.GetMediaPubKey(rid, uid, mid)
 	nid := redis.Get(uKey)
+	log.Infof("getSfuByMid ==> %v", nid)
 	resp := make(map[string]interface{})
 	if nid != "" {
 		resp = util.Map("errorCode", 0, "rid", rid, "mid", mid, "nid", nid)

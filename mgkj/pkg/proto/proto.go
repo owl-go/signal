@@ -12,11 +12,11 @@ const (
 	*/
 
 	// ClientToDistLoginin C->dist 登录
-	ClientToDistLoginin = "loginin"
+	ClientToDistLogin = "loginin"
 	// ClientToDistLoginOut C->dist 退录
-	ClientToDistLoginOut = "loginout"
+	ClientToDistLogout = "loginout"
 	// ClientToDistHeart C->dist 心跳
-	ClientToDistHeart = "heart"
+	ClientToDistHeartbeat = "heart"
 	// ClientToDistCall C->dist 呼叫
 	ClientToDistCall = "call"
 	// ClientToDistAnswer C->dist 应答
@@ -38,11 +38,11 @@ const (
 	DistToDistReject = DistToClientReject
 
 	// DistToIslbLoginin dist->islb 上线
-	DistToIslbLoginin = ClientToDistLoginin
+	DistToIslbLogin = ClientToDistLogin
 	// DistToIslbLoginOut dist->islb 下线
-	DistToIslbLoginOut = ClientToDistLoginOut
+	DistToIslbLogout = ClientToDistLogout
 	// DistToIslbPeerHeart dist->islb 心跳
-	DistToIslbPeerHeart = ClientToDistHeart
+	DistToIslbPeerHeartbeat = ClientToDistHeartbeat
 	// DistToIslbPeerInfo dist->islb 获取Peer在哪个Dist服务器
 	DistToIslbPeerInfo = "getPeerDist"
 	// IslbToDistPeerInfo islb->dist islb返回peer在哪个dist服务器
@@ -57,7 +57,7 @@ const (
 	// ClientToBizLeave C->Biz 离开会议
 	ClientToBizLeave = "leave"
 	// ClientToBizKeepLive C->Biz 保活
-	ClientToBizKeepLive = "keeplive"
+	ClientToBizKeepAlive = "keeplive"
 	// ClientToBizPublish C->Biz 发布流
 	ClientToBizPublish = "publish"
 	// ClientToBizUnPublish C->Biz 取消发布流
@@ -117,7 +117,7 @@ const (
 	// IslbToBizOnStreamRemove islb->biz 有人取消发布流
 	IslbToBizOnStreamRemove = BizToClientOnStreamRemove
 	// BizToIslbKeepLive biz->islb 保活
-	BizToIslbKeepLive = ClientToBizKeepLive
+	BizToIslbKeepLive = ClientToBizKeepAlive
 	// BizToIslbGetSfuInfo biz->islb 根据mid查询对应的sfu
 	BizToIslbGetSfuInfo = "getSfuInfo"
 	// IslbToBizGetSfuInfo islb->biz 返回mid对应的sfu

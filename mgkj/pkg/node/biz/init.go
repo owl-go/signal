@@ -1,14 +1,13 @@
-package node
+package biz
 
 import (
 	"mgkj/pkg/log"
 	"mgkj/pkg/proto"
 	"mgkj/pkg/server"
 	"mgkj/pkg/util"
+	"mgkj/pkg/ws"
 
 	nprotoo "github.com/cloudwebrtc/nats-protoo"
-
-	"github.com/cloudwebrtc/go-protoo/peer"
 )
 
 var (
@@ -95,8 +94,10 @@ func FindSfuNodeByMid(rid, mid string) *server.Node {
 	rpc := protoo.NewRequestor(server.GetRPCChannel(*islb))
 	resp, err := rpc.SyncRequest(proto.BizToIslbGetSfuInfo, util.Map("rid", rid, "mid", mid))
 	if err != nil {
+		log.Errorf(err.Reason)
 		return nil
 	}
+	log.Infof("FindSfuNodeByMid resp ==> %v", resp)
 	nErr := int(resp["errorCode"].(float64))
 	if nErr == 0 {
 		nid := util.Val(resp, "nid")
@@ -136,7 +137,7 @@ func FindMediaIndoByMid(rid, mid string) (map[string]interface{}, bool) {
 }
 
 // FindMediaPubs 查询房间所有的其他人的发布流
-func FindMediaPubs(peer *peer.Peer, rid string) bool {
+func FindMediaPubs(peer *ws.Peer, rid string) bool {
 	islb := FindIslbNode()
 	if islb == nil {
 		log.Errorf("FindMediaPubs islb not found")

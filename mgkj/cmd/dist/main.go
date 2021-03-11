@@ -7,7 +7,7 @@ import (
 
 	conf "mgkj/pkg/conf/dist"
 	"mgkj/pkg/log"
-	dist "mgkj/pkg/node/dist"
+	"mgkj/pkg/node/dist"
 	"mgkj/pkg/server"
 )
 
@@ -30,7 +30,7 @@ func main() {
 	serviceNode.RegisterNode()
 	serviceWatcher := server.NewServiceWatcher(conf.Etcd.Addrs)
 	dist.Init(serviceNode, serviceWatcher, conf.Nats.URL)
-	dist.InitWebSocket(conf.Signal.Host, conf.Signal.Port, conf.Signal.Cert, conf.Signal.Key)
+	dist.InitCallServer(conf.Signal.Host, conf.Signal.Port, conf.Signal.Cert, conf.Signal.Key)
 
 	select {}
 }
