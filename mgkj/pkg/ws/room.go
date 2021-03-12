@@ -1,11 +1,13 @@
 package ws
 
 import (
+	"sync"
+
 	"github.com/cloudwebrtc/go-protoo/logger"
 	"github.com/cloudwebrtc/go-protoo/transport"
-	"sync"
 )
 
+// Room room对象
 type Room struct {
 	*sync.Mutex
 	peers  map[string]*Peer
@@ -13,44 +15,50 @@ type Room struct {
 	id     string
 }
 
-func NewRoom(roomId string) *Room {
+// NewRoom 新建对象
+func NewRoom(roomID string) *Room {
 	room := &Room{
 		peers:  make(map[string]*Peer),
 		closed: false,
-		id:     roomId,
+		id:     roomID,
 	}
 	room.Mutex = new(sync.Mutex)
 	return room
 }
 
-func (room *Room) CreatePeer(peerId string, transport *transport.WebSocketTransport) *Peer {
-	newPeer := newPeer(peerId, transport)
-	newPeer.On("close", func(code int, err string) {
-		room.Lock()
-		defer room.Unlock()
-		delete(room.peers, peerId)
-	})
+// CreatePeer 新建peer
+func (room *Room) CreatePeer(peerID string, transport *transport.WebSocketTransport) *Peer {
+	newPeer := newPeer(peerID, transport)
+	/*
+		newPeer.On("close", func(code int, err string) {
+			room.Lock()
+			defer room.Unlock()
+			delete(room.peers, peerID)
+		})*/
 	room.Lock()
 	defer room.Unlock()
-	room.peers[peerId] = newPeer
+	room.peers[peerID] = newPeer
 	return newPeer
 }
 
+// AddPeer 新增peer
 func (room *Room) AddPeer(newPeer *Peer) {
 	room.Lock()
 	defer room.Unlock()
 	room.peers[newPeer.ID()] = newPeer
 }
 
-func (room *Room) GetPeer(peerId string) *Peer {
+// GetPeer 获取peer
+func (room *Room) GetPeer(peerID string) *Peer {
 	room.Lock()
 	defer room.Unlock()
-	if peer, ok := room.peers[peerId]; ok {
+	if peer, ok := room.peers[peerID]; ok {
 		return peer
 	}
 	return nil
 }
 
+// Map 遍历处理
 func (room *Room) Map(fn func(string, *Peer)) {
 	room.Lock()
 	defer room.Unlock()
@@ -59,27 +67,32 @@ func (room *Room) Map(fn func(string, *Peer)) {
 	}
 }
 
+// GetPeers 获取所有的peer
 func (room *Room) GetPeers() map[string]*Peer {
 	return room.peers
 }
 
-func (room *Room) RemovePeer(peerId string) {
+// RemovePeer 删除peer
+func (room *Room) RemovePeer(peerID string) {
 	room.Lock()
 	defer room.Unlock()
-	delete(room.peers, peerId)
+	delete(room.peers, peerID)
 }
 
+// ID 返回id
 func (room *Room) ID() string {
 	return room.id
 }
 
-func (room *Room) HasPeer(peerId string) bool {
+// HasPeer 查询peer
+func (room *Room) HasPeer(peerID string) bool {
 	room.Lock()
 	defer room.Unlock()
-	_, ok := room.peers[peerId]
+	_, ok := room.peers[peerID]
 	return ok
 }
 
+// Notify 通知peers
 func (room *Room) Notify(from *Peer, method string, data map[string]interface{}) {
 	room.Lock()
 	defer room.Unlock()
@@ -91,6 +104,7 @@ func (room *Room) Notify(from *Peer, method string, data map[string]interface{})
 	}
 }
 
+// Close 关闭room
 func (room *Room) Close() {
 	logger.Warnf("Close all peers !")
 	room.Lock()

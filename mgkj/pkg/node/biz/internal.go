@@ -22,10 +22,10 @@ func handleBroadcast(msg map[string]interface{}, subj string) {
 			/* "method", proto.IslbToBizOnJoin, "rid", rid, "uid", uid, "info", info */
 			NotifyAllWithoutID(rid, uid, proto.BizToClientOnJoin, data)
 		case proto.IslbToBizOnLeave:
-			/* "method", proto.IslbToBizOnLeave, "rid", rid, "uid", uid */
+			/* "method", proto.IslbToBizOnLeave, "rid", rid, "uid", uid, "info", info */
 			NotifyAllWithoutID(rid, uid, proto.BizToClientOnLeave, data)
 		case proto.IslbToBizOnStreamAdd:
-			/* "method", proto.IslbToBizOnStreamAdd, "rid", rid, "uid", uid, "mid", mid, "tracks", tracks, "nid", nid */
+			/* "method", proto.IslbToBizOnStreamAdd, "rid", rid, "uid", uid, "mid", mid, "nid", nid, "minfo", data["minfo"] */
 			NotifyAllWithoutID(rid, uid, proto.BizToClientOnStreamAdd, data)
 		case proto.IslbToBizOnStreamRemove:
 			/* "method", proto.IslbToBizOnStreamRemove, "rid", rid, "uid", uid, "mid", mid */

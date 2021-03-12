@@ -123,9 +123,9 @@ const (
 	// IslbToBizGetSfuInfo islb->biz 返回mid对应的sfu
 	IslbToBizGetSfuInfo = BizToIslbGetSfuInfo
 	// BizToIslbGetMediaInfo biz->islb 获取mid的流信息
-	BizToIslbGetMediaInfo = "getMediaInfo"
+	//BizToIslbGetMediaInfo = "getMediaInfo"
 	// IslbToBizGetMediaInfo islb->biz 返回mid对应的流信息
-	IslbToBizGetMediaInfo = BizToIslbGetMediaInfo
+	//IslbToBizGetMediaInfo = BizToIslbGetMediaInfo
 	// BizToIslbGetMediaPubs biz->islb 获取房间内所有的发布流
 	BizToIslbGetMediaPubs = "getMediaPubs"
 	// IslbToBizGetMediaPubs islb->biz 返回房间内的发布流信息

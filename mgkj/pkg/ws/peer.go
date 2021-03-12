@@ -1,11 +1,18 @@
 package ws
 
 import (
+	"mgkj/pkg/log"
+
 	"github.com/cloudwebrtc/go-protoo/peer"
 	"github.com/cloudwebrtc/go-protoo/transport"
-	"mgkj/pkg/log"
 )
 
+// Peer peer对象
+type Peer struct {
+	peer.Peer
+}
+
+// NewPeer 初始化peer对象
 func NewPeer(id string, t *transport.WebSocketTransport) *Peer {
 	return newPeer(id, t)
 }
@@ -16,20 +23,19 @@ func newPeer(id string, t *transport.WebSocketTransport) *Peer {
 	}
 }
 
-type Peer struct {
-	peer.Peer
-}
-
+// On 事件处理
 func (p *Peer) On(event, listener interface{}) {
 	p.Peer.On(event, listener)
 }
 
-func (c *Peer) Request(method string, data map[string]interface{}) {
-	c.Peer.Request(method, data, accept, reject)
+// Request 发请求
+func (p *Peer) Request(method string, data map[string]interface{}) {
+	p.Peer.Request(method, data, accept, reject)
 }
 
-func (c *Peer) Close() {
-	c.Peer.Close()
+// Close peer关闭
+func (p *Peer) Close() {
+	p.Peer.Close()
 }
 
 func accept(data map[string]interface{}) {

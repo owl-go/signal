@@ -8,6 +8,7 @@ import (
 	"mgkj/pkg/ws"
 )
 
+// Entry 信令处理
 func Entry(method string, peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
 	switch method {
 	case proto.ClientToBizJoin:
@@ -63,8 +64,8 @@ func join(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 		return
 	}
 
-	rpc := protoo.NewRequestor(reg.GetRPCChannel(*islb))
 	// 删除以前加入过的房间数据
+	rpc := protoo.NewRequestor(reg.GetRPCChannel(*islb))
 	for _, room := range GetRoomsByPeer(uid) {
 		ridTmp := room.GetID()
 		rpc.AsyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", ridTmp, "uid", uid, "mid", ""))
@@ -110,9 +111,9 @@ func leave(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reje
 	}
 
 	// 删除加入的房间和流
+	rpc := protoo.NewRequestor(reg.GetRPCChannel(*islb))
 	for _, room := range GetRoomsByPeer(uid) {
 		ridTmp := room.GetID()
-		rpc := protoo.NewRequestor(reg.GetRPCChannel(*islb))
 		rpc.AsyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", ridTmp, "uid", uid, "mid", ""))
 		rpc.AsyncRequest(proto.BizToIslbOnLeave, util.Map("rid", ridTmp, "uid", uid))
 		DelPeer(ridTmp, uid)
@@ -162,8 +163,7 @@ func keepalive(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
   "method":"publish"
   "data":{
       "rid":"room1",
-    "nid":"shenzhen-sfu-1",
-    "jsep": {"type": "offer","sdp": "..."},
+      "jsep": {"type": "offer","sdp": "..."},
       "minfo": {"codec": "h264", "video": true, "audio": true, "screen": false}
   }
 */
@@ -176,26 +176,20 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 	// 获取参数
 	uid := peer.ID()
 	rid := util.Val(msg, "rid")
-
 	log.Infof("biz.publish uid=%s msg=%v", uid, msg)
 
 	jsep := msg["jsep"].(map[string]interface{})
 	if invalid(jsep, "sdp", reject) {
 		return
 	}
+
 	room := GetRoom(rid)
 	if room == nil {
 		reject(codeRIDErr, codeStr(codeRIDErr))
 		return
 	}
-	minfo := msg["minfo"].(map[string]interface{})
-	var sfu *reg.Node
-	nid := util.Val(msg, "nid")
-	if nid != "" {
-		sfu = FindSfuNodeByID(nid)
-	} else {
-		sfu = FindSfuNodeByPayload()
-	}
+
+	sfu := FindSfuNodeByPayload()
 	if sfu == nil {
 		log.Errorf("sfu node is not find")
 		reject(codeSfuErr, codeStr(codeSfuErr))
@@ -209,9 +203,16 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 		reject(codeIslbErr, codeStr(codeIslbErr))
 		return
 	}
+
 	// 获取sfu节点的resp
-	bPublish := false
-	rsp := make(map[string]interface{})
+	minfo := msg["minfo"]
+	if minfo == nil {
+		log.Errorf("minfo node is not find")
+		reject(codePubErr, codeStr(codePubErr))
+		return
+	}
+
+	minfo = msg["minfo"].(map[string]interface{})
 	rpc := protoo.NewRequestor(reg.GetRPCChannel(*sfu))
 	resp, err := rpc.SyncRequest(proto.BizToSfuPublish, util.Map("rid", rid, "uid", uid, "minfo", minfo, "jsep", jsep))
 	if err != nil {
@@ -219,15 +220,17 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 		reject(codePubErr, codeStr(codePubErr))
 		return
 	}
-	// "method", proto.SfuToBizPublish, "errorCode", 0, "jsep", answer, "mid", mid, "tracks", tracks
+	// "method", proto.SfuToBizPublish, "errorCode", 0, "jsep", answer, "mid", mid
 	// "method", proto.SfuToBizPublish, "errorCode", 403, "errorReason", "publish: sdp parse failed"
 	log.Infof("biz.publish respHandler resp=%v", resp)
+
+	bPublish := false
+	rsp := make(map[string]interface{})
 	code := int(resp["errorCode"].(float64))
 	if code == 0 {
 		bPublish = true
 		rsp["jsep"] = resp["jsep"]
 		rsp["mid"] = resp["mid"]
-		rsp["tracks"] = resp["tracks"]
 	} else {
 		bPublish = false
 	}
@@ -237,12 +240,11 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 		return
 	}
 
-	nid = sfu.Nid
+	nid := sfu.Nid
 	mid := util.Val(rsp, "mid")
-	tracks := rsp["tracks"]
 	// 通知islb
 	rpc = protoo.NewRequestor(reg.GetRPCChannel(*islb))
-	rpc.AsyncRequest(proto.BizToIslbOnStreamAdd, util.Map("rid", rid, "uid", uid, "mid", mid, "tracks", tracks, "nid", nid))
+	rpc.AsyncRequest(proto.BizToIslbOnStreamAdd, util.Map("rid", rid, "uid", uid, "mid", mid, "nid", nid, "minfo", minfo))
 	// resp
 	accept(rsp)
 }
@@ -302,10 +304,11 @@ func unpublish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
   "id":3764139
   "method":"subscribe"
   "data":{
-      "rid":"room1",
+    "rid":"room1",
     "mid": "64236c21-21e8-4a3d-9f80-c767d1e1d67f#ABCDEF"
     "nid":"shenzhen-sfu-1",
     "jsep": {"type": "offer","sdp": "..."},
+	"minfo": {"video": true, "audio": true}
   }
 */
 // subscribe 订阅流
@@ -327,20 +330,6 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 		return
 	}
 
-	find := false
-	var rsp map[string]interface{}
-	tracks := msg["tracks"].(map[string]interface{})
-	if tracks == nil {
-		rsp, find = FindMediaIndoByMid(rid, mid)
-		if !find {
-			log.Errorf("subscribe is not suc")
-			reject(codeSubErr, codeStr(codeSubErr))
-			return
-		}
-	} else {
-		find = true
-	}
-
 	var sfu *reg.Node
 	nid := util.Val(msg, "nid")
 	if nid != "" {
@@ -354,39 +343,32 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 		return
 	}
 
-	// 订阅流回调
+	minfo := msg["minfo"]
+	if minfo == nil {
+		log.Errorf("minfo node is not find")
+		reject(codePubErr, codeStr(codePubErr))
+		return
+	}
+
+	// 获取sfu节点的resp
+	find := false
+	minfo = msg["minfo"].(map[string]interface{})
 	rspSfu := make(map[string]interface{})
 	rpc := protoo.NewRequestor(reg.GetRPCChannel(*sfu))
-	if tracks == nil {
-		resp, err := rpc.SyncRequest(proto.BizToSfuSubscribe, util.Map("rid", rid, "uid", uid, "mid", mid, "tracks", rsp["tracks"], "jsep", jsep))
-		if err != nil {
-			log.Errorf("rpc to sfu fail")
-			reject(codeSubErr, codeStr(codeSubErr))
-			return
-		}
-		code := int(resp["errorCode"].(float64))
-		if code == 0 {
-			find = true
-			rspSfu["jsep"] = resp["jsep"]
-			rspSfu["sid"] = resp["mid"]
-		} else {
-			find = false
-		}
+	resp, err := rpc.SyncRequest(proto.BizToSfuSubscribe, util.Map("rid", rid, "uid", uid, "mid", mid, "jsep", jsep, "minfo", minfo))
+	//resp, err := rpc.SyncRequest(proto.BizToSfuSubscribe, util.Map("rid", rid, "uid", uid, "mid", mid, "jsep", jsep))
+	if err != nil {
+		log.Errorf("rpc to sfu fail")
+		reject(codeSubErr, codeStr(codeSubErr))
+		return
+	}
+	code := int(resp["errorCode"].(float64))
+	if code == 0 {
+		find = true
+		rspSfu["jsep"] = resp["jsep"]
+		rspSfu["sid"] = resp["mid"]
 	} else {
-		resp, err := rpc.SyncRequest(proto.BizToSfuSubscribe, util.Map("rid", rid, "uid", uid, "mid", mid, "tracks", tracks, "jsep", jsep))
-		if err != nil {
-			log.Errorf("rpc to sfu fail")
-			reject(codeSubErr, codeStr(codeSubErr))
-			return
-		}
-		code := int(resp["errorCode"].(float64))
-		if code == 0 {
-			find = true
-			rspSfu["jsep"] = resp["jsep"]
-			rspSfu["sid"] = resp["mid"]
-		} else {
-			find = false
-		}
+		find = false
 	}
 
 	if !find {
@@ -403,9 +385,9 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
   "id":3764139
   "method":"unsubscribe"
   "data":{
-      "rid": "room1",
+    "rid": "room1",
     "nid":"shenzhen-sfu-1",
-      "mid": "64236c21-21e8-4a3d-9f80-c767d1e1d67f#ABCDEF" (sid)
+    "mid": "64236c21-21e8-4a3d-9f80-c767d1e1d67f#ABCDEF" (sid)
   }
 */
 // unsubscribe 取消订阅流
@@ -443,11 +425,11 @@ func unsubscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc
   "method":"trickle"
   "data":{
       "rid": "room1",
-    "nid":"shenzhen-sfu-1",
+      "nid":"shenzhen-sfu-1",
       "mid": "64236c21-21e8-4a3d-9f80-c767d1e1d67f#ABCDEF"
-    "sid": "$sid"
-    "ice": "$icecandidate"
-    "ispub": "true"
+      "sid": "$sid"
+      "ice": "$icecandidate"
+      "ispub": "true"
   }
 */
 // trickle ice数据
@@ -456,29 +438,31 @@ func trickle(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 		return
 	}
 
-	uid := peer.ID()
-	rid := util.Val(msg, "rid")
-	mid := util.Val(msg, "mid")
-	sid := util.Val(msg, "sid")
-	ice := util.Val(msg, "ice")
-	ispub := util.Val(msg, "ispub")
-	log.Infof("biz.trickle uid=%s msg=%v", uid, msg)
+	/*
+		uid := peer.ID()
+		rid := util.Val(msg, "rid")
+		mid := util.Val(msg, "mid")
+		sid := util.Val(msg, "sid")
+		ice := util.Val(msg, "ice")
+		ispub := util.Val(msg, "ispub")
+		log.Infof("biz.trickle uid=%s msg=%v", uid, msg)
 
-	var sfu *reg.Node
-	nid := util.Val(msg, "nid")
-	if nid != "" {
-		sfu = FindSfuNodeByID(nid)
-	} else {
-		sfu = FindSfuNodeByMid(rid, mid)
-	}
-	if sfu == nil {
-		log.Errorf("sfu node is not find")
-		reject(codeSfuErr, codeStr(codeSfuErr))
-		return
-	}
+		var sfu *reg.Node
+		nid := util.Val(msg, "nid")
+		if nid != "" {
+			sfu = FindSfuNodeByID(nid)
+		} else {
+			sfu = FindSfuNodeByMid(rid, mid)
+		}
+		if sfu == nil {
+			log.Errorf("sfu node is not find")
+			reject(codeSfuErr, codeStr(codeSfuErr))
+			return
+		}
 
-	rpc := protoo.NewRequestor(reg.GetRPCChannel(*sfu))
-	rpc.AsyncRequest(proto.BizToSfuTrickleICE, util.Map("rid", rid, "sid", sid, "mid", mid, "ice", ice, "ispub", ispub))
+		rpc := protoo.NewRequestor(reg.GetRPCChannel(*sfu))
+		rpc.AsyncRequest(proto.BizToSfuTrickleICE, util.Map("rid", rid, "sid", sid, "mid", mid, "ice", ice, "ispub", ispub))
+	*/
 	// resp
 	accept(emptyMap)
 }
@@ -488,7 +472,7 @@ func trickle(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
   "id":3764139
   "method":"broadcast"
   "data":{
-      "rid": "room1",
+    "rid": "room1",
     "data": "$date"
   }
 */
@@ -500,7 +484,6 @@ func broadcast(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 
 	uid := peer.ID()
 	rid := util.Val(msg, "rid")
-	data := util.Val(msg, "data")
 
 	// 查询islb节点
 	islb := FindIslbNode()
@@ -511,7 +494,7 @@ func broadcast(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	}
 
 	rpc := protoo.NewRequestor(reg.GetRPCChannel(*islb))
-	rpc.AsyncRequest(proto.BizToIslbBroadcast, util.Map("rid", rid, "uid", uid, "data", data))
+	rpc.AsyncRequest(proto.BizToIslbBroadcast, util.Map("rid", rid, "uid", uid, "data", msg["data"]))
 	// resp
 	accept(emptyMap)
 }

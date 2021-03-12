@@ -119,6 +119,7 @@ func IsVideo(pt uint8) bool {
 	return false
 }
 
+// NewNpError 新建nats错误对象
 func NewNpError(code int, reason string) *nprotoo.Error {
 	err := nprotoo.Error{
 		Code:   code,

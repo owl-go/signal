@@ -1,16 +1,21 @@
 package rtc
 
 import (
+	"strings"
 	"sync"
 	"time"
 
 	"mgkj/pkg/log"
+	"mgkj/pkg/proto"
 	"mgkj/pkg/rtc/plugins"
 	"mgkj/pkg/rtc/transport"
 	"mgkj/pkg/util"
 
+	nprotoo "github.com/cloudwebrtc/nats-protoo"
+	sdptransform "github.com/notedit/sdp"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
+	"github.com/pion/webrtc/v2"
 )
 
 const (
@@ -31,6 +36,7 @@ type Router struct {
 	stop        bool
 	liveTime    time.Time
 	pluginChain *plugins.PluginChain
+	tracks      map[string][]proto.TrackInfo
 }
 
 // NewRouter return a new Router
@@ -40,6 +46,7 @@ func NewRouter(id string) *Router {
 		subs:        make(map[string]transport.Transport),
 		liveTime:    time.Now().Add(liveCycle),
 		pluginChain: plugins.NewPluginChain(),
+		tracks:      make(map[string][]proto.TrackInfo),
 	}
 }
 
@@ -100,12 +107,71 @@ func (r *Router) start() {
 }
 
 // AddPub add a pub transport
-func (r *Router) AddPub(id string, t transport.Transport) transport.Transport {
-	log.Infof("AddPub id=%s", id)
-	r.pub = t
-	r.pluginChain.AttachPub(t)
+func (r *Router) AddPub(id, sdp string, options map[string]interface{}) (map[string]interface{}, error) {
+	offer := webrtc.SessionDescription{Type: webrtc.SDPTypeOffer, SDP: sdp}
+	rtcOptions := make(map[string]interface{})
+	rtcOptions["publish"] = true
+	if options != nil {
+		rtcOptions["codec"] = options["codec"]
+		rtcOptions["audio"] = options["audio"]
+		rtcOptions["video"] = options["video"]
+		rtcOptions["screen"] = options["screen"]
+	}
+	pub := transport.NewWebRTCTransport(id, rtcOptions)
+	if pub == nil {
+		return util.Map("errorCode", 402), nil
+	}
+
+	answer, err := pub.Answer(offer, true)
+	if err != nil {
+		log.Errorf("err=%v answer=%v", err, answer)
+		return util.Map("errorCode", 403), nil
+	}
+
+	r.pub = pub
+	r.pluginChain.AttachPub(pub)
 	r.start()
-	return t
+
+	sdpObj, err := sdptransform.Parse(offer.SDP)
+	if err != nil {
+		log.Errorf("err=%v sdpObj=%v", err, sdpObj)
+		return util.Map("errorCode", 404), nil
+	}
+
+	for _, stream := range sdpObj.GetStreams() {
+		for id, track := range stream.GetTracks() {
+			pt := int(0)
+			codecType := ""
+			media := sdpObj.GetMedia(track.GetMedia())
+			codecs := media.GetCodecs()
+
+			for payload, codec := range codecs {
+				if track.GetMedia() == "audio" {
+					codecType = strings.ToUpper(codec.GetCodec())
+					if strings.ToUpper(codec.GetCodec()) == strings.ToUpper(webrtc.Opus) {
+						pt = payload
+						break
+					}
+				} else if track.GetMedia() == "video" {
+					codecType = strings.ToUpper(codec.GetCodec())
+					if codecType == webrtc.H264 || codecType == webrtc.VP8 || codecType == webrtc.VP9 {
+						pt = payload
+						if pt == 96 {
+							codecType = webrtc.VP8
+							break
+						}
+						//break
+					}
+				}
+			}
+			var infos []proto.TrackInfo
+			infos = append(infos, proto.TrackInfo{Ssrc: int(track.GetSSRCS()[0]), Payload: pt, Type: track.GetMedia(), ID: id, Codec: codecType})
+			r.tracks[stream.GetID()+" "+id] = infos
+		}
+	}
+	log.Infof("publish tracks %v, answer = %v", r.tracks, answer)
+	resp := util.Map("errorCode", 0, "jsep", answer, "mid", id)
+	return resp, nil
 }
 
 // DelPub del pub
@@ -135,18 +201,57 @@ func MapRouter(fn func(id string, r *Router)) {
 }
 
 // AddSub add a pub to router
-func (r *Router) AddSub(id string, t transport.Transport) transport.Transport {
+func (r *Router) AddSub(id, sdp string, options map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
+	rtcOptions := make(map[string]interface{})
+	rtcOptions["publish"] = false
+	if options != nil {
+		rtcOptions["audio"] = options["audio"]
+		rtcOptions["video"] = options["video"]
+	}
+	sub := transport.NewWebRTCTransport(id, rtcOptions)
+	if sub == nil {
+		return util.Map("errorCode", 402), nil
+	}
+
+	tracks1 := make(map[string]proto.TrackInfo)
+	for msid, track := range r.tracks {
+		for _, item := range track {
+			tracks1[msid] = item
+		}
+	}
+
+	for msid, track := range tracks1 {
+		ssrc := uint32(track.Ssrc)
+		pt := uint8(track.Payload)
+		// I2AacsRLsZZriGapnvPKiKBcLi8rTrO1jOpq c84ded42-d2b0-4351-88d2-b7d240c33435
+		//                streamID                        trackID
+		streamID := strings.Split(msid, " ")[0]
+		trackID := track.ID
+		log.Infof("AddTrack: codec:%s, ssrc:%d, pt:%d, streamID %s, trackID %s", track.Codec, ssrc, pt, streamID, trackID)
+		_, err := sub.AddTrack(ssrc, pt, streamID, track.ID)
+		if err != nil {
+			log.Errorf("err=%v", err)
+		}
+	}
+
+	offer := webrtc.SessionDescription{Type: webrtc.SDPTypeOffer, SDP: sdp}
+	answer, err := sub.Answer(offer, false)
+	if err != nil {
+		log.Errorf("err=%v answer=%v", err, answer)
+		return util.Map("errorCode", 414), nil
+	}
+
 	//fix panic: assignment to entry in nil map
 	if r.stop {
-		return nil
+		return util.Map("errorCode", 415), nil
 	}
 	r.subLock.Lock()
 	defer r.subLock.Unlock()
-	r.subs[id] = t
-	log.Infof("Router.AddSub id=%s t=%p", id, t)
+	r.subs[id] = sub
+	log.Infof("Router.AddSub id=%s t=%p", id, sub)
 	go func() {
 		for {
-			pkt := <-t.GetRTCPChan()
+			pkt := <-sub.GetRTCPChan()
 			if r.stop {
 				return
 			}
@@ -178,7 +283,9 @@ func (r *Router) AddSub(id string, t transport.Transport) transport.Transport {
 			}
 		}
 	}()
-	return t
+	log.Infof("subscribe mid %s, answer = %v", id, answer)
+	resp := util.Map("errorCode", 0, "jsep", answer, "mid", id)
+	return resp, nil
 }
 
 // GetSub get a sub by id

@@ -12,7 +12,6 @@ import (
 
 var (
 	protoo *nprotoo.NatsProtoo
-	rpcs   map[string]*nprotoo.Requestor
 	node   *server.ServiceNode
 	watch  *server.ServiceWatcher
 )
@@ -114,6 +113,7 @@ func FindSfuNodeByMid(rid, mid string) *server.Node {
 }
 
 // FindMediaIndoByMid 根据mid向islb查询指定的流信息
+/*
 func FindMediaIndoByMid(rid, mid string) (map[string]interface{}, bool) {
 	islb := FindIslbNode()
 	if islb == nil {
@@ -134,7 +134,7 @@ func FindMediaIndoByMid(rid, mid string) (map[string]interface{}, bool) {
 		rsp["track"] = resp["tracks"]
 	}
 	return rsp, find
-}
+}*/
 
 // FindMediaPubs 查询房间所有的其他人的发布流
 func FindMediaPubs(peer *ws.Peer, rid string) bool {

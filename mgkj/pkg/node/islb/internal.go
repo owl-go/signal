@@ -2,9 +2,10 @@ package node
 
 import (
 	"fmt"
-	nprotoo "github.com/cloudwebrtc/nats-protoo"
 	"strings"
 	"time"
+
+	nprotoo "github.com/cloudwebrtc/nats-protoo"
 
 	"mgkj/pkg/log"
 	"mgkj/pkg/proto"
@@ -51,8 +52,6 @@ func handleRPCRequest(rpcID string) {
 			case proto.BizToIslbBroadcast:
 				result, err = broadcast(data)
 			case proto.BizToIslbGetSfuInfo:
-				result, err = getSfuByMid(data)
-			case proto.BizToIslbGetMediaInfo:
 				result, err = getSfuByMid(data)
 			case proto.BizToIslbGetMediaPubs:
 				result, err = getMediaPubs(data)
@@ -153,7 +152,7 @@ func clientJoin(data map[string]interface{}) (map[string]interface{}, *nprotoo.E
 		log.Errorf("redis.Set clientJoin err = %v", err)
 	}
 	// 生成resp对象
-	broadcaster.Say(proto.IslbToBizOnJoin, util.Map("rid", rid, "uid", uid, "info", info))
+	broadcaster.Say(proto.IslbToBizOnJoin, util.Map("rid", rid, "uid", uid, "info", data["info"]))
 	return util.Map(), nil
 }
 
@@ -178,7 +177,7 @@ func clientLeave(data map[string]interface{}) (map[string]interface{}, *nprotoo.
 }
 
 /*
-	"method", proto.BizToIslbOnStreamAdd, "rid", rid, "uid", uid, "mid", mid, "tracks", tracks, "nid", nid
+	"method", proto.BizToIslbOnStreamAdd, "rid", rid, "uid", uid, "mid", mid, "nid", nid, "minfo", minfo
 */
 // streamAdd 有人发布流
 func streamAdd(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
@@ -186,45 +185,56 @@ func streamAdd(data map[string]interface{}) (map[string]interface{}, *nprotoo.Er
 	uid := util.Val(data, "uid")
 	mid := util.Val(data, "mid")
 	nid := util.Val(data, "nid")
+	minfo := util.Val(data, "minfo")
 
 	// 获取用户发布的流信息
 	ukey := proto.GetMediaInfoKey(rid, uid, mid)
 	// 写入key值
-	tracks := data["tracks"].(map[string]interface{})
-	for msid, track := range tracks {
-		var infos []proto.TrackInfo
-		for _, tinfo := range track.([]interface{}) {
-			tmp := tinfo.(map[string]interface{})
-			infos = append(infos, proto.TrackInfo{
-				ID:      tmp["id"].(string),
-				Type:    tmp["type"].(string),
-				Ssrc:    int(tmp["ssrc"].(float64)),
-				Payload: int(tmp["pt"].(float64)),
-				Codec:   tmp["codec"].(string),
-				Fmtp:    tmp["fmtp"].(string),
-			})
-		}
-		field, value, err := proto.MarshalTrackField(msid, infos)
-		if err != nil {
-			log.Errorf("MarshalTrackField: %v ", err)
-			continue
-		}
-		log.Infof("SetTrackField: mkey, field, value = %s, %s, %s", ukey, field, value)
-		err = redis.HSet(ukey, field, value)
-		if err != nil {
-			log.Errorf("redis.HSet streamAdd err = %v", err)
-		}
-		redis.Expire(ukey, redisKeyTTL)
+	err := redis.Set(ukey, minfo, redisKeyTTL)
+	if err != nil {
+		log.Errorf("redis.Set streamAdd err = %v", err)
 	}
+
+	/*
+		tracks := data["tracks"]
+		if tracks != nil {
+			tracks := data["tracks"].(map[string]interface{})
+			for msid, track := range tracks {
+				var infos []proto.TrackInfo
+				for _, tinfo := range track.([]interface{}) {
+					tmp := tinfo.(map[string]interface{})
+					infos = append(infos, proto.TrackInfo{
+						ID:      tmp["id"].(string),
+						Type:    tmp["type"].(string),
+						Ssrc:    int(tmp["ssrc"].(float64)),
+						Payload: int(tmp["pt"].(float64)),
+						Codec:   tmp["codec"].(string),
+						Fmtp:    tmp["fmtp"].(string),
+					})
+				}
+				field, value, err := proto.MarshalTrackField(msid, infos)
+				if err != nil {
+					log.Errorf("MarshalTrackField: %v ", err)
+					continue
+				}
+				log.Infof("SetTrackField: mkey, field, value = %s, %s, %s", ukey, field, value)
+				err = redis.HSet(ukey, field, value)
+				if err != nil {
+					log.Errorf("redis.HSet streamAdd err = %v", err)
+				}
+				redis.Expire(ukey, redisKeyTTL)
+			}
+		}*/
+
 	// 获取用户发布流对应的sfu信息
 	ukey = proto.GetMediaPubKey(rid, uid, mid)
 	// 写入key值
-	err := redis.Set(ukey, nid, redisKeyTTL)
+	err = redis.Set(ukey, nid, redisKeyTTL)
 	if err != nil {
 		log.Errorf("redis.Set streamAdd err = %v", err)
 	}
 	// 生成resp对象
-	broadcaster.Say(proto.IslbToBizOnStreamAdd, util.Map("rid", rid, "uid", uid, "mid", mid, "tracks", tracks, "nid", nid))
+	broadcaster.Say(proto.IslbToBizOnStreamAdd, util.Map("rid", rid, "uid", uid, "mid", mid, "nid", nid, "minfo", data["minfo"]))
 	return util.Map(), nil
 }
 
@@ -310,9 +320,7 @@ func keeplive(data map[string]interface{}) (map[string]interface{}, *nprotoo.Err
 func broadcast(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
-	dataTmp := util.Val(data, "data")
-
-	broadcaster.Say(proto.IslbToBizBroadcast, util.Map("rid", rid, "uid", uid, "data", dataTmp))
+	broadcaster.Say(proto.IslbToBizBroadcast, util.Map("rid", rid, "uid", uid, "data", data["data"]))
 	return util.Map(), nil
 }
 
@@ -331,37 +339,6 @@ func getSfuByMid(data map[string]interface{}) (map[string]interface{}, *nprotoo.
 	resp := make(map[string]interface{})
 	if nid != "" {
 		resp = util.Map("errorCode", 0, "rid", rid, "mid", mid, "nid", nid)
-	} else {
-		resp = util.Map("errorCode", 1, "rid", rid, "mid", mid)
-	}
-	return resp, nil
-}
-
-/*
-	"method", proto.BizToIslbGetMediaInfo, "rid", rid, "mid", mid
-*/
-// getMediaInfo 获取指定mid对应的流的信息
-func getMediaInfo(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
-	rid := util.Val(data, "rid")
-	mid := util.Val(data, "mid")
-	uid := proto.GetUIDFromMID(mid)
-	// 获取用户发布的流信息
-	uKey := proto.GetMediaInfoKey(rid, uid, mid)
-	fields := redis.HGetAll(uKey)
-	tracks := make(map[string][]proto.TrackInfo)
-	for key, value := range fields {
-		if strings.HasPrefix(key, "track/") {
-			msid, infos, err := proto.UnmarshalTrackField(key, value)
-			if err != nil {
-				log.Errorf("getMediaInfo err = %s", err.Error())
-			}
-			log.Infof("msid => %s, tracks => %v\n", msid, infos)
-			tracks[msid] = *infos
-		}
-	}
-	resp := make(map[string]interface{})
-	if len(tracks) != 0 {
-		resp = util.Map("errorCode", 0, "rid", rid, "mid", mid, "tracks", tracks)
 	} else {
 		resp = util.Map("errorCode", 1, "rid", rid, "mid", mid)
 	}
@@ -388,21 +365,11 @@ func getMediaPubs(data map[string]interface{}) (map[string]interface{}, *nprotoo
 			continue
 		}
 
-		sfu := redis.Get(proto.GetMediaPubKey(rid, uid, mid))
-		trackFields := redis.HGetAll(key)
+		minfo := redis.Get(key)
+		uKey := proto.GetMediaPubKey(rid, uid, mid)
+		nid := redis.Get(uKey)
 
-		tracks := make(map[string][]proto.TrackInfo)
-		for key, value := range trackFields {
-			if strings.HasPrefix(key, "track/") {
-				msid, infos, err := proto.UnmarshalTrackField(key, value)
-				if err != nil {
-					log.Errorf("getMediaPubs err = %s", err.Error())
-				}
-				log.Infof("msid => %s, tracks => %v\n", msid, infos)
-				tracks[msid] = *infos
-			}
-		}
-		pub := util.Map("rid", rid, "uid", uid, "mid", mid, "nid", sfu, "tracks", tracks)
+		pub := util.Map("rid", rid, "uid", uid, "mid", mid, "nid", nid, "minfo", util.Unmarshal(minfo))
 		pubs = append(pubs, pub)
 	}
 

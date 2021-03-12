@@ -20,6 +20,7 @@ var (
 	wsReq    func(method string, peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc)
 )
 
+// InitSignalServer 初始化biz服务器
 func InitSignalServer(host string, port int, cert, key string) {
 	initWebSocket(host, port, cert, key, Entry)
 	go checkRoom()
