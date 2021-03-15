@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	_ "net/http/pprof"
 
 	conf "mgkj/pkg/conf/islb"
 	"mgkj/pkg/db"
