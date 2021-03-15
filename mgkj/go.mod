@@ -11,6 +11,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/gorilla/websocket v1.4.2
+	github.com/jiyeyuran/mediasoup-go v1.6.37
 	github.com/nats-io/nats-server/v2 v2.1.9 // indirect
 	github.com/notedit/sdp v0.0.4
 	github.com/pion/ion-log v1.0.0

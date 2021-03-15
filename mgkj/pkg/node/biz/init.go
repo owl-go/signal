@@ -166,9 +166,9 @@ func FindMediaPubs(peer *ws.Peer, rid string) bool {
 		uid := pub.(map[string]interface{})["uid"].(string)
 		mid := pub.(map[string]interface{})["mid"].(string)
 		nid := pub.(map[string]interface{})["nid"].(string)
-		tracks := pub.(map[string]interface{})["tracks"].(map[string]interface{})
+		minfo := pub.(map[string]interface{})["minfo"].(map[string]interface{})
 		if mid != "" {
-			peer.Notify(proto.BizToClientOnStreamAdd, util.Map("rid", roomid, "uid", uid, "mid", mid, "nid", nid, "tracks", tracks))
+			peer.Notify(proto.BizToClientOnStreamAdd, util.Map("rid", roomid, "uid", uid, "mid", mid, "nid", nid, "minfo", minfo))
 		}
 	}
 	find = true

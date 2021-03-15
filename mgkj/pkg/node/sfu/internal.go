@@ -5,6 +5,7 @@ import (
 	"mgkj/pkg/log"
 	"mgkj/pkg/proto"
 	"mgkj/pkg/rtc"
+	//rtc "mgkj/pkg/mediasoup"
 	"mgkj/pkg/util"
 
 	nprotoo "github.com/cloudwebrtc/nats-protoo"
@@ -69,11 +70,11 @@ func publish(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error
 		if ok {
 			key := proto.GetMediaPubKey(rid, uid, mid)
 			router := rtc.GetOrNewRouter(key)
-			resp, err := router.AddPub(mid, sdp, options)
+			resp, err := router.AddPub(sdp, mid, node.NodeInfo().Nip, options)
 			if err != nil {
 				return util.Map("errorCode", 403), nil
 			}
-			return resp, nil
+			return util.Map("errorCode", 0, "jsep", util.Map("type", "answer", "sdp", resp), "mid", mid), nil
 		}
 	}
 	return util.Map("errorCode", 404), nil
@@ -120,11 +121,11 @@ func subscribe(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Err
 		if ok {
 			key := proto.GetMediaPubKey(rid, uid, mid)
 			router := rtc.GetOrNewRouter(key)
-			resp, err := router.AddSub(subID, sdp, options)
+			resp, err := router.AddSub(sdp, subID, node.NodeInfo().Nip, options)
 			if err != nil {
 				return util.Map("errorCode", 403), nil
 			}
-			return resp, nil
+			return util.Map("errorCode", 0, "jsep", util.Map("type", "answer", "sdp", resp), "mid", subID), nil
 		}
 	}
 	return util.Map("errorCode", 404), nil

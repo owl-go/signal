@@ -1,6 +1,7 @@
 package rtc
 
 import (
+	"errors"
 	"strings"
 	"sync"
 	"time"
@@ -11,7 +12,6 @@ import (
 	"mgkj/pkg/rtc/transport"
 	"mgkj/pkg/util"
 
-	nprotoo "github.com/cloudwebrtc/nats-protoo"
 	sdptransform "github.com/notedit/sdp"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
@@ -39,7 +39,7 @@ type Router struct {
 	tracks      map[string][]proto.TrackInfo
 }
 
-// NewRouter return a new Router
+// NewRouter 新建一个Router对象
 func NewRouter(id string) *Router {
 	log.Infof("NewRouter id=%s", id)
 	return &Router{
@@ -50,6 +50,7 @@ func NewRouter(id string) *Router {
 	}
 }
 
+// InitPlugins 新建一个插件
 func (r *Router) InitPlugins(config plugins.Config) error {
 	log.Infof("Router.InitPlugins config=%+v", config)
 	if r.pluginChain != nil {
@@ -107,8 +108,13 @@ func (r *Router) start() {
 }
 
 // AddPub add a pub transport
-func (r *Router) AddPub(id, sdp string, options map[string]interface{}) (map[string]interface{}, error) {
+func (r *Router) AddPub(sdp, id, ip string, options map[string]interface{}) (string, error) {
 	offer := webrtc.SessionDescription{Type: webrtc.SDPTypeOffer, SDP: sdp}
+	sdpObj, err := sdptransform.Parse(offer.SDP)
+	if err != nil {
+		return "", errors.New("offer sdp is err")
+	}
+
 	rtcOptions := make(map[string]interface{})
 	rtcOptions["publish"] = true
 	if options != nil {
@@ -119,23 +125,12 @@ func (r *Router) AddPub(id, sdp string, options map[string]interface{}) (map[str
 	}
 	pub := transport.NewWebRTCTransport(id, rtcOptions)
 	if pub == nil {
-		return util.Map("errorCode", 402), nil
+		return "", errors.New("pub is not create")
 	}
 
 	answer, err := pub.Answer(offer, true)
 	if err != nil {
-		log.Errorf("err=%v answer=%v", err, answer)
-		return util.Map("errorCode", 403), nil
-	}
-
-	r.pub = pub
-	r.pluginChain.AttachPub(pub)
-	r.start()
-
-	sdpObj, err := sdptransform.Parse(offer.SDP)
-	if err != nil {
-		log.Errorf("err=%v sdpObj=%v", err, sdpObj)
-		return util.Map("errorCode", 404), nil
+		return "", err
 	}
 
 	for _, stream := range sdpObj.GetStreams() {
@@ -169,9 +164,16 @@ func (r *Router) AddPub(id, sdp string, options map[string]interface{}) (map[str
 			r.tracks[stream.GetID()+" "+id] = infos
 		}
 	}
-	log.Infof("publish tracks %v, answer = %v", r.tracks, answer)
-	resp := util.Map("errorCode", 0, "jsep", answer, "mid", id)
-	return resp, nil
+
+	r.pub = pub
+	r.pluginChain.AttachPub(pub)
+	r.start()
+	return answer.SDP, nil
+}
+
+// GetPub get pub
+func (r *Router) GetPub() transport.Transport {
+	return r.pub
 }
 
 // DelPub del pub
@@ -186,12 +188,7 @@ func (r *Router) DelPub() {
 	r.pub = nil
 }
 
-// GetPub get pub
-func (r *Router) GetPub() transport.Transport {
-	// log.Infof("Router.GetPub %v", r.pub)
-	return r.pub
-}
-
+// MapRouter 遍历router处理
 func MapRouter(fn func(id string, r *Router)) {
 	routerLock.RLock()
 	defer routerLock.RUnlock()
@@ -201,7 +198,7 @@ func MapRouter(fn func(id string, r *Router)) {
 }
 
 // AddSub add a pub to router
-func (r *Router) AddSub(id, sdp string, options map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
+func (r *Router) AddSub(sdp, id, ip string, options map[string]interface{}) (string, error) {
 	rtcOptions := make(map[string]interface{})
 	rtcOptions["publish"] = false
 	if options != nil {
@@ -210,7 +207,7 @@ func (r *Router) AddSub(id, sdp string, options map[string]interface{}) (map[str
 	}
 	sub := transport.NewWebRTCTransport(id, rtcOptions)
 	if sub == nil {
-		return util.Map("errorCode", 402), nil
+		return "", errors.New("sub is not create")
 	}
 
 	tracks1 := make(map[string]proto.TrackInfo)
@@ -237,62 +234,53 @@ func (r *Router) AddSub(id, sdp string, options map[string]interface{}) (map[str
 	offer := webrtc.SessionDescription{Type: webrtc.SDPTypeOffer, SDP: sdp}
 	answer, err := sub.Answer(offer, false)
 	if err != nil {
-		log.Errorf("err=%v answer=%v", err, answer)
-		return util.Map("errorCode", 414), nil
+		return "", err
 	}
 
-	//fix panic: assignment to entry in nil map
-	if r.stop {
-		return util.Map("errorCode", 415), nil
-	}
 	r.subLock.Lock()
 	defer r.subLock.Unlock()
 	r.subs[id] = sub
-	log.Infof("Router.AddSub id=%s t=%p", id, sub)
-	go func() {
-		for {
-			pkt := <-sub.GetRTCPChan()
-			if r.stop {
-				return
+	go r.DoRtcp(id, sub)
+
+	log.Infof("subscribe mid %s, answer = %v", id, answer)
+	return answer.SDP, nil
+}
+
+func (r *Router) DoRtcp(id string, sub *transport.WebRTCTransport) {
+	for {
+		pkt := <-sub.GetRTCPChan()
+		if r.stop {
+			return
+		}
+		switch pkt.(type) {
+		case *rtcp.PictureLossIndication:
+			if r.GetPub() != nil {
+				log.Infof("Router.AddSub got pli: %+v", pkt)
+				r.GetPub().WriteRTCP(pkt)
 			}
-			switch pkt.(type) {
-			case *rtcp.PictureLossIndication:
-				if r.GetPub() != nil {
-					// Request a Key Frame
-					log.Infof("Router.AddSub got pli: %+v", pkt)
-					r.GetPub().WriteRTCP(pkt)
-				}
-			case *rtcp.TransportLayerNack:
-				// log.Infof("Router.AddSub got nack: %+v", pkt)
-				nack := pkt.(*rtcp.TransportLayerNack)
-				for _, nackPair := range nack.Nacks {
-					if !r.ReSendRTP(id, nack.MediaSSRC, nackPair.PacketID) {
-						n := &rtcp.TransportLayerNack{
-							//origin ssrc
-							SenderSSRC: nack.SenderSSRC,
-							MediaSSRC:  nack.MediaSSRC,
-							Nacks:      []rtcp.NackPair{rtcp.NackPair{PacketID: nackPair.PacketID}},
-						}
-						if r.pub != nil {
-							r.GetPub().WriteRTCP(n)
-						}
+		case *rtcp.TransportLayerNack:
+			nack := pkt.(*rtcp.TransportLayerNack)
+			for _, nackPair := range nack.Nacks {
+				if !r.ReSendRTP(id, nack.MediaSSRC, nackPair.PacketID) {
+					n := &rtcp.TransportLayerNack{
+						SenderSSRC: nack.SenderSSRC,
+						MediaSSRC:  nack.MediaSSRC,
+						Nacks:      []rtcp.NackPair{{PacketID: nackPair.PacketID}},
+					}
+					if r.pub != nil {
+						r.GetPub().WriteRTCP(n)
 					}
 				}
-
-			default:
 			}
+		default:
 		}
-	}()
-	log.Infof("subscribe mid %s, answer = %v", id, answer)
-	resp := util.Map("errorCode", 0, "jsep", answer, "mid", id)
-	return resp, nil
+	}
 }
 
 // GetSub get a sub by id
 func (r *Router) GetSub(id string) transport.Transport {
 	r.subLock.Lock()
 	defer r.subLock.Unlock()
-	// log.Infof("Router.GetSub id=%s sub=%v", id, r.subs[id])
 	return r.subs[id]
 }
 
@@ -300,7 +288,6 @@ func (r *Router) GetSub(id string) transport.Transport {
 func (r *Router) GetSubs() map[string]transport.Transport {
 	r.subLock.RLock()
 	defer r.subLock.RUnlock()
-	// log.Infof("Router.GetSubs len=%v", len(r.subs))
 	return r.subs
 }
 
@@ -308,8 +295,7 @@ func (r *Router) GetSubs() map[string]transport.Transport {
 func (r *Router) HasNoneSub() bool {
 	r.subLock.RLock()
 	defer r.subLock.RUnlock()
-	isNoSub := len(r.subs) == 0
-	log.Infof("Router.HasNoneSub=%v", isNoSub)
+	isNoSub := (len(r.subs) == 0)
 	return isNoSub
 }
 
@@ -343,8 +329,8 @@ func (r *Router) Close() {
 		return
 	}
 	log.Infof("Router.Close")
-	r.DelPub()
 	r.stop = true
+	r.DelPub()
 	r.DelSubs()
 }
 
