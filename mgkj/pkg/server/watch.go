@@ -96,22 +96,14 @@ func (serviceWatcher *ServiceWatcher) WatchNode(ch clientv3.WatchChan) {
 			msg := <-ch
 			for _, ev := range msg.Events {
 				if ev.Type == clientv3.EventTypeDelete {
-					nodemap := Decode(ev.Kv.Value)
-					node := &Node{
-						Ndc:      nodemap["Ndc"],
-						Nid:      nodemap["Nid"],
-						Name:     nodemap["Name"],
-						Nip:      nodemap["Nip"],
-						Npayload: nodemap["Npayload"],
-					}
-
-					log.Infof("Node [%s] Down", node.Nid)
-					n, found := serviceWatcher.GetNodeByID(node.Nid)
-					if found {
+					nid := string(ev.Kv.Key)
+					node, find := serviceWatcher.GetNodeByID(nid)
+					if find {
+						log.Infof("Node [%s] Down", nid)
 						if serviceWatcher.callback != nil {
-							serviceWatcher.callback(ServerDown, *n)
+							serviceWatcher.callback(ServerDown, *node)
 						}
-						serviceWatcher.DeleteNodesByID(node.Nid)
+						serviceWatcher.DeleteNodesByID(nid)
 					}
 				}
 			}
@@ -140,7 +132,7 @@ func (serviceWatcher *ServiceWatcher) WatchServiceNode(prefix string, callback S
 			if _, found := serviceWatcher.GetNodeByID(nid); !found {
 				log.Infof("New %s node UP => [%s]", name, nid)
 				callback(ServerUp, node)
-				serviceWatcher.etcd.Watch(node.GetPrefixByNid(), serviceWatcher.WatchNode, false)
+				serviceWatcher.etcd.Watch(node.Nid, serviceWatcher.WatchNode, false)
 				serviceWatcher.nodesMap[name][nid] = node
 			}
 		}

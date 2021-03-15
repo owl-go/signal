@@ -72,7 +72,7 @@ func (serverNode *ServiceNode) UpdateNodePayload(payload int) error {
 // keepRegistered 注册一个服务节点到etcd服务管理上
 func (serverNode *ServiceNode) keepRegistered(node Node) {
 	for {
-		err := serverNode.etcd.Keep(node.GetPrefixByNid(), node.GetNodeValue())
+		err := serverNode.etcd.Keep(node.Nid, node.GetNodeValue())
 		if err != nil {
 			log.Errorf("keepRegistered err = %s", err)
 			time.Sleep(5 * time.Second)
@@ -86,7 +86,7 @@ func (serverNode *ServiceNode) keepRegistered(node Node) {
 // keepRegistered 更新一个服务节点到etcd服务管理上
 func (serverNode *ServiceNode) updateRegistered(node Node) {
 	for {
-		err := serverNode.etcd.Update(node.GetPrefixByNid(), node.GetNodeValue())
+		err := serverNode.etcd.Update(node.Nid, node.GetNodeValue())
 		if err != nil {
 			log.Errorf("updateRegistered err = %s", err)
 			time.Sleep(5 * time.Second)

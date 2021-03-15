@@ -3,7 +3,6 @@ package biz
 import (
 	"mgkj/pkg/log"
 	"mgkj/pkg/proto"
-	"mgkj/pkg/server"
 	"mgkj/pkg/util"
 	"strings"
 )
@@ -48,14 +47,21 @@ func SfuRemoveStream(key string) {
 		return
 	}
 
-	msid := strings.Split(key, "/")
-	if len(msid) < 6 {
-		log.Errorf("key is err")
+	find := false
+	rpc, find := rpcs[islb.Nid]
+	if !find {
+		log.Errorf("SfuRemoveStream islb rpc not found")
 		return
 	}
+
+	msid := strings.Split(key, "/")
+	if len(msid) < 6 {
+		log.Errorf("SfuRemoveStream key is err")
+		return
+	}
+
 	rid := msid[3]
 	uid := msid[5]
 	mid := msid[7]
-	rpc := protoo.NewRequestor(server.GetRPCChannel(*islb))
 	rpc.AsyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", mid))
 }

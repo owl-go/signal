@@ -65,7 +65,14 @@ func join(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 	}
 
 	// 删除以前加入过的房间数据
-	rpc := protoo.NewRequestor(reg.GetRPCChannel(*islb))
+	find := false
+	rpc, find := rpcs[islb.Nid]
+	if !find {
+		log.Errorf("islb rpc not found")
+		reject(codeIslbErr, codeStr(codeIslbErr))
+		return
+	}
+
 	for _, room := range GetRoomsByPeer(uid) {
 		ridTmp := room.GetID()
 		rpc.AsyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", ridTmp, "uid", uid, "mid", ""))
@@ -110,8 +117,15 @@ func leave(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reje
 		return
 	}
 
+	find := false
+	rpc, find := rpcs[islb.Nid]
+	if !find {
+		log.Errorf("islb rpc not found")
+		reject(codeIslbErr, codeStr(codeIslbErr))
+		return
+	}
+
 	// 删除加入的房间和流
-	rpc := protoo.NewRequestor(reg.GetRPCChannel(*islb))
 	for _, room := range GetRoomsByPeer(uid) {
 		ridTmp := room.GetID()
 		rpc.AsyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", ridTmp, "uid", uid, "mid", ""))
@@ -150,8 +164,15 @@ func keepalive(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 		return
 	}
 
+	find := false
+	rpc, find := rpcs[islb.Nid]
+	if !find {
+		log.Errorf("islb rpc not found")
+		reject(codeIslbErr, codeStr(codeIslbErr))
+		return
+	}
+
 	// 通知islb
-	rpc := protoo.NewRequestor(reg.GetRPCChannel(*islb))
 	rpc.AsyncRequest(proto.BizToIslbKeepLive, util.Map("rid", rid, "uid", uid, "info", info))
 	// resp
 	accept(emptyMap)
@@ -196,11 +217,11 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 		return
 	}
 
-	// 查询islb节点
-	islb := FindIslbNode()
-	if islb == nil {
-		log.Errorf("islb node is not find")
-		reject(codeIslbErr, codeStr(codeIslbErr))
+	find := false
+	rpcSfu, find := rpcs[sfu.Nid]
+	if !find {
+		log.Errorf("sfu rpc not found")
+		reject(codeSfuErr, codeStr(codeSfuErr))
 		return
 	}
 
@@ -213,13 +234,13 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 	}
 
 	minfo = msg["minfo"].(map[string]interface{})
-	rpc := protoo.NewRequestor(reg.GetRPCChannel(*sfu))
-	resp, err := rpc.SyncRequest(proto.BizToSfuPublish, util.Map("rid", rid, "uid", uid, "minfo", minfo, "jsep", jsep))
+	resp, err := rpcSfu.SyncRequest(proto.BizToSfuPublish, util.Map("rid", rid, "uid", uid, "minfo", minfo, "jsep", jsep))
 	if err != nil {
-		log.Errorf("rpc to sfu fail")
+		log.Errorf(err.Reason)
 		reject(codePubErr, codeStr(codePubErr))
 		return
 	}
+
 	// "method", proto.SfuToBizPublish, "errorCode", 0, "jsep", answer, "mid", mid
 	// "method", proto.SfuToBizPublish, "errorCode", 403, "errorReason", "publish: sdp parse failed"
 	log.Infof("biz.publish respHandler resp=%v", resp)
@@ -234,6 +255,7 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 	} else {
 		bPublish = false
 	}
+
 	if !bPublish {
 		log.Errorf("publish is not suc")
 		reject(codePubErr, codeStr(codePubErr))
@@ -242,9 +264,23 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 
 	nid := sfu.Nid
 	mid := util.Val(rsp, "mid")
+	// 查询islb节点
+	islb := FindIslbNode()
+	if islb == nil {
+		log.Errorf("islb node is not find")
+		reject(codeIslbErr, codeStr(codeIslbErr))
+		return
+	}
+
+	find = false
+	rpcIslb, find := rpcs[islb.Nid]
+	if !find {
+		log.Errorf("islb rpc not found")
+		reject(codeIslbErr, codeStr(codeIslbErr))
+		return
+	}
 	// 通知islb
-	rpc = protoo.NewRequestor(reg.GetRPCChannel(*islb))
-	rpc.AsyncRequest(proto.BizToIslbOnStreamAdd, util.Map("rid", rid, "uid", uid, "mid", mid, "nid", nid, "minfo", minfo))
+	rpcIslb.AsyncRequest(proto.BizToIslbOnStreamAdd, util.Map("rid", rid, "uid", uid, "mid", mid, "nid", nid, "minfo", minfo))
 	// resp
 	accept(rsp)
 }
@@ -284,6 +320,16 @@ func unpublish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 		return
 	}
 
+	find := false
+	rpcSfu, find := rpcs[sfu.Nid]
+	if !find {
+		log.Errorf("sfu rpc not found")
+		reject(codeSfuErr, codeStr(codeSfuErr))
+		return
+	}
+
+	rpcSfu.AsyncRequest(proto.BizToSfuUnPublish, util.Map("rid", rid, "uid", uid, "mid", mid))
+
 	// 查询islb节点
 	islb := FindIslbNode()
 	if islb == nil {
@@ -291,10 +337,16 @@ func unpublish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 		reject(codeIslbErr, codeStr(codeIslbErr))
 		return
 	}
-	rpc := protoo.NewRequestor(reg.GetRPCChannel(*sfu))
-	rpc.AsyncRequest(proto.BizToSfuUnPublish, util.Map("rid", rid, "uid", uid, "mid", mid))
-	rpc = protoo.NewRequestor(reg.GetRPCChannel(*islb))
-	rpc.AsyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", mid))
+
+	find = false
+	rpcIslb, find := rpcs[islb.Nid]
+	if !find {
+		log.Errorf("islb rpc not found")
+		reject(codeIslbErr, codeStr(codeIslbErr))
+		return
+	}
+
+	rpcIslb.AsyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", mid))
 	// resp
 	accept(emptyMap)
 }
@@ -330,19 +382,6 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 		return
 	}
 
-	var sfu *reg.Node
-	nid := util.Val(msg, "nid")
-	if nid != "" {
-		sfu = FindSfuNodeByID(nid)
-	} else {
-		sfu = FindSfuNodeByMid(rid, mid)
-	}
-	if sfu == nil {
-		log.Errorf("sfu node is not find")
-		reject(codeSfuErr, codeStr(codeSfuErr))
-		return
-	}
-
 	minfo := msg["minfo"]
 	if minfo == nil {
 		log.Errorf("minfo node is not find")
@@ -350,18 +389,39 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 		return
 	}
 
-	// 获取sfu节点的resp
+	var sfu *reg.Node
+	nid := util.Val(msg, "nid")
+	if nid != "" {
+		sfu = FindSfuNodeByID(nid)
+	} else {
+		sfu = FindSfuNodeByMid(rid, mid)
+	}
+
+	if sfu == nil {
+		log.Errorf("sfu node is not find")
+		reject(codeSfuErr, codeStr(codeSfuErr))
+		return
+	}
+
 	find := false
+	rpcSfu, find := rpcs[sfu.Nid]
+	if !find {
+		log.Errorf("sfu rpc not found")
+		reject(codeSfuErr, codeStr(codeSfuErr))
+		return
+	}
+
+	// 获取sfu节点的resp
+	find = false
 	minfo = msg["minfo"].(map[string]interface{})
 	rspSfu := make(map[string]interface{})
-	rpc := protoo.NewRequestor(reg.GetRPCChannel(*sfu))
-	resp, err := rpc.SyncRequest(proto.BizToSfuSubscribe, util.Map("rid", rid, "uid", uid, "mid", mid, "jsep", jsep, "minfo", minfo))
-	//resp, err := rpc.SyncRequest(proto.BizToSfuSubscribe, util.Map("rid", rid, "uid", uid, "mid", mid, "jsep", jsep))
+	resp, err := rpcSfu.SyncRequest(proto.BizToSfuSubscribe, util.Map("rid", rid, "uid", uid, "mid", mid, "jsep", jsep, "minfo", minfo))
 	if err != nil {
-		log.Errorf("rpc to sfu fail")
+		log.Errorf(err.Reason)
 		reject(codeSubErr, codeStr(codeSubErr))
 		return
 	}
+
 	code := int(resp["errorCode"].(float64))
 	if code == 0 {
 		find = true
@@ -408,13 +468,22 @@ func unsubscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc
 	} else {
 		sfu = FindSfuNodeByMid(rid, mid)
 	}
+
 	if sfu == nil {
 		log.Errorf("sfu node is not find")
 		reject(codeSfuErr, codeStr(codeSfuErr))
 		return
 	}
-	rpc := protoo.NewRequestor(reg.GetRPCChannel(*sfu))
-	rpc.AsyncRequest(proto.BizToSfuUnSubscribe, util.Map("rid", rid, "uid", uid, "mid", mid))
+
+	find := false
+	rpcSfu, find := rpcs[sfu.Nid]
+	if !find {
+		log.Errorf("sfu rpc not found")
+		reject(codeSfuErr, codeStr(codeSfuErr))
+		return
+	}
+
+	rpcSfu.AsyncRequest(proto.BizToSfuUnSubscribe, util.Map("rid", rid, "uid", uid, "mid", mid))
 	// resp
 	accept(emptyMap)
 }
@@ -493,8 +562,15 @@ func broadcast(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 		return
 	}
 
-	rpc := protoo.NewRequestor(reg.GetRPCChannel(*islb))
-	rpc.AsyncRequest(proto.BizToIslbBroadcast, util.Map("rid", rid, "uid", uid, "data", msg["data"]))
+	find := false
+	rpcIslb, find := rpcs[islb.Nid]
+	if !find {
+		log.Errorf("islb rpc not found")
+		reject(codeIslbErr, codeStr(codeIslbErr))
+		return
+	}
+
+	rpcIslb.AsyncRequest(proto.BizToIslbBroadcast, util.Map("rid", rid, "uid", uid, "data", msg["data"]))
 	// resp
 	accept(emptyMap)
 }

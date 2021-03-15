@@ -3,10 +3,11 @@ package biz
 import (
 	"net/http"
 
-	"github.com/cloudwebrtc/go-protoo/transport"
 	"mgkj/pkg/log"
 	"mgkj/pkg/util"
 	"mgkj/pkg/ws"
+
+	"github.com/cloudwebrtc/go-protoo/transport"
 )
 
 func in(transport *transport.WebSocketTransport, request *http.Request) {
@@ -19,6 +20,7 @@ func in(transport *transport.WebSocketTransport, request *http.Request) {
 	id := peerID[0]
 	log.Infof("signal.in, id => %s", id)
 	peer := ws.NewPeer(id, transport)
+
 	handleRequest := func(request map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
 		defer util.Recover("signal.in handleRequest")
 		method := util.Val(request, "method")
@@ -62,18 +64,6 @@ func in(transport *transport.WebSocketTransport, request *http.Request) {
 	}
 
 	handleClose := func(code int, err string) {
-		/*rooms := GetRoomsByPeer(peer.ID())
-		log.Infof("signal.in handleClose [%d] %s rooms=%v", code, err, rooms)
-		for _, room := range rooms {
-			if room != nil {
-				if code > 1000 {
-					msg := make(map[string]interface{})
-					msg["rid"] = room.ID()
-					bizCall(proto.ClientClose, peer, msg, accept, reject)
-				}
-				//room.RemovePeer(peer.ID())
-			}
-		}*/
 		log.Infof("signal.in handleClose => peer (%s) ", peer.ID())
 	}
 

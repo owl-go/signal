@@ -11,23 +11,25 @@ import (
 )
 
 var (
-	protoo *nprotoo.NatsProtoo
-	node   *server.ServiceNode
-	watch  *server.ServiceWatcher
+	nats  *nprotoo.NatsProtoo
+	rpcs  = make(map[string]*nprotoo.Requestor)
+	node  *server.ServiceNode
+	watch *server.ServiceWatcher
 )
 
 // Init 初始化服务
 func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, natsURL string) {
 	node = serviceNode
 	watch = ServiceWatcher
-	protoo = nprotoo.NewNatsProtoo(natsURL)
+	nats = nprotoo.NewNatsProtoo(natsURL)
+	rpcs = make(map[string]*nprotoo.Requestor)
 	go watch.WatchServiceNode("", WatchServiceCallBack)
 }
 
 // Close 关闭连接
 func Close() {
-	if protoo != nil {
-		protoo.Close()
+	if nats != nil {
+		nats.Close()
 	}
 	if node != nil {
 		node.Close()
@@ -44,10 +46,20 @@ func WatchServiceCallBack(state server.NodeStateType, node server.Node) {
 		if node.Name == "islb" || node.Name == "sfu" {
 			eventID := server.GetEventChannel(node)
 			log.Infof("handleIslbBroadCast: eventID => [%s]", eventID)
-			protoo.OnBroadcast(eventID, handleBroadcast)
+			nats.OnBroadcast(eventID, handleBroadcast)
+		}
+
+		id := node.Nid
+		_, found := rpcs[id]
+		if !found {
+			rpcID := server.GetRPCChannel(node)
+			rpcs[id] = nats.NewRequestor(rpcID)
 		}
 	} else if state == server.ServerDown {
-		log.Infof("WatchServiceCallBack node down %v", node)
+		log.Infof("WatchServiceCallBack node down %v", node.Nid)
+		if _, found := rpcs[node.Nid]; found {
+			delete(rpcs, node.Nid)
+		}
 	}
 }
 
@@ -89,14 +101,22 @@ func FindSfuNodeByMid(rid, mid string) *server.Node {
 	}
 
 	find := false
-	var sfu *server.Node
-	rpc := protoo.NewRequestor(server.GetRPCChannel(*islb))
+	rpc, find := rpcs[islb.Nid]
+	if !find {
+		log.Errorf("FindSfuNodeByMid islb rpc not found")
+		return nil
+	}
+
 	resp, err := rpc.SyncRequest(proto.BizToIslbGetSfuInfo, util.Map("rid", rid, "mid", mid))
 	if err != nil {
 		log.Errorf(err.Reason)
 		return nil
 	}
+
 	log.Infof("FindSfuNodeByMid resp ==> %v", resp)
+
+	find = false
+	var sfu *server.Node
 	nErr := int(resp["errorCode"].(float64))
 	if nErr == 0 {
 		nid := util.Val(resp, "nid")
@@ -112,30 +132,6 @@ func FindSfuNodeByMid(rid, mid string) *server.Node {
 	return nil
 }
 
-// FindMediaIndoByMid 根据mid向islb查询指定的流信息
-/*
-func FindMediaIndoByMid(rid, mid string) (map[string]interface{}, bool) {
-	islb := FindIslbNode()
-	if islb == nil {
-		log.Errorf("FindMediaIndoByMid islb not found")
-		return nil, false
-	}
-
-	find := false
-	rsp := make(map[string]interface{})
-	rpc := protoo.NewRequestor(server.GetRPCChannel(*islb))
-	resp, err := rpc.SyncRequest(proto.BizToIslbGetMediaInfo, util.Map("rid", rid, "mid", mid))
-	if err != nil {
-		return nil, false
-	}
-	nErr := int(resp["errorCode"].(float64))
-	if nErr == 0 {
-		find = true
-		rsp["track"] = resp["tracks"]
-	}
-	return rsp, find
-}*/
-
 // FindMediaPubs 查询房间所有的其他人的发布流
 func FindMediaPubs(peer *ws.Peer, rid string) bool {
 	islb := FindIslbNode()
@@ -144,19 +140,29 @@ func FindMediaPubs(peer *ws.Peer, rid string) bool {
 		return false
 	}
 
-	// 查询房间存在的发布流
 	find := false
-	// 获取房间所有人的发布流
-	rpc := protoo.NewRequestor(server.GetRPCChannel(*islb))
+	rpc, find := rpcs[islb.Nid]
+	if !find {
+		log.Errorf("FindMediaPubs islb rpc not found")
+		return false
+	}
+
 	resp, err := rpc.SyncRequest(proto.BizToIslbGetMediaPubs, util.Map("rid", rid, "uid", peer.ID()))
 	if err != nil {
+		log.Errorf(err.Reason)
 		return false
 	}
+
+	log.Infof("FindMediaPubs resp ==> %v", resp)
+
 	nErr := int(resp["errorCode"].(float64))
 	if nErr != 0 {
+		log.Errorf("FindMediaPubs errorCode = %d", nErr)
 		return false
 	}
+
 	if resp["pubs"] == nil {
+		log.Errorf("FindMediaPubs pubs = nil")
 		return false
 	}
 
@@ -171,8 +177,7 @@ func FindMediaPubs(peer *ws.Peer, rid string) bool {
 			peer.Notify(proto.BizToClientOnStreamAdd, util.Map("rid", roomid, "uid", uid, "mid", mid, "nid", nid, "minfo", minfo))
 		}
 	}
-	find = true
-	return find
+	return true
 }
 
 // FindPeerIsLive 查询peer是否还存活
@@ -184,13 +189,23 @@ func FindPeerIsLive(rid, uid string) bool {
 	}
 
 	find := false
-	rpc := protoo.NewRequestor(server.GetRPCChannel(*islb))
-	resp, err := rpc.SyncRequest(proto.BizToIslbPeerLive, util.Map("rid", rid, "uid", uid))
-	if err != nil {
+	rpc, find := rpcs[islb.Nid]
+	if !find {
+		log.Errorf("FindPeerIsLive islb rpc not found")
 		return false
 	}
+
+	resp, err := rpc.SyncRequest(proto.BizToIslbPeerLive, util.Map("rid", rid, "uid", uid))
+	if err != nil {
+		log.Errorf(err.Reason)
+		return false
+	}
+
 	// "method", proto.IslbToBizPeerLive, "errorCode", 1
 	// "method", proto.IslbToBizPeerLive, "errorCode", 0
+	log.Infof("FindMediaPubs resp ==> %v", resp)
+
+	find = false
 	nErr := int(resp["errorCode"].(float64))
 	if nErr == 0 {
 		find = true

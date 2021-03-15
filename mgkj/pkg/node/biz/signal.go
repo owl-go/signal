@@ -3,7 +3,6 @@ package biz
 import (
 	"mgkj/pkg/log"
 	"mgkj/pkg/proto"
-	reg "mgkj/pkg/server"
 	"mgkj/pkg/util"
 	"mgkj/pkg/ws"
 	"sync"
@@ -54,10 +53,16 @@ func checkRoom() {
 					if islb == nil {
 						log.Errorf("islb node is not find")
 					}
-					rpc := protoo.NewRequestor(reg.GetRPCChannel(*islb))
-					rpc.AsyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", ""))
-					rpc.AsyncRequest(proto.BizToIslbOnLeave, util.Map("rid", rid, "uid", uid))
-					node.room.RemovePeer(uid)
+
+					find := false
+					rpc, find := rpcs[islb.Nid]
+					if !find {
+						log.Errorf("FindPeerIsLive islb rpc not found")
+					} else {
+						rpc.AsyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", ""))
+						rpc.AsyncRequest(proto.BizToIslbOnLeave, util.Map("rid", rid, "uid", uid))
+						node.room.RemovePeer(uid)
+					}
 				}
 			}
 			if len(node.room.GetPeers()) == 0 {
