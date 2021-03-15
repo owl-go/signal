@@ -1,8 +1,6 @@
 package proto
 
 import (
-	"encoding/json"
-	"fmt"
 	"strings"
 )
 
@@ -122,10 +120,6 @@ const (
 	BizToIslbGetSfuInfo = "getSfuInfo"
 	// IslbToBizGetSfuInfo islb->biz 返回mid对应的sfu
 	IslbToBizGetSfuInfo = BizToIslbGetSfuInfo
-	// BizToIslbGetMediaInfo biz->islb 获取mid的流信息
-	//BizToIslbGetMediaInfo = "getMediaInfo"
-	// IslbToBizGetMediaInfo islb->biz 返回mid对应的流信息
-	//IslbToBizGetMediaInfo = BizToIslbGetMediaInfo
 	// BizToIslbGetMediaPubs biz->islb 获取房间内所有的发布流
 	BizToIslbGetMediaPubs = "getMediaPubs"
 	// IslbToBizGetMediaPubs islb->biz 返回房间内的发布流信息
@@ -175,6 +169,7 @@ type TrackInfo struct {
 	Fmtp    string `json:"fmtp"`
 }
 
+/*
 // MarshalTrackField 分析
 func MarshalTrackField(id string, infos []TrackInfo) (string, string, error) {
 	str, err := json.Marshal(infos)
@@ -195,4 +190,4 @@ func UnmarshalTrackField(key string, value string) (string, *[]TrackInfo, error)
 	}
 	msid := strings.Split(key, "/")[1]
 	return msid, &tracks, nil
-}
+}*/

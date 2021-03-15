@@ -195,37 +195,6 @@ func streamAdd(data map[string]interface{}) (map[string]interface{}, *nprotoo.Er
 		log.Errorf("redis.Set streamAdd err = %v", err)
 	}
 
-	/*
-		tracks := data["tracks"]
-		if tracks != nil {
-			tracks := data["tracks"].(map[string]interface{})
-			for msid, track := range tracks {
-				var infos []proto.TrackInfo
-				for _, tinfo := range track.([]interface{}) {
-					tmp := tinfo.(map[string]interface{})
-					infos = append(infos, proto.TrackInfo{
-						ID:      tmp["id"].(string),
-						Type:    tmp["type"].(string),
-						Ssrc:    int(tmp["ssrc"].(float64)),
-						Payload: int(tmp["pt"].(float64)),
-						Codec:   tmp["codec"].(string),
-						Fmtp:    tmp["fmtp"].(string),
-					})
-				}
-				field, value, err := proto.MarshalTrackField(msid, infos)
-				if err != nil {
-					log.Errorf("MarshalTrackField: %v ", err)
-					continue
-				}
-				log.Infof("SetTrackField: mkey, field, value = %s, %s, %s", ukey, field, value)
-				err = redis.HSet(ukey, field, value)
-				if err != nil {
-					log.Errorf("redis.HSet streamAdd err = %v", err)
-				}
-				redis.Expire(ukey, redisKeyTTL)
-			}
-		}*/
-
 	// 获取用户发布流对应的sfu信息
 	ukey = proto.GetMediaPubKey(rid, uid, mid)
 	// 写入key值

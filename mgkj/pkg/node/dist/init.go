@@ -1,31 +1,34 @@
 package dist
 
 import (
-	nprotoo "github.com/cloudwebrtc/nats-protoo"
 	"mgkj/pkg/log"
 	"mgkj/pkg/server"
+
+	nprotoo "github.com/cloudwebrtc/nats-protoo"
 )
 
 var (
-	protoo *nprotoo.NatsProtoo
-	node   *server.ServiceNode
-	watch  *server.ServiceWatcher
+	nats  *nprotoo.NatsProtoo
+	rpcs  = make(map[string]*nprotoo.Requestor)
+	node  *server.ServiceNode
+	watch *server.ServiceWatcher
 )
 
 // Init 初始化服务
 func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, natsURL string) {
 	node = serviceNode
 	watch = ServiceWatcher
+	nats = nprotoo.NewNatsProtoo(natsURL)
+	rpcs = make(map[string]*nprotoo.Requestor)
 	go watch.WatchServiceNode("", WatchServiceCallBack)
-	protoo = nprotoo.NewNatsProtoo(natsURL)
 	// 启动消息接收
 	handleRPCRequest(node.GetRPCChannel())
 }
 
 // Close 关闭连接
 func Close() {
-	if protoo != nil {
-		protoo.Close()
+	if nats != nil {
+		nats.Close()
 	}
 	if node != nil {
 		node.Close()
@@ -39,8 +42,19 @@ func Close() {
 func WatchServiceCallBack(state server.NodeStateType, node server.Node) {
 	if state == server.ServerUp {
 		log.Infof("WatchServiceCallBack node up %v", node)
+		if node.Name == "islb" || node.Name == "dist" {
+			id := node.Nid
+			_, found := rpcs[id]
+			if !found {
+				rpcID := server.GetRPCChannel(node)
+				rpcs[id] = nats.NewRequestor(rpcID)
+			}
+		}
 	} else if state == server.ServerDown {
-		log.Infof("WatchServiceCallBack node down %v", node)
+		log.Infof("WatchServiceCallBack node down %v", node.Nid)
+		if _, found := rpcs[node.Nid]; found {
+			delete(rpcs, node.Nid)
+		}
 	}
 }
 

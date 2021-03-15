@@ -3,7 +3,6 @@ package dist
 import (
 	"mgkj/pkg/log"
 	"mgkj/pkg/proto"
-	reg "mgkj/pkg/server"
 	"mgkj/pkg/util"
 	"mgkj/pkg/ws"
 )
@@ -45,9 +44,17 @@ func login(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reje
 		reject(codeIslbErr, codeStr(codeIslbErr))
 		return
 	}
+
+	find := false
+	rpc, find := rpcs[islb.Nid]
+	if !find {
+		log.Errorf("islb rpc not found")
+		reject(codeIslbErr, codeStr(codeIslbErr))
+		return
+	}
+
 	// 通知islb更新数据库
 	nid := node.NodeInfo().Nid
-	rpc := protoo.NewRequestor(reg.GetRPCChannel(*islb))
 	rpc.AsyncRequest(proto.DistToIslbLogin, util.Map("uid", uid, "nid", nid))
 	// resp
 	accept(emptyMap)
@@ -70,9 +77,17 @@ func logout(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rej
 		reject(codeIslbErr, codeStr(codeIslbErr))
 		return
 	}
+
+	find := false
+	rpc, find := rpcs[islb.Nid]
+	if !find {
+		log.Errorf("islb rpc not found")
+		reject(codeIslbErr, codeStr(codeIslbErr))
+		return
+	}
+
 	// 通知islb更新数据库
 	nid := node.NodeInfo().Nid
-	rpc := protoo.NewRequestor(reg.GetRPCChannel(*islb))
 	rpc.AsyncRequest(proto.DistToIslbLogout, util.Map("uid", uid, "nid", nid))
 	// resp
 	accept(emptyMap)
@@ -95,9 +110,17 @@ func heartbeat(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 		reject(codeIslbErr, codeStr(codeIslbErr))
 		return
 	}
+
+	find := false
+	rpc, find := rpcs[islb.Nid]
+	if !find {
+		log.Errorf("islb rpc not found")
+		reject(codeIslbErr, codeStr(codeIslbErr))
+		return
+	}
+
 	// 通知islb更新数据库
 	nid := node.NodeInfo().Nid
-	rpc := protoo.NewRequestor(reg.GetRPCChannel(*islb))
 	rpc.AsyncRequest(proto.DistToIslbPeerHeartbeat, util.Map("uid", uid, "nid", nid))
 	// resp
 	accept(emptyMap)
@@ -137,13 +160,19 @@ func call(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 		return
 	}
 
+	find := false
+	rpc, find := rpcs[islb.Nid]
+	if !find {
+		log.Errorf("islb rpc not found")
+		reject(codeIslbErr, codeStr(codeIslbErr))
+		return
+	}
+
 	// 分析数据
 	nCount := 0
 	peersTmp := make([]string, 0)
 	for _, calleer := range peers {
 		callee := calleer.(string)
-
-		rpc := protoo.NewRequestor(reg.GetRPCChannel(*islb))
 		resp, err := rpc.SyncRequest(proto.DistToIslbPeerInfo, util.Map("uid", callee))
 		if err != nil {
 			return
@@ -156,8 +185,14 @@ func call(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 			nid := resp["nid"].(string)
 			dist := FindDistNodeByID(nid)
 			if dist != nil {
-				rpc := protoo.NewRequestor(reg.GetRPCChannel(*dist))
-				rpc.AsyncRequest(proto.DistToDistCall, util.Map("caller", caller, "callee", callee, "rid", rid, "nid", node.NodeInfo().Nid))
+				find := false
+				rpc, find := rpcs[dist.Nid]
+				if !find {
+					nCount = nCount + 1
+					peersTmp = append(peersTmp, callee)
+				} else {
+					rpc.AsyncRequest(proto.DistToDistCall, util.Map("caller", caller, "callee", callee, "rid", rid, "nid", node.NodeInfo().Nid))
+				}
 			} else {
 				nCount = nCount + 1
 				peersTmp = append(peersTmp, callee)
@@ -208,8 +243,15 @@ func acceptcall(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc,
 		return
 	}
 
+	find := false
+	rpc, find := rpcs[dist.Nid]
+	if !find {
+		log.Errorf("dist rpc not found")
+		reject(codeDistErr, codeStr(codeDistErr))
+		return
+	}
+
 	// 发送消息
-	rpc := protoo.NewRequestor(reg.GetRPCChannel(*dist))
 	rpc.AsyncRequest(proto.DistToDistAnswer, util.Map("caller", caller, "callee", callee, "rid", rid, "nid", nid))
 
 	// resp
@@ -249,8 +291,15 @@ func rejectcall(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc,
 		return
 	}
 
+	find := false
+	rpc, find := rpcs[dist.Nid]
+	if !find {
+		log.Errorf("dist rpc not found")
+		reject(codeDistErr, codeStr(codeDistErr))
+		return
+	}
+
 	// 发送消息
-	rpc := protoo.NewRequestor(reg.GetRPCChannel(*dist))
 	rpc.AsyncRequest(proto.DistToDistReject, util.Map("caller", caller, "callee", callee, "rid", rid, "nid", nid, "code", code))
 
 	// resp

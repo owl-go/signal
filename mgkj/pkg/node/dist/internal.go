@@ -2,10 +2,11 @@ package dist
 
 import (
 	"fmt"
-	nprotoo "github.com/cloudwebrtc/nats-protoo"
 	"mgkj/pkg/log"
 	"mgkj/pkg/proto"
 	"mgkj/pkg/util"
+
+	nprotoo "github.com/cloudwebrtc/nats-protoo"
 )
 
 /*
@@ -59,15 +60,12 @@ func dist2distReject(msg map[string]interface{}) (map[string]interface{}, *nprot
 
 // handleRPCMsgs 处理其他模块发送过来的消息
 func handleRPCRequest(rpcID string) {
-
 	log.Infof("handleRPCRequest: rpcID => [%v]", rpcID)
-
-	protoo.OnRequest(rpcID, func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
+	nats.OnRequest(rpcID, func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
 		go func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
-
 			defer util.Recover("dist.handleRPCRequest")
-
 			log.Infof("dist.handleRPCRequest recv request=%v", request)
+
 			method := request["method"].(string)
 			data := request["data"].(map[string]interface{})
 			log.Infof("method => %s, data => %v", method, data)
