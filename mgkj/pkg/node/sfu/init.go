@@ -3,6 +3,7 @@ package sfu
 import (
 	nprotoo "github.com/cloudwebrtc/nats-protoo"
 	"mgkj/pkg/log"
+	mp "mgkj/pkg/mediasoup"
 	"mgkj/pkg/proto"
 	"mgkj/pkg/rtc"
 	"mgkj/pkg/server"
@@ -34,6 +35,7 @@ func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher
 	handleRPCRequest(node.GetRPCChannel())
 	checkRTC()
 	go updatePayload()
+	go mp.InitWork()
 }
 
 // Close 关闭连接
