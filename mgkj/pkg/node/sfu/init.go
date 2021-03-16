@@ -49,6 +49,7 @@ func Close() {
 	if watch != nil {
 		watch.Close()
 	}
+	mp.Close()
 }
 
 // checkRTC send `stream-remove` msg to islb when some pub has been cleaned
