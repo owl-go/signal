@@ -306,9 +306,10 @@ func (r *Router) Close() {
 		return
 	}
 
-	r.DelPub()
 	r.stop = true
+	r.DelPub()
 	r.DelSubs()
+	r.router.Close()
 }
 
 // MapRouter 找到指定的map对象并调用
