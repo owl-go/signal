@@ -109,42 +109,32 @@ func (r *Router) Alive() bool {
 	}
 
 	if r.pub.audiopub != nil {
-		stats, err := r.pub.audiopub.GetStats()
-		if err != nil {
-			log.Errorf(err.Error())
-		} else {
-			for _, stat := range stats {
-				if stat.Score > 0 {
-					r.pub.audioLive = true
-					nAudio = 0
-				} else {
-					nAudio = nAudio + 1
-				}
+		for _, stat := range r.pub.audiopub.Score() {
+			if stat.Score > 0 {
+				r.pub.audioLive = true
+				r.pub.nAudio = 0
+			} else {
+				r.pub.nAudio = r.pub.nAudio + 1
 			}
 		}
-		if nAudio == 3 {
-			nAudio = 0
+		if r.pub.nAudio == 3 {
+			r.pub.nAudio = 0
 			r.pub.audioLive = false
 		}
 	} else {
 		r.pub.audioLive = false
 	}
 	if r.pub.videopub != nil {
-		stats, err := r.pub.videopub.GetStats()
-		if err != nil {
-			log.Errorf(err.Error())
-		} else {
-			for _, stat := range stats {
-				if stat.Score > 0 {
-					r.pub.videoLive = true
-					nVideo = 0
-				} else {
-					nVideo = nVideo + 1
-				}
+		for _, stat := range r.pub.videopub.Score() {
+			if stat.Score > 0 {
+				r.pub.videoLive = true
+				r.pub.nVideo = 0
+			} else {
+				r.pub.nVideo = r.pub.nVideo + 1
 			}
 		}
-		if nVideo == 3 {
-			nVideo = 0
+		if r.pub.nVideo == 3 {
+			r.pub.nVideo = 0
 			r.pub.videoLive = false
 		}
 	} else {
