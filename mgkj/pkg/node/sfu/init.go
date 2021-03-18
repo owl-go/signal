@@ -1,15 +1,14 @@
 package sfu
 
 import (
-	nprotoo "github.com/cloudwebrtc/nats-protoo"
-	"mgkj/pkg/log"
-	mp "mgkj/pkg/mediasoup"
+	rtc "mgkj/pkg/mediasoup"
 	"mgkj/pkg/proto"
-	"mgkj/pkg/rtc"
 	"mgkj/pkg/server"
 	"mgkj/pkg/util"
 	"sync"
 	"time"
+
+	nprotoo "github.com/cloudwebrtc/nats-protoo"
 )
 
 const (
@@ -32,14 +31,15 @@ func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher
 	protoo = nprotoo.NewNatsProtoo(natsURL)
 	broadcaster = protoo.NewBroadcaster(node.GetEventChannel())
 	// 启动
+	rtc.InitWorker()
 	handleRPCRequest(node.GetRPCChannel())
-	checkRTC()
+	go checkRTC()
 	go updatePayload()
-	go mp.InitWork()
 }
 
 // Close 关闭连接
 func Close() {
+	rtc.FreeWorker()
 	if protoo != nil {
 		protoo.Close()
 	}
@@ -49,20 +49,16 @@ func Close() {
 	if watch != nil {
 		watch.Close()
 	}
-	mp.Close()
 }
 
-// checkRTC send `stream-remove` msg to islb when some pub has been cleaned
+// checkRTC 通知信令流被移除
 func checkRTC() {
-	log.Infof("SFU.checkRTC start")
-	go func() {
-		for mid := range rtc.CleanChannel {
-			broadcaster.Say(proto.SfuToBizOnStreamRemove, util.Map("mid", mid))
-		}
-	}()
+	for mid := range rtc.CleanPub {
+		broadcaster.Say(proto.SfuToBizOnStreamRemove, util.Map("mid", mid))
+	}
 }
 
-// update node's payload
+// updatePayload 更新sfu服务器负载
 func updatePayload() {
 	t := time.NewTicker(statCycle)
 	defer t.Stop()

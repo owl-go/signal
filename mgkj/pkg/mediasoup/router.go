@@ -1,8 +1,6 @@
 package mediasoup
 
 import (
-	"encoding/json"
-	"fmt"
 	"mgkj/pkg/log"
 	"sync"
 
@@ -14,6 +12,8 @@ type Publish struct {
 	transport *mediasoup.WebRtcTransport
 	audiopub  *mediasoup.Producer
 	videopub  *mediasoup.Producer
+	audioLive bool
+	videoLive bool
 }
 
 // Subscribe 拉流对象
@@ -29,7 +29,6 @@ type Router struct {
 	pub     Publish
 	subs    map[string]Subscribe
 	subLock sync.RWMutex
-	stop    bool
 }
 
 // NewRouter 新建一个对象
@@ -45,7 +44,6 @@ func NewRouter(work *mediasoup.Worker) *Router {
 	}
 
 	routerObj := new(Router)
-	routerObj.stop = false
 	routerObj.router = router
 	routerObj.subs = make(map[string]Subscribe)
 	return routerObj
@@ -99,6 +97,58 @@ func NewCodecVP8() *mediasoup.RtpCodecCapability {
 	return vp8
 }
 
+// Alive 判断存活
+func (r *Router) Alive() bool {
+	nAudio := 0
+	nVideo := 0
+	if r.pub.audiopub != nil {
+		stats, err := r.pub.audiopub.GetStats()
+		if err != nil {
+			log.Errorf(err.Error())
+		} else {
+			for _, stat := range stats {
+				if stat.Score > 0 {
+					r.pub.audioLive = true
+					nAudio = 0
+				} else {
+					nAudio = nAudio + 1
+				}
+			}
+		}
+		if nAudio == 3 {
+			nAudio = 0
+			r.pub.audioLive = false
+		}
+	} else {
+		r.pub.audioLive = false
+	}
+	if r.pub.videopub != nil {
+		stats, err := r.pub.videopub.GetStats()
+		if err != nil {
+			log.Errorf(err.Error())
+		} else {
+			for _, stat := range stats {
+				if stat.Score > 0 {
+					r.pub.videoLive = true
+					nVideo = 0
+				} else {
+					nVideo = nVideo + 1
+				}
+			}
+		}
+		if nVideo == 3 {
+			nVideo = 0
+			r.pub.videoLive = false
+		}
+	} else {
+		r.pub.videoLive = false
+	}
+	if !r.pub.audioLive && !r.pub.videoLive {
+		return false
+	}
+	return true
+}
+
 // AddPub 增加发布流对象
 func (r *Router) AddPub(sdp string, id, ip string, options map[string]interface{}) (string, error) {
 	option := mediasoup.WebRtcTransportOptions{}
@@ -109,7 +159,8 @@ func (r *Router) AddPub(sdp string, id, ip string, options map[string]interface{
 	option.ListenIps = append(option.ListenIps, mediasoupIP)
 	sendTransport, err := r.router.CreateWebRtcTransport(option)
 	if err != nil {
-		panic(err)
+		log.Errorf(err.Error())
+		return "", err
 	}
 
 	zx := NewZX("send", sdp, r.router.RtpCapabilities())
@@ -121,48 +172,42 @@ func (r *Router) AddPub(sdp string, id, ip string, options map[string]interface{
 		DtlsParameters: &dtls,
 	})
 	if err != nil {
-		panic(err)
+		log.Errorf(err.Error())
+		return "", err
 	}
 
 	r.pub.transport = sendTransport
 	canKind := zx.CanKind()
-	if canKind["audio"] {
+
+	bAudioPub := options["audio"].(bool)
+	bVideoPub := options["video"].(bool)
+	if canKind["audio"] && bAudioPub {
 		kind := "audio"
 		rtpParameters := zx.GetRtpParameter(kind)
-
-		jsonstr, err := json.Marshal(rtpParameters)
-		if err != nil {
-			fmt.Println("1234")
-		}
-		fmt.Println(string(jsonstr))
-
 		producer, err := sendTransport.Produce(mediasoup.ProducerOptions{
 			Kind:          mediasoup.MediaKind(kind),
 			RtpParameters: *rtpParameters,
 		})
 		if err != nil {
-			panic(err)
+			log.Errorf(err.Error())
+			return "", err
 		}
 		r.pub.audiopub = producer
+		r.pub.audioLive = true
 	}
-	if canKind["video"] {
+	if canKind["video"] && bVideoPub {
 		kind := "video"
 		rtpParameters := zx.GetRtpParameter(kind)
-
-		jsonstr, err := json.Marshal(rtpParameters)
-		if err != nil {
-			fmt.Println("1234")
-		}
-		fmt.Println(string(jsonstr))
-
 		producer, err := sendTransport.Produce(mediasoup.ProducerOptions{
 			Kind:          mediasoup.MediaKind(kind),
 			RtpParameters: *rtpParameters,
 		})
 		if err != nil {
-			panic(err)
+			log.Errorf(err.Error())
+			return "", err
 		}
 		r.pub.videopub = producer
+		r.pub.videoLive = true
 	}
 	return zx.Sdp()
 }
@@ -185,28 +230,28 @@ func (r *Router) DelPub() {
 
 // AddSub add a pub to router
 func (r *Router) AddSub(sdp string, id, ip string, options map[string]interface{}) (string, error) {
-	nativeSctpCapabilities := GetNativeSctpCapabilities()
+	//nativeSctpCapabilities := GetNativeSctpCapabilities()
 	recvTransport, err := r.router.CreateWebRtcTransport(mediasoup.WebRtcTransportOptions{
 		ListenIps: []mediasoup.TransportListenIp{
 			{Ip: "0.0.0.0", AnnouncedIp: ip},
 		},
-		EnableSctp:     true,
-		NumSctpStreams: nativeSctpCapabilities.NumStreams,
 	})
 	if err != nil {
-		panic(err)
+		log.Errorf(err.Error())
+		return "", err
 	}
-
-	sub := Subscribe{}
-	sub.transport = recvTransport
 
 	zx := NewZX("recv", sdp, r.router.RtpCapabilities())
 	zx.Run(recvTransport.IceParameters(), recvTransport.IceCandidates(),
 		recvTransport.DtlsParameters(), recvTransport.SctpParameters())
 
-	canKind := zx.CanKind()
+	sub := Subscribe{}
+	sub.transport = recvTransport
 
-	if canKind["audio"] {
+	canKind := zx.CanKind()
+	bAudioSub := options["audio"].(bool)
+	bVideoSub := options["video"].(bool)
+	if canKind["audio"] && bAudioSub {
 		kind := "audio"
 		producer := r.pub.audiopub
 		consumer, err := recvTransport.Consume(mediasoup.ConsumerOptions{
@@ -215,13 +260,14 @@ func (r *Router) AddSub(sdp string, id, ip string, options map[string]interface{
 			Paused:          true,
 		})
 		if err != nil {
-			panic(err)
+			log.Errorf(err.Error())
+			return "", err
 		}
 		zx.receive(consumer.Id(), kind, consumer.RtpParameters())
 		consumer.Resume()
 		sub.audiosub = consumer
 	}
-	if canKind["video"] {
+	if canKind["video"] && bVideoSub {
 		kind := "video"
 		producer := r.pub.videopub
 		consumer, err := recvTransport.Consume(mediasoup.ConsumerOptions{
@@ -230,7 +276,8 @@ func (r *Router) AddSub(sdp string, id, ip string, options map[string]interface{
 			Paused:          true,
 		})
 		if err != nil {
-			panic(err)
+			log.Errorf(err.Error())
+			return "", err
 		}
 		zx.receive(consumer.Id(), kind, consumer.RtpParameters())
 		consumer.Resume()
@@ -302,11 +349,6 @@ func (r *Router) DelSubs() {
 
 // Close release all
 func (r *Router) Close() {
-	if r.stop {
-		return
-	}
-
-	r.stop = true
 	r.DelPub()
 	r.DelSubs()
 	r.router.Close()

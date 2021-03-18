@@ -3,9 +3,8 @@ package sfu
 import (
 	"fmt"
 	"mgkj/pkg/log"
+	rtc "mgkj/pkg/mediasoup"
 	"mgkj/pkg/proto"
-	"mgkj/pkg/rtc"
-	//rtc "mgkj/pkg/mediasoup"
 	"mgkj/pkg/util"
 
 	nprotoo "github.com/cloudwebrtc/nats-protoo"
@@ -55,10 +54,17 @@ func handleRPCRequest(rpcID string) {
 */
 // publish 处理发布流
 func publish(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
-	jsep := msg["jsep"].(map[string]interface{})
-	if jsep == nil {
+	log.Infof("sfu.publish msg => %v", msg)
+	// 判断参数
+	if msg["jsep"] == nil {
 		return util.Map("errorCode", 401), nil
 	}
+
+	jsep, ok := msg["jsep"].(map[string]interface{})
+	if !ok {
+		return util.Map("errorCode", 402), nil
+	}
+
 	sdp := util.Val(jsep, "sdp")
 	rid := util.Val(msg, "rid")
 	uid := util.Val(msg, "uid")
@@ -90,7 +96,7 @@ func unpublish(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Err
 	mid := util.Val(msg, "mid")
 
 	key := proto.GetMediaPubKey(rid, uid, mid)
-	router := rtc.GetOrNewRouter(key)
+	router := rtc.GetRouter(key)
 	if router != nil {
 		router.Close()
 		rtc.DelRouter(mid)
@@ -104,11 +110,16 @@ func unpublish(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Err
 // subscribe 处理订阅流
 func subscribe(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	log.Infof("sfu.subscribe msg => %v", msg)
-
-	jsep := msg["jsep"].(map[string]interface{})
-	if jsep == nil {
+	// 判断参数
+	if msg["jsep"] == nil {
 		return util.Map("errorCode", 401), nil
 	}
+
+	jsep, ok := msg["jsep"].(map[string]interface{})
+	if !ok {
+		return util.Map("errorCode", 402), nil
+	}
+
 	sdp := util.Val(jsep, "sdp")
 	rid := util.Val(msg, "rid")
 	mid := util.Val(msg, "mid")
@@ -116,19 +127,36 @@ func subscribe(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Err
 	subID := fmt.Sprintf("%s#%s", uid, util.RandStr(6))
 
 	options := msg["minfo"]
-	if options != nil {
-		options, ok := msg["minfo"].(map[string]interface{})
+	if options == nil {
+		minfo := util.Map("audio", true, "video", true)
+		key := proto.GetMediaPubKey(rid, uid, mid)
+		router := rtc.GetRouter(key)
+		if router == nil {
+			return util.Map("errorCode", 403), nil
+		}
+
+		resp, err := router.AddSub(sdp, subID, node.NodeInfo().Nip, minfo)
+		if err != nil {
+			return util.Map("errorCode", 404), nil
+		}
+		return util.Map("errorCode", 0, "jsep", util.Map("type", "answer", "sdp", resp), "mid", subID), nil
+	} else {
+		minfo, ok := options.(map[string]interface{})
 		if ok {
 			key := proto.GetMediaPubKey(rid, uid, mid)
-			router := rtc.GetOrNewRouter(key)
-			resp, err := router.AddSub(sdp, subID, node.NodeInfo().Nip, options)
-			if err != nil {
+			router := rtc.GetRouter(key)
+			if router == nil {
 				return util.Map("errorCode", 403), nil
+			}
+
+			resp, err := router.AddSub(sdp, subID, node.NodeInfo().Nip, minfo)
+			if err != nil {
+				return util.Map("errorCode", 404), nil
 			}
 			return util.Map("errorCode", 0, "jsep", util.Map("type", "answer", "sdp", resp), "mid", subID), nil
 		}
 	}
-	return util.Map("errorCode", 404), nil
+	return util.Map("errorCode", 405), nil
 }
 
 /*

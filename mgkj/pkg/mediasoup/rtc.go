@@ -1,40 +1,55 @@
 package mediasoup
 
 import (
-	"encoding/json"
 	"mgkj/pkg/log"
 	"sync"
+	"time"
 
 	mediasoup "github.com/jiyeyuran/mediasoup-go"
 )
 
-var (
-	worker     *mediasoup.Worker
-	routers    = make(map[string]*Router)
-	routerLock sync.RWMutex
+const (
+	statCycle    = 2 * time.Second
+	maxCleanSize = 100
 )
 
-// InitWork 初始化work
-func InitWork() {
-	work, err := mediasoup.NewWorker()
+var (
+	worker     *mediasoup.Worker
+	CleanPub   = make(chan string, maxCleanSize)
+	routers    = make(map[string]*Router)
+	routerLock sync.RWMutex
+	stop       bool
+)
+
+// InitWorker 初始化worker
+func InitWorker() {
+	stop = false
+	worker, err := mediasoup.NewWorker()
 	if err != nil {
+		log.Errorf(err.Error())
 		panic(err)
 	}
 
-	worker = work
 	worker.On("died", func(err error) {
-		log.Errorf("%s", err)
+		log.Errorf(err.Error())
+		panic(err)
 	})
 
-	dump, _ := worker.Dump()
-	log.Debugf("dump: %+v", dump)
+	go CheckRoute()
+}
 
-	usage, err := worker.GetResourceUsage()
-	if err != nil {
-		panic(err)
+// FreeWorker 关闭worker
+func FreeWorker() {
+	stop = true
+	routerLock.Lock()
+	defer routerLock.Unlock()
+	for id, router := range routers {
+		if router != nil {
+			router.Close()
+			delete(routers, id)
+		}
 	}
-	data, _ := json.Marshal(usage)
-	log.Debugf("usage: %s", data)
+	worker.Close()
 }
 
 // GetOrNewRouter 获取Router
@@ -47,7 +62,14 @@ func GetOrNewRouter(id string) *Router {
 	return router
 }
 
-// GetRouter get router from map
+// GetRouters 获取所有的Router
+func GetRouters() map[string]*Router {
+	routerLock.RLock()
+	defer routerLock.RUnlock()
+	return routers
+}
+
+// GetRouter 获取Router
 func GetRouter(id string) *Router {
 	log.Infof("rtc.GetRouter id=%s", id)
 	routerLock.RLock()
@@ -77,15 +99,26 @@ func DelRouter(id string) {
 	delete(routers, id)
 }
 
-// Close close all Router
-func Close() {
-	routerLock.Lock()
-	defer routerLock.Unlock()
-	for id, router := range routers {
-		if router != nil {
-			router.Close()
-			delete(routers, id)
+// CheckRoute 查询所有router的状态
+func CheckRoute() {
+	t := time.NewTicker(statCycle)
+	defer t.Stop()
+	for {
+		if stop {
+			return
+		}
+		select {
+		case <-t.C:
+			routerLock.Lock()
+			for id, Router := range routers {
+				if !Router.Alive() {
+					Router.Close()
+					delete(routers, id)
+					CleanPub <- id
+					log.Infof("Router delete %v", id)
+				}
+			}
+			routerLock.Unlock()
 		}
 	}
-	worker.Close()
 }
