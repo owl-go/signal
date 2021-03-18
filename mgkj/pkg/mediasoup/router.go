@@ -14,6 +14,8 @@ type Publish struct {
 	videopub  *mediasoup.Producer
 	audioLive bool
 	videoLive bool
+	nAudio    int
+	nVideo    int
 }
 
 // Subscribe 拉流对象
@@ -99,8 +101,13 @@ func NewCodecVP8() *mediasoup.RtpCodecCapability {
 
 // Alive 判断存活
 func (r *Router) Alive() bool {
-	nAudio := 0
-	nVideo := 0
+	if r.pub.transport != nil {
+		dtls := r.pub.transport.DtlsState()
+		if dtls == mediasoup.DtlsState_Failed || dtls == mediasoup.DtlsState_Closed {
+			return false
+		}
+	}
+
 	if r.pub.audiopub != nil {
 		stats, err := r.pub.audiopub.GetStats()
 		if err != nil {
@@ -177,6 +184,8 @@ func (r *Router) AddPub(sdp string, id, ip string, options map[string]interface{
 	}
 
 	r.pub.transport = sendTransport
+	r.pub.nAudio = 0
+	r.pub.nVideo = 0
 	canKind := zx.CanKind()
 
 	bAudioPub := options["audio"].(bool)
