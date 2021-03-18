@@ -101,13 +101,14 @@ func NewCodecVP8() *mediasoup.RtpCodecCapability {
 
 // AddPub 增加发布流对象
 func (r *Router) AddPub(sdp string, id, ip string, options map[string]interface{}) (string, error) {
-	option := mediasoup.WebRtcTransportOptions{}
-	option.ListenIps = make([]mediasoup.TransportListenIp, 0)
-	mediasoupIP := mediasoup.TransportListenIp{}
-	mediasoupIP.Ip = "0.0.0.0"
-	mediasoupIP.AnnouncedIp = ip
-	option.ListenIps = append(option.ListenIps, mediasoupIP)
-	sendTransport, err := r.router.CreateWebRtcTransport(option)
+	nativeSctpCapabilities := GetNativeSctpCapabilities()
+	sendTransport, err := r.router.CreateWebRtcTransport(mediasoup.WebRtcTransportOptions{
+		ListenIps: []mediasoup.TransportListenIp{
+			{Ip: "0.0.0.0", AnnouncedIp: ip},
+		},
+		EnableSctp:     true,
+		NumSctpStreams: nativeSctpCapabilities.NumStreams,
+	})
 	if err != nil {
 		panic(err)
 	}
