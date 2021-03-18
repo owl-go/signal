@@ -282,6 +282,8 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 	// 通知islb
 	rpcIslb.AsyncRequest(proto.BizToIslbOnStreamAdd, util.Map("rid", rid, "uid", uid, "mid", mid, "nid", nid, "minfo", minfo))
 	// resp
+	rsp["nid"] = nid
+	rsp["minfo"] = minfo
 	accept(rsp)
 }
 
