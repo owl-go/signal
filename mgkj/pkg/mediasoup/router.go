@@ -151,14 +151,13 @@ func (r *Router) Alive() bool {
 
 // AddPub 增加发布流对象
 func (r *Router) AddPub(sdp string, id, ip string, options map[string]interface{}) (string, error) {
-	nativeSctpCapabilities := GetNativeSctpCapabilities()
-	sendTransport, err := r.router.CreateWebRtcTransport(mediasoup.WebRtcTransportOptions{
-		ListenIps: []mediasoup.TransportListenIp{
-			{Ip: "0.0.0.0", AnnouncedIp: ip},
-		},
-		EnableSctp:     true,
-		NumSctpStreams: nativeSctpCapabilities.NumStreams,
-	})
+	option := mediasoup.WebRtcTransportOptions{}
+	option.ListenIps = make([]mediasoup.TransportListenIp, 0)
+	mediasoupIP := mediasoup.TransportListenIp{}
+	mediasoupIP.Ip = "0.0.0.0"
+	mediasoupIP.AnnouncedIp = ip
+	option.ListenIps = append(option.ListenIps, mediasoupIP)
+	sendTransport, err := r.router.CreateWebRtcTransport(option)
 	if err != nil {
 		log.Errorf(err.Error())
 		return "", err
@@ -231,12 +230,13 @@ func (r *Router) DelPub() {
 
 // AddSub add a pub to router
 func (r *Router) AddSub(sdp string, id, ip string, options map[string]interface{}) (string, error) {
-	//nativeSctpCapabilities := GetNativeSctpCapabilities()
-	recvTransport, err := r.router.CreateWebRtcTransport(mediasoup.WebRtcTransportOptions{
-		ListenIps: []mediasoup.TransportListenIp{
-			{Ip: "0.0.0.0", AnnouncedIp: ip},
-		},
-	})
+	option := mediasoup.WebRtcTransportOptions{}
+	option.ListenIps = make([]mediasoup.TransportListenIp, 0)
+	mediasoupIP := mediasoup.TransportListenIp{}
+	mediasoupIP.Ip = "0.0.0.0"
+	mediasoupIP.AnnouncedIp = ip
+	option.ListenIps = append(option.ListenIps, mediasoupIP)
+	recvTransport, err := r.router.CreateWebRtcTransport(option)
 	if err != nil {
 		log.Errorf(err.Error())
 		return "", err
