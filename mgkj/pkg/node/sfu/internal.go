@@ -127,20 +127,7 @@ func subscribe(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Err
 	subID := fmt.Sprintf("%s#%s", uid, util.RandStr(6))
 
 	options := msg["minfo"]
-	if options == nil {
-		minfo := util.Map("audio", true, "video", true)
-		key := proto.GetMediaPubKey(rid, uid, mid)
-		router := rtc.GetRouter(key)
-		if router == nil {
-			return util.Map("errorCode", 403), nil
-		}
-
-		resp, err := router.AddSub(sdp, subID, node.NodeInfo().Nip, minfo)
-		if err != nil {
-			return util.Map("errorCode", 404), nil
-		}
-		return util.Map("errorCode", 0, "jsep", util.Map("type", "answer", "sdp", resp), "mid", subID), nil
-	} else {
+	if options != nil {
 		minfo, ok := options.(map[string]interface{})
 		if ok {
 			key := proto.GetMediaPubKey(rid, uid, mid)

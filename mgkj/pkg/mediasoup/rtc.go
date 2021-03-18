@@ -24,12 +24,13 @@ var (
 // InitWorker 初始化worker
 func InitWorker() {
 	stop = false
-	worker, err := mediasoup.NewWorker()
+	work, err := mediasoup.NewWorker()
 	if err != nil {
 		log.Errorf(err.Error())
 		panic(err)
 	}
 
+	worker = work
 	worker.On("died", func(err error) {
 		log.Errorf(err.Error())
 		panic(err)
