@@ -5,22 +5,19 @@ pprof = ":6061"
 dc = "shenzhen"
 name = "islb"
 nid = "shenzhen_islb_1"
-nip = "8.129.55.41"
+nip = "127.0.0.1"
 
 [log]
 level = "info"
 
 [etcd]
 # ["ip:port", "ip:port"]
-# addrs = ["127.0.0.1:2379"]
-addrs = ["8.129.55.41:2379"]
+addrs = ["127.0.0.1:2379"]
 
 [nats]
-# url = "nats://127.0.0.1:4222"
-url = "nats://8.129.55.41:4222"
+url = "nats://127.0.0.1:4222"
 
 [redis]
-# addrs = [":6379"]
-addrs = ["8.129.55.41:6379"]
+addrs = [":6379"]
 password = ""
 db = 0

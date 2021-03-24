@@ -5,7 +5,7 @@ pprof = ":6063"
 dc = "shenzhen"
 name = "dist"
 nid = "shenzhen_dist_1"
-nip = "8.129.55.41"
+nip = "127.0.0.1"
 
 [log]
 level = "info"
@@ -13,8 +13,7 @@ level = "info"
 
 [etcd]
 # ["ip:port", "ip:port"]
-# addrs = ["127.0.0.1:2379"]
-addrs = ["8.129.55.41:2379"]
+addrs = ["127.0.0.1:2379"]
 
 [signal]
 #listen ip port
@@ -24,5 +23,4 @@ port = "8444"
 # key= "configs/key.pem"
 
 [nats]
-# url = "nats://127.0.0.1:4222"
-url = "nats://8.129.55.41:4222"
+url = "nats://127.0.0.1:4222"

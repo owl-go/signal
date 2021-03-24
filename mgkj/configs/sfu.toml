@@ -5,7 +5,7 @@ pprof = ":6062"
 dc = "shenzhen"
 name = "sfu"
 nid = "shenzhen_sfu_1"
-nip = "8.129.55.41"
+nip = "127.0.0.1"
 
 [plugins]
 on = true
@@ -41,9 +41,7 @@ level = "info"
 
 [etcd]
 # ["ip:port", "ip:port"]
-# addrs = ["127.0.0.1:2379"]
-addrs = ["8.129.55.41:2379"]
+addrs = ["127.0.0.1:2379"]
 
 [nats]
-# url = "nats://127.0.0.1:4222"
-url = "nats://8.129.55.41:4222"
+url = "nats://127.0.0.1:4222"
