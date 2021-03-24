@@ -43,7 +43,7 @@ func NewPeer(id string, transport *transport.WebSocketTransport) *Peer {
 
 func (peer *Peer) Close() {
 	peer.transport.Close()
-	peer.Emit("close", 1000, "")
+	//peer.Emit("close", 1000, "")
 }
 
 func (peer *Peer) ID() string {
