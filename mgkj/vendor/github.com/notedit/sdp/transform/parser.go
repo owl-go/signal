@@ -242,7 +242,7 @@ func toType(str string, otype rune) interface{} {
 	case 's':
 		return str
 	case 'd':
-		if number, err := strconv.Atoi(str); err != nil {
+		if number, err := strconv.ParseUint(str, 10, 64); err != nil {
 			return 0
 		} else {
 			return number

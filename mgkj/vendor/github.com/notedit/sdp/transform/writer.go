@@ -164,7 +164,7 @@ func makeLine(otype byte, rule *Rule, location *gabs.Container) string {
 				fmt.Println(format)
 				fmt.Println("interface cast to int error, realtype is ", reflect.TypeOf(arg).String(), "value is", arg)
 			}
-			argStr := strconv.Itoa(int(argInt))
+			argStr := strconv.FormatUint(uint64(argInt), 10)
 			return argStr
 		} else if x == "%v" {
 			return ""
