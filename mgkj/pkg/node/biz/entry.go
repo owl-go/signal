@@ -429,6 +429,7 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 		find = true
 		rspSfu["jsep"] = resp["jsep"]
 		rspSfu["sid"] = resp["mid"]
+		rspSfu["uid"] = resp["uid"]
 	} else {
 		find = false
 	}

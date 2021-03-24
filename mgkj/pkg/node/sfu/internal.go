@@ -123,8 +123,9 @@ func subscribe(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Err
 	sdp := util.Val(jsep, "sdp")
 	rid := util.Val(msg, "rid")
 	mid := util.Val(msg, "mid")
+	sid := util.Val(msg, "uid")
 	uid := proto.GetUIDFromMID(mid)
-	subID := fmt.Sprintf("%s#%s", uid, util.RandStr(6))
+	subID := fmt.Sprintf("%s#%s", sid, util.RandStr(6))
 
 	options := msg["minfo"]
 	if options != nil {
@@ -140,7 +141,7 @@ func subscribe(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Err
 			if err != nil {
 				return util.Map("errorCode", 404), nil
 			}
-			return util.Map("errorCode", 0, "jsep", util.Map("type", "answer", "sdp", resp), "mid", subID), nil
+			return util.Map("errorCode", 0, "jsep", util.Map("type", "answer", "sdp", resp), "mid", subID, "uid", uid), nil
 		}
 	}
 	return util.Map("errorCode", 405), nil
