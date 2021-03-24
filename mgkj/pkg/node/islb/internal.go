@@ -3,7 +3,6 @@ package node
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	nprotoo "github.com/cloudwebrtc/nats-protoo"
 
@@ -165,13 +164,15 @@ func clientLeave(data map[string]interface{}) (map[string]interface{}, *nprotoo.
 	uid := util.Val(data, "uid")
 	// 获取用户的信息
 	uKey := proto.GetUserInfoKey(rid, uid)
-	// 删除key值
-	err := redis.Del(uKey)
-	if err != nil {
-		log.Errorf("redis.Del clientLeave err = %v", err)
-	} else {
-		time.Sleep(200 * time.Millisecond)
-		broadcaster.Say(proto.IslbToBizOnLeave, util.Map("rid", rid, "uid", uid))
+	ukeys := redis.Keys(uKey)
+	for _, key := range ukeys {
+		// 删除key值
+		err := redis.Del(key)
+		if err != nil {
+			log.Errorf("redis.Del clientLeave err = %v", err)
+		} else {
+			broadcaster.Say(proto.IslbToBizOnLeave, util.Map("rid", rid, "uid", uid))
+		}
 	}
 	return util.Map(), nil
 }
@@ -245,20 +246,29 @@ func streamRemove(data map[string]interface{}) (map[string]interface{}, *nprotoo
 	} else {
 		// 获取用户发布的流信息
 		ukey = proto.GetMediaInfoKey(rid, uid, mid)
-		// 删除key值
-		err := redis.Del(ukey)
-		if err != nil {
-			log.Errorf("redis.Del streamRemove err = %v", err)
+		ukeys := redis.Keys(ukey)
+		for _, key := range ukeys {
+			ukey = key
+			// 删除key值
+			err := redis.Del(ukey)
+			if err != nil {
+				log.Errorf("redis.Del streamRemove err = %v", err)
+			}
 		}
 		// 获取用户发布流对应的sfu信息
 		ukey = proto.GetMediaPubKey(rid, uid, mid)
-		// 删除key值
-		err = redis.Del(ukey)
-		if err != nil {
-			log.Errorf("redis.Del streamRemove err = %v", err)
-		} else {
-			// 生成resp对象
-			broadcaster.Say(proto.IslbToBizOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", mid))
+		ukeys = redis.Keys(ukey)
+		for _, key := range ukeys {
+			ukey = key
+			mid, _, _ := parseMediaKey(ukey)
+			// 删除key值
+			err := redis.Del(ukey)
+			if err != nil {
+				log.Errorf("redis.Del streamRemove err = %v", err)
+			} else {
+				// 生成resp对象
+				broadcaster.Say(proto.IslbToBizOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", mid))
+			}
 		}
 	}
 	return util.Map(), nil

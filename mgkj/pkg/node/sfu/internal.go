@@ -99,7 +99,7 @@ func unpublish(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Err
 	router := rtc.GetRouter(key)
 	if router != nil {
 		router.Close()
-		rtc.DelRouter(mid)
+		rtc.DelRouter(key)
 	}
 	return util.Map(), nil
 }
