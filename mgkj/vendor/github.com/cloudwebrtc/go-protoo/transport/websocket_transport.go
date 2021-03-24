@@ -63,7 +63,7 @@ func (transport *WebSocketTransport) ReadMessage() {
 	for {
 		select {
 		case _ = <-pingTicker.C:
-			logger.Infof("Send keepalive !!!")
+			//logger.Infof("Send keepalive !!!")
 			if err := transport.Send("{}"); err != nil {
 				logger.Errorf("Keepalive has failed")
 				pingTicker.Stop()
