@@ -10,7 +10,7 @@ import (
 )
 
 // Default number of maximum listeners for an event.
-const DefaultMaxListeners = 10
+const DefaultMaxListeners = 1000
 
 // Error presented when an invalid argument is provided as a listener function
 var ErrNoneFunction = errors.New("Kind of Value for listener is not Func.")
