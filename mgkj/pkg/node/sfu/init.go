@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	statCycle = time.Second * 5
+	statCycle = time.Second * 10
 )
 
 var (

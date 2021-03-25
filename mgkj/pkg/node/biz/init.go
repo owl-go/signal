@@ -42,10 +42,10 @@ func Close() {
 // WatchServiceCallBack 查看所有的Node节点
 func WatchServiceCallBack(state server.NodeStateType, node server.Node) {
 	if state == server.ServerUp {
-		log.Infof("WatchServiceCallBack node up %v", node)
+		log.Infof("WatchServiceCallBack node up %v", node.Nid)
+		// 判断是否广播节点
 		if node.Name == "islb" || node.Name == "sfu" {
 			eventID := server.GetEventChannel(node)
-			log.Infof("handleIslbBroadCast: eventID => [%s]", eventID)
 			nats.OnBroadcast(eventID, handleBroadcast)
 		}
 
@@ -113,6 +113,8 @@ func FindSfuNodeByMid(rid, mid string) *server.Node {
 		return nil
 	}
 
+	// "errorCode", 1, "rid", rid, "mid", mid
+	// "errorCode", 0, "rid", rid, "mid", mid, "nid", nid
 	log.Infof("FindSfuNodeByMid resp ==> %v", resp)
 
 	find = false

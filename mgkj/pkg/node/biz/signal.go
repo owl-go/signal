@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	statCycle = 5 * time.Second
+	statCycle = time.Second * 10
 )
 
 var (
@@ -41,10 +41,8 @@ func checkRoom() {
 	t := time.NewTicker(statCycle)
 	defer t.Stop()
 	for range t.C {
-		var nCount int = 0
 		roomLock.Lock()
 		for rid, node := range rooms {
-			nCount += len(node.room.GetPeers())
 			for uid := range node.room.GetPeers() {
 				bLive := FindPeerIsLive(rid, uid)
 				if !bLive {
@@ -52,17 +50,19 @@ func checkRoom() {
 					islb := FindIslbNode()
 					if islb == nil {
 						log.Errorf("islb node is not find")
+						continue
 					}
 
 					find := false
 					rpc, find := rpcs[islb.Nid]
 					if !find {
 						log.Errorf("FindPeerIsLive islb rpc not found")
-					} else {
-						rpc.AsyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", ""))
-						rpc.AsyncRequest(proto.BizToIslbOnLeave, util.Map("rid", rid, "uid", uid))
-						node.room.RemovePeer(uid)
+						continue
 					}
+
+					rpc.AsyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", ""))
+					rpc.AsyncRequest(proto.BizToIslbOnLeave, util.Map("rid", rid, "uid", uid))
+					node.room.RemovePeer(uid)
 				}
 			}
 			if len(node.room.GetPeers()) == 0 {
@@ -71,7 +71,5 @@ func checkRoom() {
 			}
 		}
 		roomLock.Unlock()
-		// 更新负载
-		node.UpdateNodePayload(nCount)
 	}
 }

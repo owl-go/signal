@@ -11,9 +11,11 @@ import (
 func handleBroadcast(msg map[string]interface{}, subj string) {
 	go func(msg map[string]interface{}) {
 		defer util.Recover("biz.handleBroadcast")
+		log.Infof("biz.handleBroadcast msg=%v", msg)
+
 		method := util.Val(msg, "method")
 		data := msg["data"].(map[string]interface{})
-		log.Infof("OnBroadcast: method=%s, data=%v", method, data)
+
 		rid := util.Val(data, "rid")
 		uid := util.Val(data, "uid")
 		switch method {

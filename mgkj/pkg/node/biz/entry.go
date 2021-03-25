@@ -45,7 +45,6 @@ func Entry(method string, peer *ws.Peer, msg map[string]interface{}, accept ws.A
 */
 // join 加入房间
 func join(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
-	log.Infof("biz.join", "msg => %v", msg)
 	if invalid(msg, "rid", reject) {
 		return
 	}
@@ -367,8 +366,6 @@ func unpublish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 */
 // subscribe 订阅流
 func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
-	log.Infof("biz.subscribe msg=%v", msg)
-
 	if invalid(msg, "rid", reject) || invalid(msg, "mid", reject) || invalid(msg, "jsep", reject) {
 		return
 	}
@@ -377,7 +374,7 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	uid := peer.ID()
 	rid := util.Val(msg, "rid")
 	mid := util.Val(msg, "mid")
-	log.Infof("biz.subscribe uid=%s", uid)
+	log.Infof("biz.subscribe uid=%s msg=%v", uid, msg)
 
 	jsep := msg["jsep"].(map[string]interface{})
 	if invalid(jsep, "sdp", reject) {

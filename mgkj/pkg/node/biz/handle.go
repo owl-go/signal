@@ -18,7 +18,6 @@ func in(transport *transport.WebSocketTransport, request *http.Request) {
 	}
 
 	id := peerID[0]
-	log.Infof("signal.in, id => %s", id)
 	peer := ws.NewPeer(id, transport)
 
 	handleRequest := func(request map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
@@ -65,6 +64,7 @@ func in(transport *transport.WebSocketTransport, request *http.Request) {
 
 	handleClose := func(code int, err string) {
 		log.Infof("signal.in handleClose => peer (%s) ", peer.ID())
+		peer.Close()
 	}
 
 	peer.On("request", handleRequest)
