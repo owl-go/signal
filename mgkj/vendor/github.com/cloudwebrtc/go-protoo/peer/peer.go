@@ -96,7 +96,9 @@ func (peer *Peer) Notify(method string, data map[string]interface{}) {
 func (peer *Peer) handleMessage(message []byte) {
 	var data map[string]interface{}
 	if err := json.Unmarshal(message, &data); err != nil {
-		panic(err)
+		//panic(err)
+		logger.Errorf("handleMessage Unmarshal err => %v", err)
+		return
 	}
 	if data["request"] != nil {
 		peer.handleRequest(data)
