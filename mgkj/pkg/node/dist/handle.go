@@ -3,10 +3,11 @@ package dist
 import (
 	"net/http"
 
-	"github.com/cloudwebrtc/go-protoo/transport"
 	"mgkj/pkg/log"
 	"mgkj/pkg/util"
 	"mgkj/pkg/ws"
+
+	"github.com/cloudwebrtc/go-protoo/transport"
 )
 
 func in(transport *transport.WebSocketTransport, request *http.Request) {
@@ -71,6 +72,7 @@ func in(transport *transport.WebSocketTransport, request *http.Request) {
 	handleClose := func(code int, err string) {
 		log.Infof("handleClose err = %d, %s", code, err)
 		id := peer.ID()
+		peer.Close()
 		peerLock.Lock()
 		delete(peers, id)
 		peerLock.Unlock()

@@ -3,17 +3,12 @@ package dist
 import (
 	"mgkj/pkg/ws"
 	"sync"
-	"time"
 )
 
 var (
 	peers    map[string]*ws.Peer
 	peerLock sync.RWMutex
 	wsReq    func(method string, peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc)
-)
-
-const (
-	statCycle = 5 * time.Second
 )
 
 func InitCallServer(host string, port int, cert, key string) {
