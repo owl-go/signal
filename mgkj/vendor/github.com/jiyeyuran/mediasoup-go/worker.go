@@ -245,7 +245,7 @@ func NewWorker(options ...Option) (worker *Worker, err error) {
 
 	child := exec.Command(WorkerBin, settings.Args()...)
 	child.ExtraFiles = []*os.File{producerPair[1], consumerPair[1], payloadProducerPair[1], payloadConsumerPair[1]}
-	child.Env = []string{"MEDIASOUP_VERSION=" + VERSION}
+	child.Env = []string{"MEDIASOUP_VERSION=" + VERSION, "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/mediasoup/lib"}
 
 	stderr, err := child.StderrPipe()
 	if err != nil {
