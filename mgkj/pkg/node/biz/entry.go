@@ -74,15 +74,15 @@ func join(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 
 	for _, room := range GetRoomsByPeer(uid) {
 		ridTmp := room.GetID()
-		rpc.AsyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", ridTmp, "uid", uid, "mid", ""))
-		rpc.AsyncRequest(proto.BizToIslbOnLeave, util.Map("rid", ridTmp, "uid", uid))
+		rpc.SyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", ridTmp, "uid", uid, "mid", ""))
+		rpc.SyncRequest(proto.BizToIslbOnLeave, util.Map("rid", ridTmp, "uid", uid))
 		DelPeer(ridTmp, uid)
 	}
 
 	// 重新加入房间
 	AddPeer(rid, peer)
 	// 通知房间其他人
-	rpc.AsyncRequest(proto.BizToIslbOnJoin, util.Map("rid", rid, "uid", uid, "info", info))
+	rpc.SyncRequest(proto.BizToIslbOnJoin, util.Map("rid", rid, "uid", uid, "info", info))
 	// 查询房间存在的发布流
 	FindMediaPubs(peer, rid)
 	// resp
@@ -127,8 +127,8 @@ func leave(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reje
 	// 删除加入的房间和流
 	for _, room := range GetRoomsByPeer(uid) {
 		ridTmp := room.GetID()
-		rpc.AsyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", ridTmp, "uid", uid, "mid", ""))
-		rpc.AsyncRequest(proto.BizToIslbOnLeave, util.Map("rid", ridTmp, "uid", uid))
+		rpc.SyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", ridTmp, "uid", uid, "mid", ""))
+		rpc.SyncRequest(proto.BizToIslbOnLeave, util.Map("rid", ridTmp, "uid", uid))
 		DelPeer(ridTmp, uid)
 	}
 	// resp
