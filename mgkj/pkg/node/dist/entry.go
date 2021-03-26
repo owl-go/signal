@@ -152,6 +152,7 @@ func call(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 	rid := msg["rid"]
 	peers := msg["peers"].([]interface{})
 	ctype := msg["type"].(string)
+	isGroup := msg["isGroup"].(bool)
 	// 查询islb节点
 	islb := FindIslbNode()
 	if islb == nil {
@@ -191,7 +192,7 @@ func call(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 					nCount = nCount + 1
 					peersTmp = append(peersTmp, callee)
 				} else {
-					rpc.AsyncRequest(proto.DistToDistCall, util.Map("caller", caller, "callee", callee, "rid", rid, "nid", node.NodeInfo().Nid, "type", ctype, "peers", peers))
+					rpc.AsyncRequest(proto.DistToDistCall, util.Map("caller", caller, "callee", callee, "rid", rid, "nid", node.NodeInfo().Nid, "type", ctype, "peers", peers, "isGroup", isGroup))
 				}
 			} else {
 				nCount = nCount + 1
