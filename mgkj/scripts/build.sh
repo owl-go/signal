@@ -80,13 +80,13 @@ then
     exit 1
 fi
 
-if [[ "$OS_TYPE" == "Darwin" || "$OS_TYPE" == "darwin" || "$OS_TYPE" == "mac" ]];then
+if [ "$OS_TYPE" == "Darwin" ] || [ "$OS_TYPE" == "darwin" ] || [ "$OS_TYPE" == "mac" ];then
     echo "GO Target Arch: " $OS_TYPE
     export CGO_ENABLED=0
     export GOOS=darwin
 fi
 
-if [[ "$OS_TYPE" == "Linux" || "$OS_TYPE" == "linux" ]];then
+if [ "$OS_TYPE" == "Linux" ] || [ "$OS_TYPE" == "linux" ];then
     echo "GO Target Arch: " $OS_TYPE
     export CGO_ENABLED=0
     export GOOS=linux
