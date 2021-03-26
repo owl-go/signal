@@ -21,6 +21,7 @@ func dist2distCall(msg map[string]interface{}) (map[string]interface{}, *nprotoo
 		data["rid"] = msg["rid"]
 		data["nid"] = msg["nid"]
 		data["type"] = msg["type"]
+		data["peers"] = msg["peers"]
 		peer.Notify(proto.DistToClientCall, data)
 	}
 	return util.Map(), nil

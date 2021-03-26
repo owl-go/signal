@@ -191,7 +191,7 @@ func call(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 					nCount = nCount + 1
 					peersTmp = append(peersTmp, callee)
 				} else {
-					rpc.AsyncRequest(proto.DistToDistCall, util.Map("caller", caller, "callee", callee, "rid", rid, "nid", node.NodeInfo().Nid, "type", ctype))
+					rpc.AsyncRequest(proto.DistToDistCall, util.Map("caller", caller, "callee", callee, "rid", rid, "nid", node.NodeInfo().Nid, "type", ctype, "peers", peers))
 				}
 			} else {
 				nCount = nCount + 1
