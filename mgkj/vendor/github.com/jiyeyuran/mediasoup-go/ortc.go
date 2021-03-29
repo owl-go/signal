@@ -641,6 +641,12 @@ func getConsumerRtpParameters(consumableParams RtpParameters, caps RtpCapabiliti
 			continue
 		}
 
+		if matchedCapCodec.Parameters.Apt != 0 {
+			codec.Parameters.Apt = matchedCapCodec.Parameters.Apt
+		}
+
+		codec.PayloadType = matchedCapCodec.PreferredPayloadType
+
 		codec.RtcpFeedback = matchedCapCodec.RtcpFeedback
 
 		consumerParams.Codecs = append(consumerParams.Codecs, codec)

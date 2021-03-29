@@ -20,7 +20,7 @@ type ZX struct {
 	dtlsParameters          mediasoup.DtlsParameters
 	RtpParameters           map[string]*mediasoup.RtpParameters
 	direction               string
-	canKind                 map[string]bool
+	canKind                 []string
 }
 
 // Sdp ...
@@ -54,7 +54,7 @@ func (zx *ZX) RtpCapabilities() map[string]*mediasoup.RtpParameters {
 }
 
 // CanKind ...
-func (zx *ZX) CanKind() map[string]bool {
+func (zx *ZX) CanKind() []string {
 	return zx.canKind
 }
 
@@ -82,16 +82,18 @@ func NewZX(direction string, offer string, routerRtpCapabilities mediasoup.RtpCa
 	zx.extendedRtpCapabilities = getExtendedRtpCapabilities(
 		&zx.nativeRtpCapabilities,
 		&zx.routerRtpCapabilities)
-	zx.rtpCapabilities = getRecvRtpCapabilities(zx.extendedRtpCapabilities)
-	canKind := map[string]bool{
-		"video": canSend("video", zx.extendedRtpCapabilities),
-		"audio": canSend("audio", zx.extendedRtpCapabilities),
+	for _, media := range zx.sdpObject.Media {
+		zx.canKind = append(zx.canKind, media.Type)
 	}
-	zx.canKind = canKind
 	zx.dtlsParameters = extractDtlsParameters(*sdpobj)
 	if zx.direction == "send" {
 		zx.dtlsParameters.Role = "server"
 	} else if zx.direction == "recv" {
+		for _, codec := range zx.extendedRtpCapabilities.Codecs {
+			codec.RemotePayloadType = codec.LocalPayloadType
+			codec.RemoteRtxPayloadType = codec.LocalRtxPayloadType
+		}
+		zx.rtpCapabilities = getRecvRtpCapabilities(zx.extendedRtpCapabilities)
 		zx.dtlsParameters.Role = "client"
 	}
 	return zx
@@ -120,13 +122,9 @@ func (zx *ZX) Run(iceParameters mediasoup.IceParameters, iceCandidates []mediaso
 		OpusStereo: 1,
 	}
 	if zx.direction == "send" {
-		if zx.canKind["audio"] {
-			fmt.Println("111")
-			zx.send("audio", nil, codecOptions, nil)
-		}
-		if zx.canKind["video"] {
-			fmt.Println("222")
-			zx.send("video", nil, codecOptions, nil)
+		for _, canKind := range zx.canKind {
+			fmt.Println("canKind => %s", canKind)
+			zx.send(canKind, nil, codecOptions, nil)
 		}
 		zx.remoteSdp.UpdateDtlsRole("client")
 	} else if zx.direction == "recv" {
@@ -136,7 +134,7 @@ func (zx *ZX) Run(iceParameters mediasoup.IceParameters, iceCandidates []mediaso
 
 func (zx *ZX) send(kind string, encodings []mediasoup.RtpEncodingParameters, codecOptions CodecOptions,
 	codec *mediasoup.RtpCodecParameters) {
-
+	fmt.Println("kind => %s", kind)
 	nativeRtpParams := getSendingRtpParameters(kind, zx.extendedRtpCapabilities)
 	nativeRtpParams.Codecs = reduceCodecs(nativeRtpParams.Codecs, codec)
 	routerRtpParams := getSendingRemoteRtpParameters(kind, zx.extendedRtpCapabilities)

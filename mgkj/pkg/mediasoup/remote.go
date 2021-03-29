@@ -180,6 +180,12 @@ func (m *AnswerMediaSection) Init(iceParameters mediasoup.IceParameters, iceCand
 				fmtp := &transform.FmtpStruct{
 					Payload: int(codec.PayloadType),
 				}
+				if len(codecParameters.ProfileLevelId) != 0 {
+					if len(fmtp.Config) != 0 {
+						fmtp.Config += ";"
+					}
+					fmtp.Config += "profile-level-id=" + codecParameters.ProfileLevelId + ";" + "packetization-mode=" + strconv.Itoa(codecParameters.PacketizationMode) + ";" + "level-asymmetry-allowed=" + strconv.Itoa(codecParameters.LevelAsymmetryAllowed)
+				}
 				if len(codecParameters.ProfileId) != 0 {
 					if len(fmtp.Config) != 0 {
 						fmtp.Config += ";"
@@ -399,6 +405,12 @@ func (m *OfferMediaSection) Init(iceParameters mediasoup.IceParameters, iceCandi
 
 			fmtp := &transform.FmtpStruct{
 				Payload: int(codec.PayloadType),
+			}
+			if len(codecParameters.ProfileLevelId) != 0 {
+				if len(fmtp.Config) != 0 {
+					fmtp.Config += ";"
+				}
+				fmtp.Config += "profile-level-id=" + codecParameters.ProfileLevelId + ";" + "packetization-mode=" + strconv.Itoa(codecParameters.PacketizationMode) + ";" + "level-asymmetry-allowed=" + strconv.Itoa(codecParameters.LevelAsymmetryAllowed)
 			}
 			if len(codecParameters.ProfileId) != 0 {
 				if len(fmtp.Config) != 0 {

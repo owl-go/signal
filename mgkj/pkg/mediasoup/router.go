@@ -106,6 +106,7 @@ func (r *Router) Alive() bool {
 	if r.pub.transport != nil {
 		dtls := r.pub.transport.DtlsState()
 		if dtls == mediasoup.DtlsState_Failed || dtls == mediasoup.DtlsState_Closed {
+			log.Infof("DTLS diconnected")
 			return false
 		}
 	}
@@ -143,6 +144,7 @@ func (r *Router) Alive() bool {
 		r.pub.videoLive = false
 	}
 	if !r.pub.audioLive && !r.pub.videoLive {
+		log.Infof("Audio,Video stream is not alive")
 		return false
 	}
 	return true
@@ -182,33 +184,49 @@ func (r *Router) AddPub(sdp string, id, ip string, options map[string]interface{
 
 	bAudioPub := options["audio"].(bool)
 	bVideoPub := options["video"].(bool)
-	if canKind["audio"] && bAudioPub {
-		kind := "audio"
-		rtpParameters := zx.GetRtpParameter(kind)
-		producer, err := sendTransport.Produce(mediasoup.ProducerOptions{
-			Kind:          mediasoup.MediaKind(kind),
-			RtpParameters: *rtpParameters,
-		})
-		if err != nil {
-			log.Errorf(err.Error())
-			return "", err
+	if bAudioPub == false {
+		for id, audioKind := range canKind {
+			if audioKind == "audio" {
+				canKind = append(canKind[:id], canKind[id+1:]...)
+			}
 		}
-		r.pub.audiopub = producer
-		r.pub.audioLive = true
 	}
-	if canKind["video"] && bVideoPub {
-		kind := "video"
-		rtpParameters := zx.GetRtpParameter(kind)
-		producer, err := sendTransport.Produce(mediasoup.ProducerOptions{
-			Kind:          mediasoup.MediaKind(kind),
-			RtpParameters: *rtpParameters,
-		})
-		if err != nil {
-			log.Errorf(err.Error())
-			return "", err
+	if bVideoPub == false {
+		for id, videoKind := range canKind {
+			if videoKind == "video" {
+				canKind = append(canKind[:id], canKind[id+1:]...)
+			}
 		}
-		r.pub.videopub = producer
-		r.pub.videoLive = true
+	}
+	for _, kind := range canKind {
+
+		if kind == "audio" {
+			rtpParameters := zx.GetRtpParameter(kind)
+			producer, err := sendTransport.Produce(mediasoup.ProducerOptions{
+				Kind:          mediasoup.MediaKind(kind),
+				RtpParameters: *rtpParameters,
+			})
+			if err != nil {
+				log.Errorf(err.Error())
+				return "", err
+			}
+			r.pub.audiopub = producer
+			r.pub.audioLive = true
+		}
+
+		if kind == "video" {
+			rtpParameters := zx.GetRtpParameter(kind)
+			producer, err := sendTransport.Produce(mediasoup.ProducerOptions{
+				Kind:          mediasoup.MediaKind(kind),
+				RtpParameters: *rtpParameters,
+			})
+			if err != nil {
+				log.Errorf(err.Error())
+				return "", err
+			}
+			r.pub.videopub = producer
+			r.pub.videoLive = true
+		}
 	}
 	return zx.Sdp()
 }
@@ -253,40 +271,57 @@ func (r *Router) AddSub(sdp string, id, ip string, options map[string]interface{
 	canKind := zx.CanKind()
 	bAudioSub := options["audio"].(bool)
 	bVideoSub := options["video"].(bool)
-	if canKind["audio"] && bAudioSub {
-		kind := "audio"
-		producer := r.pub.audiopub
-		if producer != nil {
-			consumer, err := recvTransport.Consume(mediasoup.ConsumerOptions{
-				ProducerId:      producer.Id(),
-				RtpCapabilities: zx.rtpCapabilities,
-				Paused:          true,
-			})
-			if err != nil {
-				log.Errorf(err.Error())
-				return "", err
+	if bAudioSub == false {
+		for id, audioKind := range canKind {
+			if audioKind == "audio" {
+				canKind = append(canKind[:id], canKind[id+1:]...)
 			}
-			zx.receive(consumer.Id(), kind, consumer.RtpParameters())
-			consumer.Resume()
-			sub.audiosub = consumer
 		}
 	}
-	if canKind["video"] && bVideoSub {
-		kind := "video"
-		producer := r.pub.videopub
-		if producer != nil {
-			consumer, err := recvTransport.Consume(mediasoup.ConsumerOptions{
-				ProducerId:      producer.Id(),
-				RtpCapabilities: zx.rtpCapabilities,
-				Paused:          true,
-			})
-			if err != nil {
-				log.Errorf(err.Error())
-				return "", err
+	if bVideoSub == false {
+		for id, videoKind := range canKind {
+			if videoKind == "video" {
+				canKind = append(canKind[:id], canKind[id+1:]...)
 			}
-			zx.receive(consumer.Id(), kind, consumer.RtpParameters())
-			consumer.Resume()
-			sub.videosub = consumer
+		}
+	}
+
+	for _, kind := range canKind {
+
+		if kind == "audio" {
+			producer := r.pub.audiopub
+			if producer != nil {
+				consumer, err := recvTransport.Consume(mediasoup.ConsumerOptions{
+					ProducerId:      producer.Id(),
+					RtpCapabilities: zx.rtpCapabilities,
+					Paused:          true,
+				})
+				if err != nil {
+					log.Errorf(err.Error())
+					return "", err
+				}
+				zx.receive(consumer.Id(), kind, consumer.RtpParameters())
+				consumer.Resume()
+				sub.audiosub = consumer
+			}
+		}
+
+		if kind == "video" {
+			producer := r.pub.videopub
+			if producer != nil {
+				consumer, err := recvTransport.Consume(mediasoup.ConsumerOptions{
+					ProducerId:      producer.Id(),
+					RtpCapabilities: zx.rtpCapabilities,
+					Paused:          true,
+				})
+				if err != nil {
+					log.Errorf(err.Error())
+					return "", err
+				}
+				zx.receive(consumer.Id(), kind, consumer.RtpParameters())
+				consumer.Resume()
+				sub.videosub = consumer
+			}
 		}
 	}
 	r.subs[id] = sub
