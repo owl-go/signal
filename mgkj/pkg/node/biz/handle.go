@@ -17,7 +17,15 @@ func in(transport *transport.WebSocketTransport, request *http.Request) {
 		return
 	}
 
+	appID := vars["appid"]
+	if appID == nil || len(appID) < 1 {
+		return
+	}
+
 	id := peerID[0]
+
+	log.Infof("signal.in, id => %s", id, appID[0])
+
 	peer := ws.NewPeer(id, transport)
 
 	handleRequest := func(request map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
