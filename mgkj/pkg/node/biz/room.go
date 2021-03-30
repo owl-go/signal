@@ -130,10 +130,12 @@ func NotifyAllWithoutID(rid string, skipID string, method string, msg map[string
 	log.Infof("biz.NotifyAllWithoutID rid=%s uid=%s method=%s msg=%v", rid, skipID, method, msg)
 	node := GetRoom(rid)
 	if node != nil {
+		node.room.Lock()
 		for _, peer := range node.room.GetPeers() {
 			if peer != nil && peer.ID() != skipID {
 				peer.Notify(method, msg)
 			}
 		}
+		node.room.Unlock()
 	}
 }
