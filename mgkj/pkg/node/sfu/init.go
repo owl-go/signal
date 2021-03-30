@@ -1,8 +1,8 @@
 package sfu
 
 import (
-	rtc "mgkj/pkg/mediasoup"
 	"mgkj/pkg/proto"
+	"mgkj/pkg/rtc"
 	"mgkj/pkg/server"
 	"mgkj/pkg/util"
 	"sync"
@@ -31,7 +31,7 @@ func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher
 	protoo = nprotoo.NewNatsProtoo(natsURL)
 	broadcaster = protoo.NewBroadcaster(node.GetEventChannel())
 	// 启动
-	rtc.InitWorker()
+	rtc.InitSfu()
 	handleRPCRequest(node.GetRPCChannel())
 	go checkRTC()
 	go updatePayload()
@@ -39,7 +39,7 @@ func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher
 
 // Close 关闭连接
 func Close() {
-	rtc.FreeWorker()
+	rtc.FreeSfu()
 	if protoo != nil {
 		protoo.Close()
 	}

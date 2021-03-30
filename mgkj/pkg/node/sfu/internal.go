@@ -3,8 +3,8 @@ package sfu
 import (
 	"fmt"
 	"mgkj/pkg/log"
-	rtc "mgkj/pkg/mediasoup"
 	"mgkj/pkg/proto"
+	"mgkj/pkg/rtc"
 	"mgkj/pkg/util"
 
 	nprotoo "github.com/cloudwebrtc/nats-protoo"

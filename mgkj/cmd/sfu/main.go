@@ -7,51 +7,8 @@ import (
 	conf "mgkj/pkg/conf/sfu"
 	"mgkj/pkg/log"
 	"mgkj/pkg/node/sfu"
-	"mgkj/pkg/rtc"
-	"mgkj/pkg/rtc/plugins"
 	"mgkj/pkg/server"
-
-	"github.com/pion/webrtc/v2"
 )
-
-func init() {
-	var icePortStart, icePortEnd uint16
-	if len(conf.WebRTC.ICEPortRange) == 2 {
-		icePortStart = conf.WebRTC.ICEPortRange[0]
-		icePortEnd = conf.WebRTC.ICEPortRange[1]
-	}
-
-	log.Init(conf.Log.Level)
-	var iceServers []webrtc.ICEServer
-	for _, iceServer := range conf.WebRTC.ICEServers {
-		s := webrtc.ICEServer{
-			URLs:       iceServer.URLs,
-			Username:   iceServer.Username,
-			Credential: iceServer.Credential,
-		}
-		iceServers = append(iceServers, s)
-	}
-	if err := rtc.InitIce(iceServers, icePortStart, icePortEnd); err != nil {
-		panic(err)
-	}
-
-	pluginConfig := plugins.Config{
-		On: conf.Plugins.On,
-		JitterBuffer: plugins.JitterBufferConfig{
-			On:            conf.Plugins.JitterBuffer.On,
-			REMBCycle:     conf.Plugins.JitterBuffer.REMBCycle,
-			PLICycle:      conf.Plugins.JitterBuffer.PLICycle,
-			MaxBandwidth:  conf.Plugins.JitterBuffer.MaxBandwidth,
-			MaxBufferTime: conf.Plugins.JitterBuffer.MaxBufferTime,
-		},
-	}
-
-	if err := rtc.CheckPlugins(pluginConfig); err != nil {
-		panic(err)
-	}
-
-	rtc.InitPlugins(pluginConfig)
-}
 
 func close() {
 	sfu.Close()

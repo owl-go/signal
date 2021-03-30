@@ -162,7 +162,7 @@ func GetMediaPubKey(rid, uid, mid string) string {
 // TrackInfo track信息
 type TrackInfo struct {
 	ID      string `json:"id"`
-	Ssrc    int    `json:"ssrc"`
+	Ssrc    uint   `json:"ssrc"`
 	Payload int    `json:"pt"`
 	Type    string `json:"type"`
 	Codec   string `json:"codec"`

@@ -1,10 +1,10 @@
 package rtc
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
+	conf "mgkj/pkg/conf/sfu"
 	"mgkj/pkg/log"
 	"mgkj/pkg/rtc/plugins"
 	"mgkj/pkg/rtc/transport"
@@ -18,90 +18,56 @@ const (
 )
 
 var (
-	routers    = make(map[string]*Router)
-	routerLock sync.RWMutex
-
-	//CleanChannel return the dead pub's mid
-	CleanChannel  = make(chan string, maxCleanSize)
+	stop          bool
+	routers       = make(map[string]*Router)
+	routerLock    sync.RWMutex
+	CleanPub      = make(chan string, maxCleanSize)
 	pluginsConfig plugins.Config
-
-	stop bool
 )
 
-// InitIce ice urls
-func InitIce(iceServers []webrtc.ICEServer, icePortStart, icePortEnd uint16) error {
-	//init ice urls and ICE settings
-	return transport.InitWebRTC(iceServers, icePortStart, icePortEnd)
-}
-
-// InitPlugins plugins config
-func InitPlugins(config plugins.Config) {
-	pluginsConfig = config
-	log.Infof("InitPlugins pluginsConfig=%+v", pluginsConfig)
-	go check()
-}
-
-// CheckPlugins plugins config
-func CheckPlugins(config plugins.Config) error {
-	return plugins.CheckPlugins(config)
-}
-
-func GetOrNewRouter(id string) *Router {
-	log.Infof("rtc.GetOrNewRouter id=%s", id)
-	router := GetRouter(id)
-	if router == nil {
-		return AddRouter(id)
-	}
-	return router
-}
-
-// Get All Routers
-func GetRouters() map[string]*Router {
-	routerLock.RLock()
-	defer routerLock.RUnlock()
-	return routers
-}
-
-// GetRouter get router from map
-func GetRouter(id string) *Router {
-	log.Infof("rtc.GetRouter id=%s", id)
-	routerLock.RLock()
-	defer routerLock.RUnlock()
-	return routers[id]
-}
-
-// AddRouter add a new router
-func AddRouter(id string) *Router {
-	log.Infof("rtc.AddRouter id=%s", id)
-	routerLock.Lock()
-	defer routerLock.Unlock()
-	routers[id] = NewRouter(id)
-	if err := routers[id].InitPlugins(pluginsConfig); err != nil {
-		log.Errorf("rtc.AddRouter InitPlugins err=%v", err)
-		return nil
+// InitSfu 启动sfu
+func InitSfu() {
+	var icePortStart, icePortEnd uint16
+	if len(conf.WebRTC.ICEPortRange) == 2 {
+		icePortStart = conf.WebRTC.ICEPortRange[0]
+		icePortEnd = conf.WebRTC.ICEPortRange[1]
 	}
 
-	return routers[id]
+	log.Init(conf.Log.Level)
+	var iceServers []webrtc.ICEServer
+	for _, iceServer := range conf.WebRTC.ICEServers {
+		s := webrtc.ICEServer{
+			URLs:       iceServer.URLs,
+			Username:   iceServer.Username,
+			Credential: iceServer.Credential,
+		}
+		iceServers = append(iceServers, s)
+	}
+	if err := InitIce(iceServers, icePortStart, icePortEnd); err != nil {
+		panic(err)
+	}
+
+	pluginConfig := plugins.Config{
+		On: conf.Plugins.On,
+		JitterBuffer: plugins.JitterBufferConfig{
+			On:            conf.Plugins.JitterBuffer.On,
+			REMBCycle:     conf.Plugins.JitterBuffer.REMBCycle,
+			PLICycle:      conf.Plugins.JitterBuffer.PLICycle,
+			MaxBandwidth:  conf.Plugins.JitterBuffer.MaxBandwidth,
+			MaxBufferTime: conf.Plugins.JitterBuffer.MaxBufferTime,
+		},
+	}
+
+	if err := CheckPlugins(pluginConfig); err != nil {
+		panic(err)
+	}
+
+	InitPlugins(pluginConfig)
+	go CheckRoute()
 }
 
-// DelRouter delete pub
-func DelRouter(id string) {
-	log.Infof("DelRouter id=%s", id)
-	router := GetRouter(id)
-	if router == nil {
-		return
-	}
-	router.Close()
-	routerLock.Lock()
-	defer routerLock.Unlock()
-	delete(routers, id)
-}
-
-// Close close all Router
-func Close() {
-	if stop {
-		return
-	}
+// FreeSfu 关闭sfu
+func FreeSfu() {
 	stop = true
 	routerLock.Lock()
 	defer routerLock.Unlock()
@@ -113,40 +79,93 @@ func Close() {
 	}
 }
 
-// check show all Routers' stat
-func check() {
+// InitIce ice urls
+func InitIce(iceServers []webrtc.ICEServer, icePortStart, icePortEnd uint16) error {
+	return transport.InitWebRTC(iceServers, icePortStart, icePortEnd)
+}
+
+// InitPlugins plugins config
+func InitPlugins(config plugins.Config) {
+	pluginsConfig = config
+}
+
+// CheckPlugins plugins config
+func CheckPlugins(config plugins.Config) error {
+	return plugins.CheckPlugins(config)
+}
+
+// GetOrNewRouter 获取router
+func GetOrNewRouter(id string) *Router {
+	log.Infof("rtc.GetOrNewRouter id=%s", id)
+	router := GetRouter(id)
+	if router == nil {
+		return AddRouter(id)
+	}
+	return router
+}
+
+// GetRouters 获取所有的Router
+func GetRouters() map[string]*Router {
+	routerLock.RLock()
+	defer routerLock.RUnlock()
+	return routers
+}
+
+// GetRouter 获取指定id的Router
+func GetRouter(id string) *Router {
+	log.Infof("rtc.GetRouter id=%s", id)
+	routerLock.RLock()
+	defer routerLock.RUnlock()
+	return routers[id]
+}
+
+// AddRouter 增加一个指定id的Router
+func AddRouter(id string) *Router {
+	log.Infof("rtc.AddRouter id=%s", id)
+	routerLock.Lock()
+	defer routerLock.Unlock()
+	routers[id] = NewRouter(id)
+	if err := routers[id].InitPlugins(pluginsConfig); err != nil {
+		log.Errorf("rtc.AddRouter InitPlugins err=%v", err)
+		return nil
+	}
+	return routers[id]
+}
+
+// DelRouter 删除指定id的Router
+func DelRouter(id string) {
+	log.Infof("rtc.DelRouter id=%s", id)
+	router := GetRouter(id)
+	if router == nil {
+		return
+	}
+	router.Close()
+	routerLock.Lock()
+	defer routerLock.Unlock()
+	delete(routers, id)
+}
+
+// CheckRoute 查询所有router的状态
+func CheckRoute() {
 	t := time.NewTicker(statCycle)
+	defer t.Stop()
 	for {
+		if stop {
+			return
+		}
+
 		select {
 		case <-t.C:
-			info := "\n----------------rtc-----------------\n"
-			print := false
 			routerLock.Lock()
-			if len(routers) > 0 {
-				print = true
-			}
-
 			for id, Router := range routers {
 				if !Router.Alive() {
 					Router.Close()
 					delete(routers, id)
-					CleanChannel <- id
-					log.Infof("Stat delete %v", id)
-				}
-				info += "pub: " + id + "\n"
-				subs := Router.GetSubs()
-				if len(subs) < 6 {
-					for id := range subs {
-						info += fmt.Sprintf("sub: %s\n\n", id)
-					}
-				} else {
-					info += fmt.Sprintf("subs: %d\n\n", len(subs))
+					CleanPub <- id
+					log.Infof("Router delete %v", id)
 				}
 			}
 			routerLock.Unlock()
-			if print {
-				log.Infof(info)
-			}
 		}
 	}
 }

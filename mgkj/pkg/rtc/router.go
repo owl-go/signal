@@ -12,7 +12,7 @@ import (
 	"mgkj/pkg/rtc/transport"
 	"mgkj/pkg/util"
 
-	sdptransform "github.com/notedit/sdp"
+	sdps "github.com/notedit/sdp/transform"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v2"
@@ -36,7 +36,7 @@ type Router struct {
 	stop        bool
 	liveTime    time.Time
 	pluginChain *plugins.PluginChain
-	tracks      map[string][]proto.TrackInfo
+	tracks      []proto.TrackInfo
 }
 
 // NewRouter 新建一个Router对象
@@ -46,7 +46,7 @@ func NewRouter(id string) *Router {
 		subs:        make(map[string]transport.Transport),
 		liveTime:    time.Now().Add(liveCycle),
 		pluginChain: plugins.NewPluginChain(),
-		tracks:      make(map[string][]proto.TrackInfo),
+		tracks:      make([]proto.TrackInfo, 0),
 	}
 }
 
@@ -109,74 +109,35 @@ func (r *Router) start() {
 
 // AddPub add a pub transport
 func (r *Router) AddPub(sdp, id, ip string, options map[string]interface{}) (string, error) {
-	offer := webrtc.SessionDescription{Type: webrtc.SDPTypeOffer, SDP: sdp}
-	sdpObj, err := sdptransform.Parse(offer.SDP)
-	if err != nil {
-		return "", errors.New("offer sdp is err")
-	}
-
-	rtcOptions := make(map[string]interface{})
-	rtcOptions["publish"] = true
-	if options != nil {
-		rtcOptions["codec"] = options["codec"]
-		rtcOptions["audio"] = options["audio"]
-		rtcOptions["video"] = options["video"]
-		rtcOptions["screen"] = options["screen"]
-	}
-	pub := transport.NewWebRTCTransport(id, rtcOptions)
+	pub := transport.NewWebRTCTransport(id, options, true)
 	if pub == nil {
 		return "", errors.New("pub is not create")
 	}
 
+	tracks, err := sdpTotracks(sdp)
+	if err != nil {
+		return "", err
+	}
+
+	offer := webrtc.SessionDescription{Type: webrtc.SDPTypeOffer, SDP: sdp}
 	answer, err := pub.Answer(offer, true)
 	if err != nil {
 		return "", err
 	}
 
-	for _, stream := range sdpObj.GetStreams() {
-		for id, track := range stream.GetTracks() {
-			pt := int(0)
-			codecType := ""
-			media := sdpObj.GetMedia(track.GetMedia())
-			codecs := media.GetCodecs()
-
-			for payload, codec := range codecs {
-				if track.GetMedia() == "audio" {
-					codecType = strings.ToUpper(codec.GetCodec())
-					if strings.ToUpper(codec.GetCodec()) == strings.ToUpper(webrtc.Opus) {
-						pt = payload
-						break
-					}
-				} else if track.GetMedia() == "video" {
-					codecType = strings.ToUpper(codec.GetCodec())
-					if codecType == webrtc.H264 || codecType == webrtc.VP8 || codecType == webrtc.VP9 {
-						pt = payload
-						if pt == 96 {
-							codecType = webrtc.VP8
-							break
-						}
-						//break
-					}
-				}
-			}
-			var infos []proto.TrackInfo
-			infos = append(infos, proto.TrackInfo{Ssrc: int(track.GetSSRCS()[0]), Payload: pt, Type: track.GetMedia(), ID: id, Codec: codecType})
-			r.tracks[stream.GetID()+" "+id] = infos
-		}
-	}
-
+	r.tracks = tracks
 	r.pub = pub
 	r.pluginChain.AttachPub(pub)
 	r.start()
 	return answer.SDP, nil
 }
 
-// GetPub get pub
+// GetPub 获取pub对象
 func (r *Router) GetPub() transport.Transport {
 	return r.pub
 }
 
-// DelPub del pub
+// DelPub 删除pub对象
 func (r *Router) DelPub() {
 	log.Infof("Router.DelPub %v", r.pub)
 	if r.pub != nil {
@@ -199,38 +160,15 @@ func MapRouter(fn func(id string, r *Router)) {
 
 // AddSub add a pub to router
 func (r *Router) AddSub(sdp, id, ip string, options map[string]interface{}) (string, error) {
-	rtcOptions := make(map[string]interface{})
-	rtcOptions["publish"] = false
-	if options != nil {
-		rtcOptions["audio"] = options["audio"]
-		rtcOptions["video"] = options["video"]
-	}
-	sub := transport.NewWebRTCTransport(id, rtcOptions)
+	bAudioSub := options["audio"].(bool)
+	bVideoSub := options["video"].(bool)
+	// 创建拉流peer
+	sub := transport.NewWebRTCTransport(id, options, false)
 	if sub == nil {
 		return "", errors.New("sub is not create")
 	}
 
-	tracks1 := make(map[string]proto.TrackInfo)
-	for msid, track := range r.tracks {
-		for _, item := range track {
-			tracks1[msid] = item
-		}
-	}
-
-	for msid, track := range tracks1 {
-		ssrc := uint32(track.Ssrc)
-		pt := uint8(track.Payload)
-		// I2AacsRLsZZriGapnvPKiKBcLi8rTrO1jOpq c84ded42-d2b0-4351-88d2-b7d240c33435
-		//                streamID                        trackID
-		streamID := strings.Split(msid, " ")[0]
-		trackID := track.ID
-		log.Infof("AddTrack: codec:%s, ssrc:%d, pt:%d, streamID %s, trackID %s", track.Codec, ssrc, pt, streamID, trackID)
-		_, err := sub.AddTrack(ssrc, pt, streamID, track.ID)
-		if err != nil {
-			log.Errorf("err=%v", err)
-		}
-	}
-
+	addTracks(r.tracks, sub, bAudioSub, bVideoSub)
 	offer := webrtc.SessionDescription{Type: webrtc.SDPTypeOffer, SDP: sdp}
 	answer, err := sub.Answer(offer, false)
 	if err != nil {
@@ -238,14 +176,13 @@ func (r *Router) AddSub(sdp, id, ip string, options map[string]interface{}) (str
 	}
 
 	r.subLock.Lock()
-	defer r.subLock.Unlock()
 	r.subs[id] = sub
+	r.subLock.Unlock()
 	go r.DoRtcp(id, sub)
-
-	log.Infof("subscribe mid %s, answer = %v", id, answer)
 	return answer.SDP, nil
 }
 
+// DoRtcp ...
 func (r *Router) DoRtcp(id string, sub *transport.WebRTCTransport) {
 	for {
 		pkt := <-sub.GetRTCPChan()
@@ -362,4 +299,87 @@ func (r *Router) ReSendRTP(sid string, ssrc uint32, sn uint16) bool {
 // Alive return router status
 func (r *Router) Alive() bool {
 	return !r.liveTime.Before(time.Now())
+}
+
+// sdp转换成tracks
+func sdpTotracks(sdp string) ([]proto.TrackInfo, error) {
+	sdpObj, err := sdps.Parse(sdp)
+	if err != nil {
+		return nil, errors.New("offer sdp is err")
+	}
+
+	var infos []proto.TrackInfo
+	for _, media := range sdpObj.Media {
+		for _, rtp := range media.Rtp {
+			if media.Type == "audio" {
+				if strings.ToUpper(rtp.Codec) == strings.ToUpper(webrtc.Opus) {
+					track := proto.TrackInfo{}
+					track.ID = media.Mid
+					track.Codec = rtp.Codec
+					track.Type = media.Type
+					track.Payload = rtp.Payload
+					// 查询fmtp数据
+					for _, fmtp := range media.Fmtp {
+						if fmtp.Payload == rtp.Payload {
+							track.Fmtp = fmtp.Config
+							break
+						}
+					}
+					// 查询ssrc
+					for _, ssrc := range media.Ssrcs {
+						track.Ssrc = ssrc.Id
+						break
+					}
+					// 增加到数组中
+					infos = append(infos, track)
+					break
+				}
+			}
+			if media.Type == "video" {
+				if strings.ToUpper(rtp.Codec) == strings.ToUpper(webrtc.H264) {
+					for _, fmtp := range media.Fmtp {
+						if fmtp.Payload == rtp.Payload {
+							parameters := sdps.ParseParams(fmtp.Config)
+							profile := parameters["profile-level-id"]
+							if strings.HasPrefix(profile, "42") {
+								track := proto.TrackInfo{}
+								track.ID = media.Mid
+								track.Codec = rtp.Codec
+								track.Type = media.Type
+								track.Payload = rtp.Payload
+								track.Fmtp = fmtp.Config
+								// 查询ssrc
+								for _, ssrc := range media.Ssrcs {
+									track.Ssrc = ssrc.Id
+									break
+								}
+								// 增加到数组中
+								infos = append(infos, track)
+								break
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return infos, nil
+}
+
+// 给peer增加track
+func addTracks(tracks []proto.TrackInfo, sub *transport.WebRTCTransport, bAudioSub, bVideoSub bool) {
+	for _, track := range tracks {
+		if bAudioSub && track.Type == "audio" {
+			_, err := sub.AddTrack(uint32(track.Ssrc), uint8(track.Payload), "go-sfu-audio", track.ID)
+			if err != nil {
+				log.Errorf("addTracks audio err = %v", err)
+			}
+		}
+		if bVideoSub && track.Type == "video" {
+			_, err := sub.AddTrack(uint32(track.Ssrc), uint8(track.Payload), "go-sfu-video", track.ID)
+			if err != nil {
+				log.Errorf("addTracks video err = %v", err)
+			}
+		}
+	}
 }
