@@ -17,6 +17,7 @@ type SyncProducer struct {
 
 func NewKafkaClient(url string) (*KafkaClient, error) {
 	config := sarama.NewConfig()
+	config.Version = sarama.V0_11_0_2
 	config.Producer.RequiredAcks = sarama.WaitForAll
 	config.Producer.Return.Successes = true
 	config.Producer.Partitioner = sarama.NewRandomPartitioner
