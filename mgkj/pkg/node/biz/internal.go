@@ -31,6 +31,9 @@ func handleBroadcast(msg map[string]interface{}, subj string) {
 		case proto.IslbToBizOnStreamRemove:
 			/* "method", proto.IslbToBizOnStreamRemove, "rid", rid, "uid", uid, "mid", mid */
 			NotifyAllWithoutID(rid, uid, proto.BizToClientOnStreamRemove, data)
+			//when publisher's stream remove,stop all the stream timer
+			mid := util.Val(data, "mid")
+			stopAllSubsTimerByMID(mid)
 		case proto.IslbToBizBroadcast:
 			/* "method", proto.IslbToBizBroadcast, "rid", rid, "uid", uid, "data", data */
 			NotifyAllWithoutID(rid, uid, proto.BizToClientBroadcast, data)
@@ -66,4 +69,15 @@ func SfuRemoveStream(key string) {
 	uid := msid[5]
 	mid := msid[7]
 	rpc.AsyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", mid))
+}
+
+func stopAllSubsTimerByMID(mid string) {
+	for _, timer := range substreams {
+		if mid == timer.MID {
+			if timer.IsStopped() == false {
+				timer.Stop()
+				log.Infof("stopAllSubsTimerByMID MID => %s, SID => stream %s stopped", timer.MID, timer.SID)
+			}
+		}
+	}
 }

@@ -4,6 +4,7 @@ import (
 	"mgkj/pkg/log"
 	"mgkj/pkg/proto"
 	reg "mgkj/pkg/server"
+	"mgkj/pkg/timing"
 	"mgkj/pkg/util"
 	"mgkj/pkg/ws"
 )
@@ -436,6 +437,27 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 		reject(codeSubErr, codeStr(codeSubErr))
 		return
 	}
+	//add stream timer then start
+	var mediatype string
+	sid := rspSfu["sid"].(string)
+	isVideo := minfo.(map[string]interface{})["video"].(bool)
+	if isVideo == false {
+		isVideo = minfo.(map[string]interface{})["screen"].(bool)
+	}
+	isAudio := minfo.(map[string]interface{})["audio"].(bool)
+	if isVideo == false && isAudio == true {
+		mediatype = "audio"
+	} else if isVideo == true {
+		mediatype = "video"
+	}
+	resolution := minfo.(map[string]interface{})["resolution"].(string)
+	substreamsLock.Lock()
+	if _, ok := substreams[sid]; !ok {
+		streamtimer := timing.NewStreamTimer(rid, mid, sid, peer.GetAppID(), resolution, mediatype)
+		substreams[sid] = streamtimer
+		streamtimer.Start()
+	}
+	substreamsLock.Unlock()
 	// resp
 	accept(rspSfu)
 }
@@ -484,6 +506,18 @@ func unsubscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc
 	}
 
 	rpcSfu.AsyncRequest(proto.BizToSfuUnSubscribe, util.Map("rid", rid, "uid", uid, "mid", mid))
+
+	//stream timer stop
+	substreamsLock.RLock()
+	if substreamtimer, ok := substreams[mid]; !ok {
+		log.Errorf("can't find sid => %s substream state", mid)
+	} else {
+		log.Infof("find uid => %s, sid => %s substream state", substreamtimer.UID, substreamtimer.SID)
+		//timer stop
+		substreamtimer.Stop()
+		//only stop timer ,clean this later in stream state report logic
+	}
+	substreamsLock.RUnlock()
 	// resp
 	accept(emptyMap)
 }

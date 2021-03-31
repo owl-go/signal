@@ -63,6 +63,6 @@ func (s *StreamTimer) GetTotalTime() int64 {
 	return s.Seconds
 }
 
-func (s *StreamTimer) GetState() bool {
+func (s *StreamTimer) IsStopped() bool {
 	return s.stop
 }
