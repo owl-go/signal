@@ -58,6 +58,7 @@ func (serviceWatcher *ServiceWatcher) GetNodeByID(nid string) (*Node, bool) {
 // GetNodeByPayload 获取指定区域内指定服务节点负载最低的节点
 func (serviceWatcher *ServiceWatcher) GetNodeByPayload(dc, name string) (*Node, bool) {
 	log.Infof("GetNodeByPayload dc => %s,name => %s", dc, name)
+	var tempNodeObj Node
 	var nodeObj *Node = nil
 	var payload int = 0
 	for _, nodes := range serviceWatcher.nodesMap {
@@ -65,7 +66,8 @@ func (serviceWatcher *ServiceWatcher) GetNodeByPayload(dc, name string) (*Node, 
 			if node.Name == name && node.Ndc == dc {
 				pay, _ := strconv.Atoi(node.Npayload)
 				if pay >= payload {
-					nodeObj = &node
+					tempNodeObj = node
+					nodeObj = &tempNodeObj
 					payload = pay
 				}
 			}
