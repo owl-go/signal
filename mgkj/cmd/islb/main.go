@@ -7,12 +7,12 @@ import (
 	conf "mgkj/pkg/conf/islb"
 	"mgkj/pkg/db"
 	"mgkj/pkg/log"
-	ilsb "mgkj/pkg/node/islb"
+	islb "mgkj/pkg/node/islb"
 	"mgkj/pkg/server"
 )
 
 func close() {
-	ilsb.Close()
+	islb.Close()
 }
 
 func main() {
@@ -34,7 +34,13 @@ func main() {
 		Pwd:   conf.Redis.Pwd,
 		DB:    conf.Redis.DB,
 	}
-	ilsb.Init(serviceNode, serviceWatcher, conf.Nats.URL, config)
+	config1 := db.Config{
+		Addrs: conf.Redis.Addrs,
+		Pwd:   conf.Redis.Pwd,
+		DB:    conf.Redis.TDB,
+	}
+
+	islb.Init(serviceNode, serviceWatcher, conf.Nats.URL, config, config1)
 
 	select {}
 }
