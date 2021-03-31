@@ -81,7 +81,6 @@ type WebRTCTransport struct {
 }
 
 func (w *WebRTCTransport) init(options map[string]interface{}, bPub bool) error {
-	w.mediaEngine = webrtc.MediaEngine{}
 	rtcpfb := make([]webrtc.RTCPFeedback, 0)
 	rtcpfb = append(rtcpfb, webrtc.RTCPFeedback{
 		Type: webrtc.TypeRTCPFBGoogREMB,
@@ -95,33 +94,10 @@ func (w *WebRTCTransport) init(options map[string]interface{}, bPub bool) error 
 	rtcpfb = append(rtcpfb, webrtc.RTCPFeedback{
 		Type: "nack pli",
 	})
-	if bPub {
-		audio := options["audio"].(bool)
-		video := options["video"].(bool)
-		if audio {
-			w.mediaEngine.RegisterCodec(webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 48000))
-		}
-		if video {
-			w.mediaEngine.RegisterCodec(webrtc.NewRTPH264CodecExt(webrtc.DefaultPayloadTypeH264, 90000, rtcpfb, fmtp))
-			/*
-				codec := GetUpperString(options, "codec")
-				if codec == webrtc.H264 {
-					w.mediaEngine.RegisterCodec(webrtc.NewRTPH264CodecExt(webrtc.DefaultPayloadTypeH264, 90000, rtcpfb, fmtp))
-				} else if codec == webrtc.VP8 {
-					w.mediaEngine.RegisterCodec(webrtc.NewRTPVP8CodecExt(webrtc.DefaultPayloadTypeVP8, 90000, rtcpfb, ""))
-				} else if codec == webrtc.VP9 {
-					w.mediaEngine.RegisterCodec(webrtc.NewRTPVP9Codec(webrtc.DefaultPayloadTypeVP9, 90000))
-				} else {
-					w.mediaEngine.RegisterCodec(webrtc.NewRTPH264CodecExt(webrtc.DefaultPayloadTypeH264, 90000, rtcpfb, fmtp))
-				}*/
-		}
-	} else {
-		w.mediaEngine.RegisterCodec(webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 48000))
-		w.mediaEngine.RegisterCodec(webrtc.NewRTPH264CodecExt(webrtc.DefaultPayloadTypeH264, 90000, rtcpfb, fmtp))
-		//w.mediaEngine.RegisterCodec(webrtc.NewRTPVP8CodecExt(webrtc.DefaultPayloadTypeVP8, 90000, rtcpfb, ""))
-		//w.mediaEngine.RegisterCodec(webrtc.NewRTPVP9Codec(webrtc.DefaultPayloadTypeVP9, 90000))
-	}
 
+	w.mediaEngine = webrtc.MediaEngine{}
+	w.mediaEngine.RegisterCodec(webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 48000))
+	w.mediaEngine.RegisterCodec(webrtc.NewRTPH264CodecExt(127 /*webrtc.DefaultPayloadTypeH264*/, 90000, rtcpfb, fmtp))
 	w.api = webrtc.NewAPI(webrtc.WithMediaEngine(w.mediaEngine), webrtc.WithSettingEngine(setting))
 	return nil
 }
