@@ -10,6 +10,7 @@ import (
 // Peer peer对象
 type Peer struct {
 	peer.Peer
+	appid string
 }
 
 // NewPeer 初始化peer对象
@@ -21,6 +22,14 @@ func newPeer(id string, t *transport.WebSocketTransport) *Peer {
 	return &Peer{
 		Peer: *peer.NewPeer(id, t),
 	}
+}
+
+func (p *Peer) SetAppID(appid string) {
+	p.appid = appid
+}
+
+func (p *Peer) GetAppID() string {
+	return p.appid
 }
 
 // On 事件处理

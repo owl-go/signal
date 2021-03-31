@@ -24,9 +24,10 @@ func in(transport *transport.WebSocketTransport, request *http.Request) {
 
 	id := peerID[0]
 
-	log.Infof("signal.in, id => %s", id, appID[0])
+	log.Infof("signal.in, id => %s,appid => %s", id, appID[0])
 
 	peer := ws.NewPeer(id, transport)
+	peer.SetAppID(appID[0])
 
 	handleRequest := func(request map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
 		defer util.Recover("signal.in handleRequest")
