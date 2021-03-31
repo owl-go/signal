@@ -1,6 +1,7 @@
 package node
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -56,6 +57,8 @@ func handleRPCRequest(rpcID string) {
 				result, err = getMediaPubs(data)
 			case proto.BizToIslbPeerLive:
 				result, err = getPeerLive(data)
+			case proto.IssrToIslbReportStreamState:
+				result, err = reportStreamState(data)
 			}
 			if err != nil {
 				reject(err.Code, err.Reason)
@@ -384,6 +387,31 @@ func getPeerLive(data map[string]interface{}) (map[string]interface{}, *nprotoo.
 		resp = util.Map("errorCode", 0)
 	} else {
 		resp = util.Map("errorCode", 1)
+	}
+	return resp, nil
+}
+
+func reportStreamState(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
+	rid := util.Val(data, "rid")
+	uid := util.Val(data, "uid")
+	mid := util.Val(data, "mid")
+	//生成key
+	sKey := proto.GetStreamStateKey(rid, uid, mid)
+	// 写入key值
+	state, err := json.Marshal(data)
+	if err != nil {
+		log.Errorf("reportStreamState json marshal fail")
+		return util.Map("errorCode", 1), nil
+	}
+
+	err = redis1.Set(sKey, string(state), 0)
+
+	resp := make(map[string]interface{})
+	if err != nil {
+		log.Errorf("redis.Set stream state err = %v", err)
+		resp = util.Map("errorCode", 1)
+	} else {
+		resp = util.Map("errorCode", 0)
 	}
 	return resp, nil
 }

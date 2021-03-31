@@ -46,6 +46,9 @@ const (
 	// IslbToDistPeerInfo islb->dist islb返回peer在哪个dist服务器
 	IslbToDistPeerInfo = DistToIslbPeerInfo
 
+	//IssrToIslbReportStreamState Issr -> Islb 记录拉流数据
+	IssrToIslbReportStreamState = "report-stream-state"
+
 	/*
 		客户端与biz服务器通信
 	*/
@@ -157,6 +160,11 @@ func GetMediaInfoKey(rid, uid, mid string) string {
 // GetMediaPubKey 获取用户发布流对应的sfu信息
 func GetMediaPubKey(rid, uid, mid string) string {
 	return "/pub/rid/" + rid + "/uid/" + uid + "/mid/" + mid
+}
+
+// GetStreamStateKey 获取拉流状态信息key
+func GetStreamStateKey(rid, uid, mid string) string {
+	return "/ss/rid/" + rid + "/uid/" + uid + "/mid/" + mid
 }
 
 // TrackInfo track信息
