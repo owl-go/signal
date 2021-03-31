@@ -108,7 +108,7 @@ func (j *JitterBuffer) AttachPub(t transport.Transport) {
 
 // AddBuffer add a buffer by ssrc
 func (j *JitterBuffer) AddBuffer(ssrc uint32) *Buffer {
-	log.Infof("JitterBuffer.AddBuffer ssrc=%d", ssrc)
+	//log.Infof("JitterBuffer.AddBuffer ssrc=%d", ssrc)
 	b := NewBuffer()
 	b.InitBufferTime(j.config.MaxBufferTime)
 	j.buffers[ssrc] = b
@@ -136,7 +136,7 @@ func (j *JitterBuffer) WriteRTP(pkt *rtp.Packet) error {
 		buffer := j.GetBuffer(ssrc)
 		if buffer == nil {
 			buffer = j.AddBuffer(ssrc)
-			log.Infof("JitterBuffer.WriteRTP buffer.SetSSRCPT(%d,%d)", ssrc, pt)
+			//log.Infof("JitterBuffer.WriteRTP buffer.SetSSRCPT(%d,%d)", ssrc, pt)
 			buffer.SetSSRCPT(ssrc, pt)
 		}
 
