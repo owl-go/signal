@@ -5,6 +5,7 @@ go 1.15
 replace google.golang.org/grpc => google.golang.org/grpc v1.26.0
 
 require (
+	github.com/Shopify/sarama v1.28.0
 	github.com/cloudwebrtc/go-protoo v0.0.0-20200324091126-61fe57ffd18f
 	github.com/cloudwebrtc/nats-protoo v0.0.0-20200328144814-d3c1c848d442
 	github.com/coreos/etcd v3.3.25+incompatible // indirect
