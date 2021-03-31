@@ -8,6 +8,7 @@ BIZ=biz
 DIST=dist
 ISLB=islb
 SFU=sfu
+ISSR=issr
 
 echo "------------------stop $BIZ------------------"
 echo "pkill $BIZ"
@@ -24,3 +25,7 @@ pkill $ISLB
 echo "------------------stop $SFU------------------"
 echo "pkill $SFU"
 pkill $SFU
+
+echo "------------------stop $ISSR------------------"
+echo "pkill $ISSR"
+pkill $ISSR

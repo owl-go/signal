@@ -48,6 +48,8 @@ const (
 
 	//IssrToIslbReportStreamState Issr -> Islb 记录拉流数据
 	IssrToIslbReportStreamState = "report-stream-state"
+	//BizToIssrReportStreamState Biz -> Issr 发送拉流信息到Issr
+	BizToIssrReportStreamState = IssrToIslbReportStreamState
 
 	/*
 		客户端与biz服务器通信
