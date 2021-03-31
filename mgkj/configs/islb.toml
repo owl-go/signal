@@ -21,3 +21,4 @@ url = "nats://127.0.0.1:4222"
 addrs = [":6379"]
 password = ""
 db = 0
+tdb = 1

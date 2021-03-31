@@ -214,3 +214,30 @@ func FindPeerIsLive(rid, uid string) bool {
 	}
 	return find
 }
+
+// findISSRNode 查询全局的可用的issr节点
+func findIssrNode() *server.Node {
+	servers, find := watch.GetNodes("issr")
+	if find {
+		for _, node := range servers {
+			return &node
+		}
+	}
+	return nil
+}
+func getIssrRequestor() *nprotoo.Requestor {
+	issr := findIssrNode()
+
+	if issr == nil {
+		log.Errorf("find issr node not found")
+		return nil
+	}
+
+	find := false
+	rpc, find := rpcs[issr.Nid]
+	if !find {
+		log.Errorf("Ss rpc not found")
+		return nil
+	}
+	return rpc
+}
