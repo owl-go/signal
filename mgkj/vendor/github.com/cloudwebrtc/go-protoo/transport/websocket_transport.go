@@ -38,7 +38,7 @@ func NewWebSocketTransport(socket *websocket.Conn) *WebSocketTransport {
 func (transport *WebSocketTransport) ReadMessage() {
 	in := make(chan []byte)
 	stop := make(chan struct{})
-	pingTicker := time.NewTicker(pingPeriod)
+	//pingTicker := time.NewTicker(pingPeriod)
 
 	var c = transport.socket
 	go func() {
@@ -62,13 +62,13 @@ func (transport *WebSocketTransport) ReadMessage() {
 
 	for {
 		select {
-		case _ = <-pingTicker.C:
-			//logger.Infof("Send keepalive !!!")
-			if err := transport.Send("{}"); err != nil {
-				logger.Errorf("Keepalive has failed")
-				pingTicker.Stop()
-				return
-			}
+		/*case _ = <-pingTicker.C:
+		//logger.Infof("Send keepalive !!!")
+		if err := transport.Send("{}"); err != nil {
+			logger.Errorf("Keepalive has failed")
+			pingTicker.Stop()
+			return
+		}*/
 		case message := <-in:
 			{
 				logger.Infof("Recivied data: %s", message)
