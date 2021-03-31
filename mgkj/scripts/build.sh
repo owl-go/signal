@@ -114,7 +114,7 @@ $ISLB_BIN)
 $SFU_BIN)
     build_sfu
     ;;
-$SFU_BIN)
+$ISSR_BIN)
     build_issr
     ;;
 all)
