@@ -4,14 +4,11 @@ import (
 	"errors"
 	"net"
 	"sync"
-	"time"
 
 	"github.com/chuckpreslar/emission"
 	"github.com/cloudwebrtc/go-protoo/logger"
 	"github.com/gorilla/websocket"
 )
-
-const pingPeriod = 5 * time.Second
 
 type WebSocketTransport struct {
 	emission.Emitter
@@ -27,7 +24,6 @@ func NewWebSocketTransport(socket *websocket.Conn) *WebSocketTransport {
 	transport.mutex = new(sync.Mutex)
 	transport.closed = false
 	transport.socket.SetCloseHandler(func(code int, text string) error {
-		logger.Warnf("%s [%d]", text, code)
 		transport.Emit("close", code, text)
 		transport.closed = true
 		return nil
@@ -38,14 +34,12 @@ func NewWebSocketTransport(socket *websocket.Conn) *WebSocketTransport {
 func (transport *WebSocketTransport) ReadMessage() {
 	in := make(chan []byte)
 	stop := make(chan struct{})
-	//pingTicker := time.NewTicker(pingPeriod)
 
 	var c = transport.socket
 	go func() {
 		for {
 			_, message, err := c.ReadMessage()
 			if err != nil {
-				logger.Warnf("Got error: %v", err)
 				if c, k := err.(*websocket.CloseError); k {
 					transport.Emit("error", c.Code, c.Text)
 				} else {
@@ -62,13 +56,6 @@ func (transport *WebSocketTransport) ReadMessage() {
 
 	for {
 		select {
-		/*case _ = <-pingTicker.C:
-		//logger.Infof("Send keepalive !!!")
-		if err := transport.Send("{}"); err != nil {
-			logger.Errorf("Keepalive has failed")
-			pingTicker.Stop()
-			return
-		}*/
 		case message := <-in:
 			{
 				logger.Infof("Recivied data: %s", message)

@@ -15,7 +15,6 @@ import (
 )
 
 const (
-	pingPeriod     = 5 * time.Second
 	DefaultNatsURL = "nats://127.0.0.1:4222"
 	_EMPTY_        = ""
 )

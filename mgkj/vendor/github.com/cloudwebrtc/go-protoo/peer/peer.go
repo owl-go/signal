@@ -3,17 +3,15 @@ package peer
 import (
 	"encoding/json"
 
+	"github.com/chuckpreslar/emission"
 	"github.com/cloudwebrtc/go-protoo/logger"
 	"github.com/cloudwebrtc/go-protoo/transport"
-
-	"github.com/chuckpreslar/emission"
 )
 
 type Transcation struct {
 	id     int
 	accept AcceptFunc
 	reject RejectFunc
-	close  func()
 }
 
 type Peer struct {
@@ -43,7 +41,6 @@ func NewPeer(id string, transport *transport.WebSocketTransport) *Peer {
 
 func (peer *Peer) Close() {
 	peer.transport.Close()
-	//peer.Emit("close", 1000, "")
 }
 
 func (peer *Peer) ID() string {
@@ -68,13 +65,9 @@ func (peer *Peer) Request(method string, data map[string]interface{}, success Ac
 		id:     id,
 		accept: success,
 		reject: reject,
-		close: func() {
-			logger.Infof("Transport closed !")
-		},
 	}
 
 	peer.transcations[id] = transcation
-	logger.Infof("Send request [%s]", method)
 	peer.transport.Send(string(str))
 }
 
@@ -89,14 +82,12 @@ func (peer *Peer) Notify(method string, data map[string]interface{}) {
 		logger.Errorf("Marshal %v", err)
 		return
 	}
-	logger.Infof("Send notification [%s]", method)
 	peer.transport.Send(string(str))
 }
 
 func (peer *Peer) handleMessage(message []byte) {
 	var data map[string]interface{}
 	if err := json.Unmarshal(message, &data); err != nil {
-		//panic(err)
 		logger.Errorf("handleMessage Unmarshal err => %v", err)
 		return
 	}
@@ -111,9 +102,6 @@ func (peer *Peer) handleMessage(message []byte) {
 }
 
 func (peer *Peer) handleRequest(request map[string]interface{}) {
-
-	logger.Infof("Handle request [%s]", request["method"])
-
 	accept := func(data map[string]interface{}) {
 		response := &Response{
 			Response: true,
@@ -126,8 +114,6 @@ func (peer *Peer) handleRequest(request map[string]interface{}) {
 			logger.Errorf("Marshal %v", err)
 			return
 		}
-		//send accept
-		logger.Infof("Accept [%s] => (%s)", request["method"], str)
 		peer.transport.Send(string(str))
 	}
 
@@ -144,8 +130,6 @@ func (peer *Peer) handleRequest(request map[string]interface{}) {
 			logger.Errorf("Marshal %v", err)
 			return
 		}
-		//send reject
-		logger.Infof("Reject [%s] => (errorCode:%d, errorReason:%s)", request["method"], errorCode, errorReason)
 		peer.transport.Send(string(str))
 	}
 
@@ -154,9 +138,7 @@ func (peer *Peer) handleRequest(request map[string]interface{}) {
 
 func (peer *Peer) handleResponse(response map[string]interface{}) {
 	id := int(response["id"].(float64))
-
 	transcation := peer.transcations[id]
-
 	if transcation == nil {
 		logger.Errorf("received response does not match any sent request [id:%d]", id)
 		return
