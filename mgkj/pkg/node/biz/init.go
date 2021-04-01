@@ -21,7 +21,7 @@ var (
 func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, natsURL string) {
 	node = serviceNode
 	watch = ServiceWatcher
-	nats = nprotoo.NewNatsProtoo(natsURL)
+	nats = nprotoo.NewNatsProtoo("nats://" + natsURL)
 	rpcs = make(map[string]*nprotoo.Requestor)
 	go watch.WatchServiceNode("", WatchServiceCallBack)
 }

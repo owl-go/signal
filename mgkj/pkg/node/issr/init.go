@@ -35,7 +35,7 @@ func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher
 	}
 	kafkaProducer = producer
 	//连接nats-server
-	protoo = nprotoo.NewNatsProtoo(natsURL)
+	protoo = nprotoo.NewNatsProtoo("nats://" + natsURL)
 	// 启动MQ监听
 	handleRPCRequest(node.GetRPCChannel())
 	//监听islb节点
