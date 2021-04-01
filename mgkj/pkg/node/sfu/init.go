@@ -28,7 +28,7 @@ func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher
 	// 赋值
 	node = serviceNode
 	watch = ServiceWatcher
-	protoo = nprotoo.NewNatsProtoo(natsURL)
+	protoo = nprotoo.NewNatsProtoo("nats://" + natsURL)
 	broadcaster = protoo.NewBroadcaster(node.GetEventChannel())
 	// 启动
 	rtc.InitSfu()

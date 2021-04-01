@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"runtime"
 	"runtime/debug"
+	"strings"
 
 	"mgkj/pkg/log"
 
@@ -126,4 +127,12 @@ func NewNpError(code int, reason string) *nprotoo.Error {
 		Reason: reason,
 	}
 	return &err
+}
+
+func ProcessUrlString(url string) []string {
+	urls := strings.Split(url, ",")
+	for i, s := range urls {
+		urls[i] = strings.TrimSpace(s)
+	}
+	return urls
 }

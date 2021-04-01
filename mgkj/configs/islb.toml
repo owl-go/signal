@@ -11,11 +11,10 @@ nip = "127.0.0.1"
 level = "info"
 
 [etcd]
-# ["ip:port", "ip:port"]
-addrs = ["127.0.0.1:2379"]
+addrs = "127.0.0.1:2379"
 
 [nats]
-url = "nats://127.0.0.1:4222"
+url = "127.0.0.1:4222"
 
 [redis]
 addrs = [":6379"]

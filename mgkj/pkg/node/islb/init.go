@@ -27,7 +27,7 @@ func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher
 	// 赋值
 	node = serviceNode
 	watch = ServiceWatcher
-	protoo = nprotoo.NewNatsProtoo(natsURL)
+	protoo = nprotoo.NewNatsProtoo("nats://" + natsURL)
 	broadcaster = protoo.NewBroadcaster(node.GetEventChannel())
 	redis = db.NewRedis(config)
 	redis1 = db.NewRedis(config1)

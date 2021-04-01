@@ -42,7 +42,7 @@ type log struct {
 }
 
 type etcd struct {
-	Addrs []string `mapstructure:"addrs"`
+	Addrs string `mapstructure:"addrs"`
 }
 
 type nats struct {

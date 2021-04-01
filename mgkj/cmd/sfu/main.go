@@ -8,6 +8,7 @@ import (
 	"mgkj/pkg/log"
 	"mgkj/pkg/node/sfu"
 	"mgkj/pkg/server"
+	"mgkj/pkg/util"
 )
 
 func close() {
@@ -27,9 +28,9 @@ func main() {
 		}()
 	}
 
-	serviceNode := server.NewServiceNode(conf.Etcd.Addrs, conf.Global.Ndc, conf.Global.Nid, conf.Global.Name, conf.Global.Nip)
+	serviceNode := server.NewServiceNode(util.ProcessUrlString(conf.Etcd.Addrs), conf.Global.Ndc, conf.Global.Nid, conf.Global.Name, conf.Global.Nip)
 	serviceNode.RegisterNode()
-	serviceWatcher := server.NewServiceWatcher(conf.Etcd.Addrs)
+	serviceWatcher := server.NewServiceWatcher(util.ProcessUrlString(conf.Etcd.Addrs))
 	sfu.Init(serviceNode, serviceWatcher, conf.Nats.URL)
 
 	select {}
