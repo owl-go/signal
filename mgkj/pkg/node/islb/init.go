@@ -6,6 +6,7 @@ import (
 	nprotoo "github.com/cloudwebrtc/nats-protoo"
 	"mgkj/pkg/db"
 	"mgkj/pkg/server"
+	"mgkj/pkg/util"
 )
 
 const (
@@ -27,7 +28,7 @@ func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher
 	// 赋值
 	node = serviceNode
 	watch = ServiceWatcher
-	protoo = nprotoo.NewNatsProtoo("nats://" + natsURL)
+	protoo = nprotoo.NewNatsProtoo(util.GenerateNatsUrlString(natsURL))
 	broadcaster = protoo.NewBroadcaster(node.GetEventChannel())
 	redis = db.NewRedis(config)
 	redis1 = db.NewRedis(config1)
