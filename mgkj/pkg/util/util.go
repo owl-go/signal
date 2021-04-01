@@ -136,3 +136,17 @@ func ProcessUrlString(url string) []string {
 	}
 	return urls
 }
+
+func GenerateNatsUrlString(url string) string {
+	var result string
+	urls := strings.Split(url, ",")
+	length := len(urls)
+	for i, s := range urls {
+		result += "nats://" + strings.TrimSpace(s)
+		if length-1 != i {
+			result += ","
+		}
+	}
+	return result
+
+}

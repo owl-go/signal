@@ -5,6 +5,7 @@ import (
 	"mgkj/pkg/server"
 
 	nprotoo "github.com/cloudwebrtc/nats-protoo"
+	"mgkj/pkg/util"
 )
 
 var (
@@ -18,7 +19,7 @@ var (
 func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, natsURL string) {
 	node = serviceNode
 	watch = ServiceWatcher
-	nats = nprotoo.NewNatsProtoo("nats://" + natsURL)
+	nats = nprotoo.NewNatsProtoo(util.GenerateNatsUrlString(natsURL))
 	rpcs = make(map[string]*nprotoo.Requestor)
 	go watch.WatchServiceNode("", WatchServiceCallBack)
 	// 启动消息接收
