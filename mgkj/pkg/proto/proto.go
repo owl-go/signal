@@ -9,12 +9,12 @@ const (
 		客户端和dist服务器之间的通信
 	*/
 
-	// ClientToDistLoginin C->dist 登录
-	ClientToDistLogin = "loginin"
-	// ClientToDistLoginOut C->dist 退录
-	ClientToDistLogout = "loginout"
-	// ClientToDistHeart C->dist 心跳
-	ClientToDistHeartbeat = "heart"
+	// ClientToDistLogin C->dist 登录
+	ClientToDistLogin = "login"
+	// ClientToDistLogout C->dist 退录
+	ClientToDistLogout = "logout"
+	// ClientToDistHeartbeat C->dist 心跳
+	ClientToDistHeartbeat = "heartbeat"
 	// ClientToDistCall C->dist 呼叫
 	ClientToDistCall = "call"
 	// ClientToDistAnswer C->dist 应答
@@ -59,8 +59,8 @@ const (
 	ClientToBizJoin = "join"
 	// ClientToBizLeave C->Biz 离开会议
 	ClientToBizLeave = "leave"
-	// ClientToBizKeepLive C->Biz 保活
-	ClientToBizKeepAlive = "keeplive"
+	// ClientToBizKeepAlive C->Biz 保活
+	ClientToBizKeepAlive = "keepalive"
 	// ClientToBizPublish C->Biz 发布流
 	ClientToBizPublish = "publish"
 	// ClientToBizUnPublish C->Biz 取消发布流
