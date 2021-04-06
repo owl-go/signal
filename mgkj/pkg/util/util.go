@@ -9,7 +9,7 @@ import (
 
 	"mgkj/pkg/log"
 
-	nprotoo "github.com/cloudwebrtc/nats-protoo"
+	nprotoo "github.com/gearghost/nats-protoo"
 	"github.com/pion/webrtc/v2"
 )
 

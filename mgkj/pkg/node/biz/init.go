@@ -7,7 +7,7 @@ import (
 	"mgkj/pkg/util"
 	"mgkj/pkg/ws"
 
-	nprotoo "github.com/cloudwebrtc/nats-protoo"
+	nprotoo "github.com/gearghost/nats-protoo"
 )
 
 var (

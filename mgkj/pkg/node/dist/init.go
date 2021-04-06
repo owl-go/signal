@@ -4,8 +4,9 @@ import (
 	"mgkj/pkg/log"
 	"mgkj/pkg/server"
 
-	nprotoo "github.com/cloudwebrtc/nats-protoo"
 	"mgkj/pkg/util"
+
+	nprotoo "github.com/gearghost/nats-protoo"
 )
 
 var (

@@ -12,7 +12,7 @@ import (
 	"mgkj/pkg/rtc/transport"
 	"mgkj/pkg/util"
 
-	sdps "github.com/notedit/sdp/transform"
+	sdps "github.com/gearghost/sdp/transform"
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v2"

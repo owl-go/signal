@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	nprotoo "github.com/cloudwebrtc/nats-protoo"
+	nprotoo "github.com/gearghost/nats-protoo"
 
 	"mgkj/pkg/log"
 	"mgkj/pkg/proto"

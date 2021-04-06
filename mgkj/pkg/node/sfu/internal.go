@@ -7,7 +7,7 @@ import (
 	"mgkj/pkg/rtc"
 	"mgkj/pkg/util"
 
-	nprotoo "github.com/cloudwebrtc/nats-protoo"
+	nprotoo "github.com/gearghost/nats-protoo"
 )
 
 // handleRPCMsgs 处理其他模块发送过来的消息

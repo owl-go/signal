@@ -1,11 +1,12 @@
 package issr
 
 import (
-	nprotoo "github.com/cloudwebrtc/nats-protoo"
 	"mgkj/infra/kafka"
 	"mgkj/pkg/log"
 	"mgkj/pkg/server"
 	"mgkj/pkg/util"
+
+	nprotoo "github.com/gearghost/nats-protoo"
 )
 
 var (

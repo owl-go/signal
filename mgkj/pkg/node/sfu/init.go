@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	nprotoo "github.com/cloudwebrtc/nats-protoo"
+	nprotoo "github.com/gearghost/nats-protoo"
 )
 
 const (

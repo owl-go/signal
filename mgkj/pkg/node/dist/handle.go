@@ -7,7 +7,7 @@ import (
 	"mgkj/pkg/util"
 	"mgkj/pkg/ws"
 
-	"github.com/cloudwebrtc/go-protoo/transport"
+	"github.com/gearghost/go-protoo/transport"
 )
 
 func in(transport *transport.WebSocketTransport, request *http.Request) {
