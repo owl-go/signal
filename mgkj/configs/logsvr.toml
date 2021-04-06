@@ -1,0 +1,42 @@
+[global]
+pprof = ":6064"
+
+# server
+dc = "shenzhen"
+name = "logsvr"
+nid = "shenzhen_logsvr_1"
+nip = "192.168.1.72"
+
+[log]
+level = "info"
+filename = "./logsvr.log"
+maxsize = 1
+maxage = 5
+maxbackups = 30
+encoder = "json"
+#encoder = "console"
+[opentracting]
+hostport = "47.112.142.132:6831"
+
+[etcd]
+# ["ip:port", "ip:port"]
+# addrs = ["127.0.0.1:2379"]
+addrs = ["127.0.0.1:2379"]
+
+[logsvr]
+#listen ip port
+host = "0.0.0.0"
+port = "8445"
+# cert= "configs/cert.pem"
+# key= "configs/key.pem"
+
+[nats]
+# url = "nats://127.0.0.1:4222"
+url = "nats://127.0.0.1:4222"
+
+[mysql]
+host = "127.0.0.1"
+port = "3306"
+username = "root"
+password = "123456"
+database = "logsvr"
