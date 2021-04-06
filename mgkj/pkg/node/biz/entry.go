@@ -258,7 +258,7 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 
 	if !bPublish {
 		log.Errorf("publish is not suc")
-		reject(codePubErr, codeStr(codePubErr))
+		reject(code, resp["errorReason"].(string))
 		return
 	}
 
@@ -434,7 +434,7 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 
 	if !find {
 		log.Errorf("subscribe is not suc")
-		reject(codeSubErr, codeStr(codeSubErr))
+		reject(code, resp["errorReason"].(string))
 		return
 	}
 	//add stream timer then start
