@@ -137,6 +137,8 @@ const (
 	BizToIslbBroadcast = ClientToBizBroadcast
 	// IslbToBizBroadcast islb->biz 有人发送广播
 	IslbToBizBroadcast = ClientToBizBroadcast
+	//日志输出
+	ToLogsvr = "toLogsvr"
 )
 
 // GetUIDFromMID 从mid中获取uid
