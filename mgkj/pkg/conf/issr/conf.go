@@ -20,6 +20,8 @@ var (
 	Nats = &cfg.Nats
 	//Kafka 消息队列中间件
 	Kafka = &cfg.Kafka
+	//http探针
+	Probe = &cfg.Probe
 )
 
 func init() {
@@ -53,12 +55,20 @@ type kafka struct {
 	URL string `mapstructure:"url"`
 }
 
+type probe struct {
+	Host string `mapstructure:"host"`
+	Port int    `mapstructure:"port"`
+	Cert string `mapstructure:"cert"`
+	Key  string `mapstructure:"key"`
+}
+
 type config struct {
 	Global  global `mapstructure:"global"`
 	Log     log    `mapstructure:"log"`
 	Etcd    etcd   `mapstructure:"etcd"`
 	Nats    nats   `mapstructure:"nats"`
 	Kafka   kafka  `mapstructure:"kafka"`
+	Probe   probe  `mapstructure:"probe"`
 	CfgFile string
 }
 

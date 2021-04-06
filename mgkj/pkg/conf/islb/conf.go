@@ -20,6 +20,8 @@ var (
 	Nats = &cfg.Nats
 	// Redis Redis设置
 	Redis = &cfg.Redis
+	// http探针
+	Probe = &cfg.Probe
 )
 
 func init() {
@@ -56,12 +58,20 @@ type redis struct {
 	TDB   int      `mapstructure:"tdb"`
 }
 
+type probe struct {
+	Host string `mapstructure:"host"`
+	Port int    `mapstructure:"port"`
+	Cert string `mapstructure:"cert"`
+	Key  string `mapstructure:"key"`
+}
+
 type config struct {
 	Global  global `mapstructure:"global"`
 	Log     log    `mapstructure:"log"`
 	Etcd    etcd   `mapstructure:"etcd"`
 	Nats    nats   `mapstructure:"nats"`
 	Redis   redis  `mapstructure:"redis"`
+	Probe   probe  `mapstructure:"probe"`
 	CfgFile string
 }
 

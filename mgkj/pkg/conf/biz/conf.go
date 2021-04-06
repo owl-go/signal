@@ -20,6 +20,8 @@ var (
 	Signal = &cfg.Signal
 	// nats-server 消息中间件设置
 	Nats = &cfg.Nats
+	// http探针
+	Probe = &cfg.Probe
 )
 
 func init() {
@@ -56,12 +58,20 @@ type nats struct {
 	URL string `mapstructure:"url"`
 }
 
+type probe struct {
+	Host string `mapstructure:"host"`
+	Port int    `mapstructure:"port"`
+	Cert string `mapstructure:"cert"`
+	Key  string `mapstructure:"key"`
+}
+
 type config struct {
 	Global  global `mapstructure:"global"`
 	Log     log    `mapstructure:"log"`
 	Etcd    etcd   `mapstructure:"etcd"`
 	Signal  signal `mapstructure:"signal"`
 	Nats    nats   `mapstructure:"nats"`
+	Probe   probe  `mapstructure:"probe"`
 	CfgFile string
 }
 
