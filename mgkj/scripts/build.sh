@@ -33,7 +33,7 @@ build_biz()
     echo "------------------build $BIZ_BIN------------------"
     echo "go build -o $BUILD_PATH1"
     cd $APP_DIR/cmd/biz
-    go build -mod=vendor -tags netgo -o $BUILD_PATH1
+    go build -tags netgo -o $BUILD_PATH1
 }
 
 build_dist()
@@ -41,7 +41,7 @@ build_dist()
     echo "------------------build $DIST_BIN------------------"
     echo "go build -o $BUILD_PATH2"
     cd $APP_DIR/cmd/dist
-    go build -mod=vendor -tags netgo -o $BUILD_PATH2
+    go build -tags netgo -o $BUILD_PATH2
 }
 
 build_islb()
@@ -49,7 +49,7 @@ build_islb()
     echo "------------------build $ISLB_BIN------------------"
     echo "go build -o $BUILD_PATH3"
     cd $APP_DIR/cmd/islb
-    go build -mod=vendor -tags netgo -o $BUILD_PATH3
+    go build -tags netgo -o $BUILD_PATH3
 }
 
 build_sfu()
@@ -57,7 +57,7 @@ build_sfu()
     echo "------------------build $SFU_BIN------------------"
     echo "go build -o $BUILD_PATH4"
     cd $APP_DIR/cmd/sfu
-    go build -mod=vendor -tags netgo -o $BUILD_PATH4
+    go build -tags netgo -o $BUILD_PATH4
 }
 
 build_issr()
@@ -65,7 +65,7 @@ build_issr()
     echo "------------------build $ISSR_BIN------------------"
     echo "go build -o $BUILD_PATH5"
     cd $APP_DIR/cmd/issr
-    go build -mod=vendor -tags netgo -o $BUILD_PATH5
+    go build -tags netgo -o $BUILD_PATH5
 }
 while getopts "o:h" arg
 do
