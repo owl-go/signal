@@ -13,7 +13,6 @@ import (
 // handleRPCMsgs 处理其他模块发送过来的消息
 func handleRPCRequest(rpcID string) {
 	log.Infof("handleRPCRequest: rpcID => [%v]", rpcID)
-	logger.Info("WatchServiceCallBack node up", "rpcID", rpcID, "nodeId", rpcID)
 	nats.OnRequest(rpcID, func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
 		go func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
 			defer util.Recover("logsvr.handleRPCRequest")

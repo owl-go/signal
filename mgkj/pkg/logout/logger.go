@@ -1,4 +1,4 @@
-package log
+package logout
 
 import (
 	"encoding/json"
@@ -36,7 +36,7 @@ const (
 	// it shouldn't generate any error-level logs.
 	ErrorLevel
 	// DPanicLevel logs are particularly important errors. In development the
-	// logger panics after writing the message.
+	// logout panics after writing the message.
 	DPanicLevel
 	// PanicLevel logs a message, then panics.
 	PanicLevel
@@ -103,6 +103,7 @@ type Logger struct {
 	Level      Level
 	en         Entry
 	log        log.Logger
+	factory    Factory
 }
 type Entry struct {
 	Level   Level
@@ -171,13 +172,14 @@ func (ec EntryCaller) TrimmedPath() string {
 	return caller
 }
 
-func NewLogger(dc, name, nid, nip, level string, addCaller bool) *Logger {
+func NewLogger(dc, name, nid, nip, level string, addCaller bool, factory Factory) *Logger {
 	logger := &Logger{
 		dc:        dc,
 		name:      name,
 		nid:       nid,
 		nip:       nip,
 		addCaller: addCaller,
+		factory:   factory,
 	}
 	switch level {
 	case "info":
@@ -196,6 +198,7 @@ func NewLogger(dc, name, nid, nip, level string, addCaller bool) *Logger {
 
 	return logger
 }
+
 func (log *Logger) clone() *Logger {
 	copy := *log
 	return &copy
@@ -237,7 +240,8 @@ func (l *Logger) check(level Level, msg string) *Logger {
 	clone.en = en
 	return clone
 }
-func (l *Logger) Write(args ...interface{}) string {
+
+func (l *Logger) Send(args ...interface{}) string {
 	options := make(map[string]interface{})
 	options["dc"] = l.dc
 	options["name"] = l.name
@@ -275,40 +279,42 @@ func (l *Logger) Write(args ...interface{}) string {
 	}
 	data, _ := json.Marshal(options)
 
+	l.factory.OutPut(string(data)) //将日志输出
+
 	return string(data)
 }
 
 func (l *Logger) Debug(msg string, args ...interface{}) string {
 	if ce := l.check(DebugLevel, msg); ce != nil {
-		return ce.Write(args...)
+		return ce.Send(args...)
 	}
 	return ""
 }
 
 func (l *Logger) Info(msg string, args ...interface{}) string {
 	if ce := l.check(InfoLevel, msg); ce != nil {
-		return ce.Write(args...)
+		return ce.Send(args...)
 	}
 	return ""
 }
 
 func (l *Logger) Warn(msg string, args ...interface{}) string {
 	if ce := l.check(WarnLevel, msg); ce != nil {
-		return ce.Write(args...)
+		return ce.Send(args...)
 	}
 	return ""
 }
 
 func (l *Logger) Error(msg string, args ...interface{}) string {
 	if ce := l.check(ErrorLevel, msg); ce != nil {
-		return ce.Write(args...)
+		return ce.Send(args...)
 	}
 	return ""
 }
 
 func (l *Logger) Panic(msg string, args ...interface{}) string {
 	if ce := l.check(PanicLevel, msg); ce != nil {
-		return ce.Write(args...)
+		return ce.Send(args...)
 	}
 	return ""
 }

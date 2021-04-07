@@ -9,18 +9,21 @@ DIST=dist
 ISLB=islb
 SFU=sfu
 ISSR=issr
+LOGSVR=logsvr
 
 BUILD_PATH1=$APP_DIR/bin/$BIZ
 BUILD_PATH2=$APP_DIR/bin/$DIST
 BUILD_PATH3=$APP_DIR/bin/$ISLB
 BUILD_PATH4=$APP_DIR/bin/$SFU
 BUILD_PATH5=$APP_DIR/bin/$ISSR
+BUILD_PATH6=$APP_DIR/bin/$LOGSVR
 
 BIZ_LOG=$APP_DIR/logs/$BIZ.log
 DIST_LOG=$APP_DIR/logs/$DIST.log
 ISLB_LOG=$APP_DIR/logs/$ISLB.log
 SFU_LOG=$APP_DIR/logs/$SFU.log
 ISSR_LOG=$APP_DIR/logs/$ISSR.log
+LOGSVR_LOG=$APP_DIR/logs/$LOGSVR.log
 
 echo "------------------delete $BIZ------------------"
 echo "rm $BUILD_PATH1"
@@ -42,6 +45,10 @@ echo "------------------delete $ISSR------------------"
 echo "rm $BUILD_PATH5"
 rm $BUILD_PATH5
 
+echo "------------------delete $LOGSVR------------------"
+echo "rm $BUILD_PATH6"
+rm $BUILD_PATH6
+
 echo "------------------delete $BIZ LOG------------------"
 echo "rm $BIZ_LOG"
 rm $BIZ_LOG
@@ -61,3 +68,7 @@ rm $SFU_LOG
 echo "------------------delete $ISSR LOG------------------"
 echo "rm $ISSR_LOG"
 rm $ISSR_LOG
+
+echo "------------------delete $LOGSVR LOG------------------"
+echo "rm $LOGSVR_LOG"
+rm $LOGSVR_LOG
