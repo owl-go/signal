@@ -4,7 +4,7 @@ pprof = ":6064"
 # server
 dc = "shenzhen"
 name = "logsvr"
-nid = "shenzhen_logsvr_1"
+nid = "shenzhen_logsvr_2"
 nip = "192.168.1.72"
 
 [log]
