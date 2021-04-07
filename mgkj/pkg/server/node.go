@@ -60,7 +60,7 @@ func Encode(data map[string]string) string {
 
 // Decode 将string格式转换成map
 func Decode(str []byte) map[string]string {
-	if str != nil && len(str) > 0 {
+	if len(str) > 0 {
 		var data map[string]string
 		json.Unmarshal(str, &data)
 		return data
