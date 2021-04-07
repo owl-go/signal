@@ -237,7 +237,7 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 	resp, err := rpcSfu.SyncRequest(proto.BizToSfuPublish, util.Map("rid", rid, "uid", uid, "minfo", minfo, "jsep", jsep))
 	if err != nil {
 		log.Errorf(err.Reason)
-		reject(codePubErr, codeStr(codePubErr))
+		reject(int(resp["errorCode"].(float64)), resp["errorReason"].(string))
 		return
 	}
 
@@ -418,7 +418,7 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	resp, err := rpcSfu.SyncRequest(proto.BizToSfuSubscribe, util.Map("rid", rid, "uid", uid, "mid", mid, "jsep", jsep, "minfo", minfo))
 	if err != nil {
 		log.Errorf(err.Reason)
-		reject(codeSubErr, codeStr(codeSubErr))
+		reject(int(resp["errorCode"].(float64)), resp["errorReason"].(string))
 		return
 	}
 
