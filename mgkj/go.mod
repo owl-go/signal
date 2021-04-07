@@ -8,7 +8,7 @@ require (
 	github.com/Shopify/sarama v1.28.0
 	github.com/coreos/etcd v3.3.25+incompatible // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
-	github.com/gearghost/go-protoo v0.1.3
+	github.com/gearghost/go-protoo v0.1.4
 	github.com/gearghost/nats-protoo v0.1.0
 	github.com/gearghost/sdp v0.1.0
 	github.com/gin-gonic/gin v1.6.3
