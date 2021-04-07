@@ -89,19 +89,19 @@ func (s *DefaultFactory) watcher(prefix string) {
 	for msg := range ch {
 		for _, ev := range msg.Events {
 			nid := string(ev.Kv.Key)
-			nodeobj := Decode(ev.Kv.Value)
-			if nodeobj["Nid"] != "" {
-				node := Node{}
-				node.Ndc = nodeobj["Ndc"]
-				node.Nid = nodeobj["Nid"]
-				node.Name = nodeobj["Name"]
-				node.Nip = nodeobj["Nip"]
-				node.Npayload = nodeobj["Npayload"]
-				if node.Name == logsvr {
-					switch ev.Type {
-					case clientv3.EventTypeDelete:
-						s.delRpcs(nid)
-					case clientv3.EventTypePut:
+			switch ev.Type {
+			case clientv3.EventTypeDelete:
+				s.delRpcs(nid)
+			case clientv3.EventTypePut:
+				nodeobj := Decode(ev.Kv.Value)
+				if nodeobj["Nid"] != "" {
+					node := Node{}
+					node.Ndc = nodeobj["Ndc"]
+					node.Nid = nodeobj["Nid"]
+					node.Name = nodeobj["Name"]
+					node.Nip = nodeobj["Nip"]
+					node.Npayload = nodeobj["Npayload"]
+					if node.Name == logsvr {
 						s.addRpcs(node)
 					}
 				}
