@@ -441,13 +441,13 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	var mediatype string
 	sid := rspSfu["sid"].(string)
 	isVideo := minfo.(map[string]interface{})["video"].(bool)
-	if isVideo == false {
+	if !isVideo {
 		isVideo = minfo.(map[string]interface{})["screen"].(bool)
 	}
 	isAudio := minfo.(map[string]interface{})["audio"].(bool)
-	if isVideo == false && isAudio == true {
+	if !isVideo && isAudio {
 		mediatype = "audio"
-	} else if isVideo == true {
+	} else if isVideo {
 		mediatype = "video"
 	}
 	resolution := minfo.(map[string]interface{})["resolution"].(string)

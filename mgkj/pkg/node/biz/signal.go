@@ -83,7 +83,7 @@ func checkRoom() {
 
 func stopAllStreamTimer(rid, uid string) {
 	for _, timer := range substreams {
-		if timer.RID == rid && timer.UID == uid && timer.IsStopped() == false {
+		if timer.RID == rid && timer.UID == uid && !timer.IsStopped() {
 			timer.Stop()
 			log.Infof("stopAllStreamTimer room %s uid =>%s sid => %s stopped.", timer.RID, timer.SID)
 		}
@@ -91,21 +91,13 @@ func stopAllStreamTimer(rid, uid string) {
 }
 
 func checkStreamState() {
-
 	t := time.NewTicker(streamTimingCycle)
-
 	defer t.Stop()
-
 	for range t.C {
-
 		for sid, timer := range substreams {
-
-			if timer.IsStopped() == true {
-
+			if timer.IsStopped() {
 				log.Infof("checkStreamState uid => %s,mid => %s,sid => %s stream was stopped", timer.UID, timer.MID, timer.SID)
-
 				rpc := getIssrRequestor()
-
 				if rpc == nil {
 					log.Errorf("checkStreamState get ss requestor fail")
 					continue
@@ -119,7 +111,6 @@ func checkStreamState() {
 				}
 
 				code := int(resp["errorCode"].(float64))
-
 				if code == 0 {
 					substreamsLock.Lock()
 					delete(substreams, sid)
@@ -127,7 +118,6 @@ func checkStreamState() {
 				} else {
 					log.Errorf("checkStreamState report uid => %s,mid => %s, sid => %s stream state fail", timer.UID, timer.MID, timer.SID)
 				}
-
 			}
 		}
 	}

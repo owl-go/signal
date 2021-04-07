@@ -1,7 +1,6 @@
 package dist
 
 import (
-	"mgkj/pkg/log"
 	"mgkj/pkg/server"
 
 	"mgkj/pkg/util"
@@ -11,9 +10,9 @@ import (
 
 var (
 	nats  *nprotoo.NatsProtoo
-	rpcs  = make(map[string]*nprotoo.Requestor)
 	node  *server.ServiceNode
 	watch *server.ServiceWatcher
+	rpcs  = make(map[string]*nprotoo.Requestor)
 )
 
 // Init 初始化服务
@@ -21,7 +20,6 @@ func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher
 	node = serviceNode
 	watch = ServiceWatcher
 	nats = nprotoo.NewNatsProtoo(util.GenerateNatsUrlString(natsURL))
-	rpcs = make(map[string]*nprotoo.Requestor)
 	go watch.WatchServiceNode("", WatchServiceCallBack)
 	// 启动消息接收
 	handleRPCRequest(node.GetRPCChannel())
@@ -43,7 +41,6 @@ func Close() {
 // WatchServiceCallBack 查看所有的Node节点
 func WatchServiceCallBack(state server.NodeStateType, node server.Node) {
 	if state == server.ServerUp {
-		log.Infof("WatchServiceCallBack node up %v", node)
 		if node.Name == "islb" || node.Name == "dist" {
 			id := node.Nid
 			_, found := rpcs[id]
@@ -53,10 +50,7 @@ func WatchServiceCallBack(state server.NodeStateType, node server.Node) {
 			}
 		}
 	} else if state == server.ServerDown {
-		log.Infof("WatchServiceCallBack node down %v", node.Nid)
-		if _, found := rpcs[node.Nid]; found {
-			delete(rpcs, node.Nid)
-		}
+		delete(rpcs, node.Nid)
 	}
 }
 

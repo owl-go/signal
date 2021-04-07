@@ -12,9 +12,9 @@ import (
 
 var (
 	nats  *nprotoo.NatsProtoo
-	rpcs  = make(map[string]*nprotoo.Requestor)
 	node  *server.ServiceNode
 	watch *server.ServiceWatcher
+	rpcs  = make(map[string]*nprotoo.Requestor)
 )
 
 // Init 初始化服务
@@ -22,7 +22,6 @@ func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher
 	node = serviceNode
 	watch = ServiceWatcher
 	nats = nprotoo.NewNatsProtoo(util.GenerateNatsUrlString(natsURL))
-	rpcs = make(map[string]*nprotoo.Requestor)
 	go watch.WatchServiceNode("", WatchServiceCallBack)
 }
 
@@ -42,7 +41,6 @@ func Close() {
 // WatchServiceCallBack 查看所有的Node节点
 func WatchServiceCallBack(state server.NodeStateType, node server.Node) {
 	if state == server.ServerUp {
-		log.Infof("WatchServiceCallBack node up %v", node.Nid)
 		// 判断是否广播节点
 		if node.Name == "islb" || node.Name == "sfu" {
 			eventID := server.GetEventChannel(node)
@@ -56,10 +54,7 @@ func WatchServiceCallBack(state server.NodeStateType, node server.Node) {
 			rpcs[id] = nats.NewRequestor(rpcID)
 		}
 	} else if state == server.ServerDown {
-		log.Infof("WatchServiceCallBack node down %v", node.Nid)
-		if _, found := rpcs[node.Nid]; found {
-			delete(rpcs, node.Nid)
-		}
+		delete(rpcs, node.Nid)
 	}
 }
 
@@ -205,7 +200,7 @@ func FindPeerIsLive(rid, uid string) bool {
 
 	// "method", proto.IslbToBizPeerLive, "errorCode", 1
 	// "method", proto.IslbToBizPeerLive, "errorCode", 0
-	log.Infof("FindMediaPubs resp ==> %v", resp)
+	log.Infof("FindPeerIsLive resp ==> %v", resp)
 
 	find = false
 	nErr := int(resp["errorCode"].(float64))
@@ -215,7 +210,7 @@ func FindPeerIsLive(rid, uid string) bool {
 	return find
 }
 
-// findISSRNode 查询全局的可用的issr节点
+// findIssrNode 查询全局的可用的Issr节点
 func findIssrNode() *server.Node {
 	servers, find := watch.GetNodes("issr")
 	if find {
@@ -225,9 +220,10 @@ func findIssrNode() *server.Node {
 	}
 	return nil
 }
+
+// getIssrRequestor 查询issr服务的节点id
 func getIssrRequestor() *nprotoo.Requestor {
 	issr := findIssrNode()
-
 	if issr == nil {
 		log.Errorf("find issr node not found")
 		return nil

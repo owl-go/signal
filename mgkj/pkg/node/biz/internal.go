@@ -9,7 +9,8 @@ import (
 
 // handleBroadCastMsgs 处理广播消息
 func handleBroadcast(msg map[string]interface{}, subj string) {
-	go func(msg map[string]interface{}) {
+	//go func(msg map[string]interface{}) {
+	func(msg map[string]interface{}) {
 		defer util.Recover("biz.handleBroadcast")
 		log.Infof("biz.handleBroadcast msg=%v", msg)
 
@@ -74,7 +75,7 @@ func SfuRemoveStream(key string) {
 func stopAllSubsTimerByMID(mid string) {
 	for _, timer := range substreams {
 		if mid == timer.MID {
-			if timer.IsStopped() == false {
+			if !timer.IsStopped() {
 				timer.Stop()
 				log.Infof("stopAllSubsTimerByMID MID => %s, SID => stream %s stopped", timer.MID, timer.SID)
 			}

@@ -29,21 +29,6 @@ type Node struct {
 	Npayload string
 }
 
-// GetPrefixByDc 返回保存节点的key前缀
-func (node *Node) GetPrefixByDc() string {
-	return "/" + node.Ndc
-}
-
-// GetPrefixByName 返回保存节点的key前缀
-func (node *Node) GetPrefixByName() string {
-	return "/" + node.Ndc + "/Name/" + node.Name
-}
-
-// GetPrefixByNid 返回保存节点的key前缀
-func (node *Node) GetPrefixByNid() string {
-	return "/" + node.Ndc + "/Name/" + node.Name + "/Node/" + node.Nid
-}
-
 // GetNodeValue 获取节点保存的值
 func (node *Node) GetNodeValue() string {
 	return Encode(util.Map2("Ndc", node.Ndc, "Nid", node.Nid, "Name", node.Name, "Nip", node.Nip, "Npayload", node.Npayload))
