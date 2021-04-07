@@ -121,9 +121,12 @@ func (serviceWatcher *ServiceWatcher) WatchNode(ch clientv3.WatchChan) {
 						node.Name = nodeObj["Name"]
 						node.Nip = nodeObj["Nip"]
 						node.Npayload = nodeObj["Npayload"]
+
 						serviceWatcher.nodeLook.Lock()
 						serviceWatcher.nodes[nid] = node
 						serviceWatcher.nodeLook.Unlock()
+
+						log.Infof("Node Up [%v]", node)
 						if serviceWatcher.callback != nil {
 							serviceWatcher.callback(ServerUp, node)
 						}
@@ -133,7 +136,7 @@ func (serviceWatcher *ServiceWatcher) WatchNode(ch clientv3.WatchChan) {
 					nid := string(ev.Kv.Key)
 					node, find := serviceWatcher.GetNodeByID(nid)
 					if find {
-						log.Infof("Node [%s] Down", nid)
+						log.Infof("Node Down [%v]", node)
 						if serviceWatcher.callback != nil {
 							serviceWatcher.callback(ServerDown, *node)
 						}
