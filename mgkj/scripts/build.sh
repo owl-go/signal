@@ -11,6 +11,7 @@ DIST_BIN=dist
 ISLB_BIN=islb
 SFU_BIN=sfu
 ISSR_BIN=issr
+LOGSVR_BIN=logsvr
 
 PROJECT=$1
 
@@ -19,11 +20,12 @@ BUILD_PATH2=$APP_DIR/bin/$DIST_BIN
 BUILD_PATH3=$APP_DIR/bin/$ISLB_BIN
 BUILD_PATH4=$APP_DIR/bin/$SFU_BIN
 BUILD_PATH5=$APP_DIR/bin/$ISSR_BIN
+BUILD_PATH6=$APP_DIR/bin/$LOGSVR_BIN
 
 help(){
     echo ""
     echo "build script"
-    echo "Usage: ./build.sh biz|dist|islb|sfu|issr"
+    echo "Usage: ./build.sh biz|dist|islb|sfu|issr|logsvr"
     echo "Usage: ./build.sh [-h]"
     echo ""
 }
@@ -67,6 +69,15 @@ build_issr()
     cd $APP_DIR/cmd/issr
     go build -tags netgo -o $BUILD_PATH5
 }
+
+build_logsvr()
+{
+    echo "------------------build $LOGSVR_BIN------------------"
+    echo "go build -o $BUILD_PATH6"
+    cd $APP_DIR/cmd/logsvr
+    go build -tags netgo -o $BUILD_PATH6
+}
+
 while getopts "o:h" arg
 do
     case $arg in
@@ -117,12 +128,16 @@ $SFU_BIN)
 $ISSR_BIN)
     build_issr
     ;;
+$LOGSVR_BIN)
+    build_logsvr
+    ;;
 all)
     build_biz
     build_dist
     build_islb
     build_sfu
     build_issr
+    build_logsvr
     ;;
 *)
     help
