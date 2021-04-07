@@ -17,7 +17,8 @@ func handleRPCRequest(rpcID string) {
 	log.Infof("handleRPCRequest: rpcID => [%v]", rpcID)
 
 	protoo.OnRequest(rpcID, func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
-		go func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
+		//go func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
+		func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
 			defer util.Recover("islb.handleRPCRequest")
 
 			log.Infof("islb.handleRPCRequest recv request=%v", request)
@@ -129,13 +130,14 @@ func getPeerinfo(data map[string]interface{}) (map[string]interface{}, *nprotoo.
 	// 获取用户信息保存的key
 	uKey := proto.GetUserDistKey(uid)
 	dist := redis.Get(uKey)
-	resp := make(map[string]interface{})
+	//resp := make(map[string]interface{})
 	if dist == "" {
-		resp = util.Map("errorCode", 1)
+		resp := util.Map("errorCode", 1)
+		return resp, nil
 	} else {
-		resp = util.Map("errorCode", 0, "nid", dist)
+		resp := util.Map("errorCode", 0, "nid", dist)
+		return resp, nil
 	}
-	return resp, nil
 }
 
 /*
@@ -318,13 +320,14 @@ func getSfuByMid(data map[string]interface{}) (map[string]interface{}, *nprotoo.
 	uKey := proto.GetMediaPubKey(rid, uid, mid)
 	nid := redis.Get(uKey)
 	log.Infof("getSfuByMid ==> %v", nid)
-	resp := make(map[string]interface{})
+	//resp := make(map[string]interface{})
 	if nid != "" {
-		resp = util.Map("errorCode", 0, "rid", rid, "mid", mid, "nid", nid)
+		resp := util.Map("errorCode", 0, "rid", rid, "mid", mid, "nid", nid)
+		return resp, nil
 	} else {
-		resp = util.Map("errorCode", 1, "rid", rid, "mid", mid)
+		resp := util.Map("errorCode", 1, "rid", rid, "mid", mid)
+		return resp, nil
 	}
-	return resp, nil
 }
 
 /*
@@ -364,7 +367,7 @@ func getMediaPubs(data map[string]interface{}) (map[string]interface{}, *nprotoo
 func parseMediaKey(key string) (string, string, error) {
 	arr := strings.Split(key, "/")
 	if len(arr) < 7 {
-		return "", "", fmt.Errorf("Can‘t parse mediainfo; [%s]", key)
+		return "", "", fmt.Errorf("can‘t parse mediainfo; [%s]", key)
 	}
 
 	mid := arr[7]
@@ -382,13 +385,14 @@ func getPeerLive(data map[string]interface{}) (map[string]interface{}, *nprotoo.
 	// 获取用户的信息
 	uKey := proto.GetUserInfoKey(rid, uid)
 	info := redis.Get(uKey)
-	resp := make(map[string]interface{})
+	//resp := make(map[string]interface{})
 	if info != "" {
-		resp = util.Map("errorCode", 0)
+		resp := util.Map("errorCode", 0)
+		return resp, nil
 	} else {
-		resp = util.Map("errorCode", 1)
+		resp := util.Map("errorCode", 1)
+		return resp, nil
 	}
-	return resp, nil
 }
 
 func reportStreamState(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
@@ -406,12 +410,13 @@ func reportStreamState(data map[string]interface{}) (map[string]interface{}, *np
 
 	err = redis1.Set(sKey, string(state), 0)
 
-	resp := make(map[string]interface{})
+	//resp := make(map[string]interface{})
 	if err != nil {
 		log.Errorf("redis.Set stream state err = %v", err)
-		resp = util.Map("errorCode", 1)
+		resp := util.Map("errorCode", 1)
+		return resp, nil
 	} else {
-		resp = util.Map("errorCode", 0)
+		resp := util.Map("errorCode", 0)
+		return resp, nil
 	}
-	return resp, nil
 }
