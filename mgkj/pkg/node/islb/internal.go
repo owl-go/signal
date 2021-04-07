@@ -17,8 +17,7 @@ func handleRPCRequest(rpcID string) {
 	log.Infof("handleRPCRequest: rpcID => [%v]", rpcID)
 
 	protoo.OnRequest(rpcID, func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
-		//go func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
-		func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
+		go func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
 			defer util.Recover("islb.handleRPCRequest")
 
 			log.Infof("islb.handleRPCRequest recv request=%v", request)
