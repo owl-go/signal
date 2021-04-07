@@ -151,5 +151,30 @@ func (serviceWatcher *ServiceWatcher) WatchNode(ch clientv3.WatchChan) {
 // WatchServiceNode 监控指定服务名称的所有服务节点的状态
 func (serviceWatcher *ServiceWatcher) WatchServiceNode(prefix string, callback ServiceWatchCallback) {
 	serviceWatcher.callback = callback
+	rsp, err := serviceWatcher.etcd.GetResponseByPrefix(prefix)
+	if err != nil {
+		log.Infof(err.Error())
+	}
+	for _, val := range rsp.Kvs {
+		nodeobj := Decode(val.Value)
+		if nodeobj["Nid"] != "" {
+			node := Node{}
+			node.Ndc = nodeobj["Ndc"]
+			node.Nid = nodeobj["Nid"]
+			node.Name = nodeobj["Name"]
+			node.Nip = nodeobj["Nip"]
+			node.Npayload = nodeobj["Npayload"]
+
+			serviceWatcher.nodeLook.Lock()
+			serviceWatcher.nodes[node.Nid] = node
+			serviceWatcher.nodeLook.Unlock()
+
+			log.Infof("Node Up [%v]", node)
+			if serviceWatcher.callback != nil {
+				serviceWatcher.callback(ServerUp, node)
+			}
+		}
+	}
+
 	serviceWatcher.etcd.Watch(prefix, serviceWatcher.WatchNode, true)
 }
