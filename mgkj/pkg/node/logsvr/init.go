@@ -33,7 +33,7 @@ func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher
 }
 
 func InitLogger(dc, name, nid, nip, level string, etcdUrls []string, natsUrl string, addCaller bool) {
-	factory := logout.NewLogsvrSender(etcdUrls, natsUrl)
+	factory := logout.NewDefaultFactory(etcdUrls, natsUrl)
 	logger = logout.NewLogger(dc, name, nid, nip, level, addCaller, factory)
 }
 

@@ -40,7 +40,7 @@ type Node struct {
 	Npayload string
 }
 
-func NewLogsvrSender(etcdUrls []string, natsURL string) *DefaultFactory {
+func NewDefaultFactory(etcdUrls []string, natsURL string) *DefaultFactory {
 	s := new(DefaultFactory)
 	conf := clientv3.Config{
 		Endpoints:   etcdUrls,
