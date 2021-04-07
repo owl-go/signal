@@ -16,7 +16,6 @@ func handleRPCRequest(rpcID string) {
 	nats.OnRequest(rpcID, func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
 		go func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
 			defer util.Recover("logsvr.handleRPCRequest")
-			log.Infof("logsvr.handleRPCRequest recv request=%v", request)
 			method := request["method"].(string)
 			data := request["data"].(map[string]interface{})
 			var result map[string]interface{}
