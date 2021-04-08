@@ -1,5 +1,5 @@
 [global]
-pprof = ":6064"
+pprof = ":6065"
 
 # server
 dc = "shenzhen"
@@ -19,9 +19,7 @@ encoder = "json"
 hostport = "47.112.142.132:6831"
 
 [etcd]
-# ["ip:port", "ip:port"]
-# addrs = ["127.0.0.1:2379"]
-addrs = ["127.0.0.1:2379"]
+addrs = "127.0.0.1:2379"
 
 [logsvr]
 #listen ip port
@@ -31,8 +29,7 @@ port = "8445"
 # key= "configs/key.pem"
 
 [nats]
-# url = "nats://127.0.0.1:4222"
-url = "nats://127.0.0.1:4222"
+url = "127.0.0.1:4222"
 
 [mysql]
 host = "127.0.0.1"

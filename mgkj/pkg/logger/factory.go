@@ -1,4 +1,4 @@
-package logout
+package logger
 
 import (
 	"context"
@@ -40,10 +40,10 @@ type Node struct {
 	Npayload string
 }
 
-func NewDefaultFactory(etcdUrls []string, natsURL string) *DefaultFactory {
+func NewDefaultFactory(etcdUrls string, natsURL string) *DefaultFactory {
 	s := new(DefaultFactory)
 	conf := clientv3.Config{
-		Endpoints:   etcdUrls,
+		Endpoints:   util.ProcessUrlString(etcdUrls),
 		DialTimeout: 5 * time.Second,
 	}
 
@@ -53,7 +53,7 @@ func NewDefaultFactory(etcdUrls []string, natsURL string) *DefaultFactory {
 	}
 	s.etcdClients = client
 	s.logSvrRpcs = make(map[string]*nprotoo.Requestor)
-	s.nats = nprotoo.NewNatsProtoo(natsURL)
+	s.nats = nprotoo.NewNatsProtoo(util.GenerateNatsUrlString(natsURL))
 
 	//获取所有节点
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

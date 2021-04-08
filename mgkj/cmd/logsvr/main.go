@@ -6,6 +6,7 @@ import (
 	"mgkj/pkg/log"
 	logsvr "mgkj/pkg/node/logsvr"
 	"mgkj/pkg/server"
+	"mgkj/pkg/util"
 	"net/http"
 	_ "net/http/pprof"
 )
@@ -23,9 +24,9 @@ func main() {
 			http.ListenAndServe(conf.Global.Pprof, nil)
 		}()
 	}
-	serviceNode := server.NewServiceNode(conf.Etcd.Addrs, conf.Global.Ndc, conf.Global.Nid, conf.Global.Name, conf.Global.Nip)
+	serviceNode := server.NewServiceNode(util.ProcessUrlString(conf.Etcd.Addrs), conf.Global.Ndc, conf.Global.Nid, conf.Global.Name, conf.Global.Nip)
 	serviceNode.RegisterNode()
-	serviceWatcher := server.NewServiceWatcher(conf.Etcd.Addrs)
+	serviceWatcher := server.NewServiceWatcher(util.ProcessUrlString(conf.Etcd.Addrs))
 	config := db.MysqlConfig{
 		Host:     conf.Mysql.Host,
 		Port:     conf.Mysql.Port,

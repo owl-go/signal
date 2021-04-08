@@ -1,4 +1,4 @@
-package logout
+package logger
 
 import (
 	"encoding/json"

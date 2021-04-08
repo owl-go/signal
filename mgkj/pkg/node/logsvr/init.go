@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"mgkj/pkg/db"
 	"mgkj/pkg/log"
-	"mgkj/pkg/logout"
+	lgr "mgkj/pkg/logger"
 	"mgkj/pkg/server"
 
 	nprotoo "github.com/gearghost/nats-protoo"
@@ -17,7 +17,7 @@ var (
 	node   *server.ServiceNode
 	watch  *server.ServiceWatcher
 	mysql  *db.MysqlDriver
-	logger *logout.Logger
+	logger *lgr.Logger
 )
 
 // Init 初始化服务
@@ -32,9 +32,9 @@ func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher
 
 }
 
-func InitLogger(dc, name, nid, nip, level string, etcdUrls []string, natsUrl string, addCaller bool) {
-	factory := logout.NewDefaultFactory(etcdUrls, natsUrl)
-	logger = logout.NewLogger(dc, name, nid, nip, level, addCaller, factory)
+func InitLogger(dc, name, nid, nip, level string, etcdUrls string, natsUrl string, addCaller bool) {
+	factory := lgr.NewDefaultFactory(etcdUrls, natsUrl)
+	logger = lgr.NewLogger(dc, name, nid, nip, level, addCaller, factory)
 }
 
 func SetLoggerOutput(filename string, maxsize int, maxage int, maxBackup int) {
