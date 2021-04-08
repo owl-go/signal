@@ -71,7 +71,7 @@ func tracingReport(c *gin.Context) {
 		response(c, 200, 1, "verify data error!")
 		return
 	}
-	logger.Info("msg", data)
+	logger.Infof("msg", data)
 	response(c, 200, 0, "success")
 	return
 }
