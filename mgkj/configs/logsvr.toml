@@ -9,7 +9,7 @@ nip = "192.168.1.72"
 
 [log]
 level = "info"
-filename = "./logsvr.log"
+filename = "./all.log"
 maxsize = 1
 maxage = 5
 maxbackups = 30

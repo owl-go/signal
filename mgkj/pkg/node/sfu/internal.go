@@ -2,7 +2,6 @@ package sfu
 
 import (
 	"fmt"
-	"mgkj/pkg/log"
 	"mgkj/pkg/proto"
 	"mgkj/pkg/rtc"
 	"mgkj/pkg/util"
@@ -12,10 +11,14 @@ import (
 
 // handleRPCMsgs 处理其他模块发送过来的消息
 func handleRPCRequest(rpcID string) {
+
+	logger.Infof(fmt.Sprintf("sfu.handleRequest: rpcID=%s", rpcID), "rpcid", rpcID)
+
 	protoo.OnRequest(rpcID, func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
 		go func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
 			defer util.Recover("sfu.handleRPCRequest")
-			log.Infof("sfu.handleRPCRequest recv rpc=%s, request=%v", rpcID, request)
+			//log.Infof("sfu.handleRPCRequest recv rpc=%s, request=%v", rpcID, request)
+			logger.Infof(fmt.Sprintf("sfu.handleRPCRequest recv request=%v", request), "rpcid", rpcID)
 
 			method := request["method"].(string)
 			data := request["data"].(map[string]interface{})
@@ -35,7 +38,8 @@ func handleRPCRequest(rpcID string) {
 				case proto.BizToSfuTrickleICE:
 					result, err = trickle(data)
 				default:
-					log.Warnf("sfu.handleRPCRequest invalid protocol method=%s data=%v", method, data)
+					//log.Warnf("sfu.handleRPCRequest invalid protocol method=%s data=%v", method, data)
+					logger.Warnf(fmt.Sprintf("sfu.handleRPCRequest invalid protocol method=%s data=%v", method, data), "rpcid", rpcID)
 				}
 			}
 			if err != nil {
@@ -52,7 +56,7 @@ func handleRPCRequest(rpcID string) {
 */
 // publish 处理发布流
 func publish(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
-	log.Infof("sfu.publish msg => %v", msg)
+	logger.Infof(fmt.Sprintf("sfu.publish msg=%v", msg))
 	// 获取参数
 	if msg["jsep"] == nil {
 		return util.Map("errorCode", 401), nil
@@ -89,7 +93,7 @@ func publish(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error
 */
 // unpublish 处理取消发布流
 func unpublish(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
-	log.Infof("sfu.unpublish msg => %v", msg)
+	logger.Infof(fmt.Sprintf("sfu.unpublish msg=%v", msg))
 	// 获取参数
 	rid := util.Val(msg, "rid")
 	uid := util.Val(msg, "uid")
@@ -105,7 +109,7 @@ func unpublish(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Err
 */
 // subscribe 处理订阅流
 func subscribe(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
-	log.Infof("sfu.subscribe msg => %v", msg)
+	logger.Infof(fmt.Sprintf("sfu.subscribe msg=%v", msg))
 	// 获取参数
 	if msg["jsep"] == nil {
 		return util.Map("errorCode", 401), nil
@@ -148,7 +152,7 @@ func subscribe(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Err
 */
 // unsubscribe 处理取消订阅流
 func unsubscribe(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
-	log.Infof("sfu.unsubscribe msg => %v", msg)
+	logger.Infof(fmt.Sprintf("sfu.unsubscribe msg=%v", msg))
 	// 获取参数
 	mid := util.Val(msg, "mid")
 	rtc.MapRouter(func(id string, r *rtc.Router) {

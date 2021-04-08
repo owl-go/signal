@@ -1,7 +1,7 @@
 package biz
 
 import (
-	"mgkj/pkg/log"
+	"fmt"
 	"mgkj/pkg/ws"
 )
 
@@ -105,7 +105,8 @@ func HasPeer2(rid, uid string) bool {
 
 // NotifyAll 通知房间所有人
 func NotifyAll(rid string, method string, msg map[string]interface{}) {
-	log.Infof("biz.NotifyAll rid=%s method=%s msg=%v", rid, method, msg)
+	//log.Infof("biz.NotifyAll rid=%s method=%s msg=%v", rid, method, msg)
+	logger.Infof(fmt.Sprintf("biz.NotifyAll rid=%s, method=%s, msg=%v", rid, method, msg), "rid", rid)
 	node := GetRoom(rid)
 	if node != nil {
 		for _, peer := range node.room.GetPeers() {
@@ -118,7 +119,9 @@ func NotifyAll(rid string, method string, msg map[string]interface{}) {
 
 // NotifyAllWithoutPeer 通知房间所有人除去peer
 func NotifyAllWithoutPeer(rid string, peer *ws.Peer, method string, msg map[string]interface{}) {
-	log.Infof("biz.NotifyAllWithoutPeer rid=%s uid=%s method=%s msg=%v", rid, peer.ID(), method, msg)
+	//log.Infof("biz.NotifyAllWithoutPeer rid=%s uid=%s method=%s msg=%v", rid, peer.ID(), method, msg)
+	logger.Infof(fmt.Sprintf("biz.NotifyAllWithoutPeer rid=%s,uid=%s, method=%s, msg=%v", rid, peer.ID(), method, msg),
+		"rid", rid)
 	node := GetRoom(rid)
 	if node != nil {
 		node.room.Notify(peer, method, msg)
@@ -127,7 +130,9 @@ func NotifyAllWithoutPeer(rid string, peer *ws.Peer, method string, msg map[stri
 
 // NotifyAllWithoutID 通知房间所有人除去skipID
 func NotifyAllWithoutID(rid string, skipID string, method string, msg map[string]interface{}) {
-	log.Infof("biz.NotifyAllWithoutID rid=%s uid=%s method=%s msg=%v", rid, skipID, method, msg)
+	//log.Infof("biz.NotifyAllWithoutID rid=%s uid=%s method=%s msg=%v", rid, skipID, method, msg)
+	logger.Infof(fmt.Sprintf("biz.NotifyAllWithoutID, rid=%s, skipID=%s, method=%s, msg=%v", rid, skipID, method, msg),
+		"rid", rid)
 	node := GetRoom(rid)
 	if node != nil {
 		node.room.Lock()
