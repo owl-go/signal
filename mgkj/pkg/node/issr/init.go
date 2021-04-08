@@ -3,6 +3,7 @@ package issr
 import (
 	"mgkj/infra/kafka"
 	"mgkj/pkg/log"
+	lgr "mgkj/pkg/logger"
 	"mgkj/pkg/server"
 	"mgkj/pkg/util"
 
@@ -10,6 +11,7 @@ import (
 )
 
 var (
+	logger        *lgr.Logger
 	rpcs          map[string]*nprotoo.Requestor
 	protoo        *nprotoo.NatsProtoo
 	kafkaClient   *kafka.KafkaClient
@@ -19,8 +21,9 @@ var (
 )
 
 // Init 初始化服务
-func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, natsURL, kafkaURL string) {
+func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, natsURL, kafkaURL string, l *lgr.Logger) {
 	// 赋值
+	logger = l
 	node = serviceNode
 	watch = ServiceWatcher
 	rpcs = make(map[string]*nprotoo.Requestor)

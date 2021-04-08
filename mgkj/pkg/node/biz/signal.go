@@ -1,7 +1,7 @@
 package biz
 
 import (
-	"mgkj/pkg/log"
+	"fmt"
 	"mgkj/pkg/proto"
 	"mgkj/pkg/timing"
 	"mgkj/pkg/util"
@@ -54,14 +54,14 @@ func checkRoom() {
 					// 查询islb节点
 					islb := FindIslbNode()
 					if islb == nil {
-						log.Errorf("islb node is not find")
+						logger.Errorf("biz.checkRoom islb node not found", "uid", uid, "rid", rid)
 						continue
 					}
 
 					find := false
 					rpc, find := rpcs[islb.Nid]
 					if !find {
-						log.Errorf("FindPeerIsLive islb rpc not found")
+						logger.Errorf("biz.checkRoom islb rpc not found", "uid", uid, "rid", rid)
 						continue
 					}
 
@@ -85,7 +85,9 @@ func stopAllStreamTimer(rid, uid string) {
 	for _, timer := range substreams {
 		if timer.RID == rid && timer.UID == uid && !timer.IsStopped() {
 			timer.Stop()
-			log.Infof("stopAllStreamTimer room %s uid =>%s sid => %s stopped.", timer.RID, timer.SID)
+			//log.Infof("biz.stopAllStreamTimer room %s uid =%s sid = %s stopped.", timer.RID,timer.UID, timer.SID)
+			logger.Infof(fmt.Sprintf("biz.stopAllStreamTimer room %s uid=%s mid=%s sid=%s stopped.", timer.RID, timer.UID, timer.MID, timer.SID),
+				"uid", timer.UID, "rid", timer.RID, "mid", timer.MID, "sid", timer.SID)
 		}
 	}
 }
@@ -96,10 +98,12 @@ func checkStreamState() {
 	for range t.C {
 		for sid, timer := range substreams {
 			if timer.IsStopped() {
-				log.Infof("checkStreamState uid => %s,mid => %s,sid => %s stream was stopped", timer.UID, timer.MID, timer.SID)
+				//log.Infof("checkStreamState uid = %s,mid = %s,sid = %s stream was stopped", timer.UID, timer.MID, timer.SID)
+				logger.Infof(fmt.Sprintf("checkStreamState room %s uid=%s,mid=%s,sid=%s stream was stopped", timer.RID, timer.UID, timer.MID, timer.SID),
+					"uid", timer.UID, "rid", timer.RID, "mid", timer.MID, "sid", timer.SID)
 				rpc := getIssrRequestor()
 				if rpc == nil {
-					log.Errorf("checkStreamState get ss requestor fail")
+					logger.Errorf("biz.checkStreamState get issr requestor failed", "uid", timer.UID, "rid", timer.RID, "mid", timer.MID, "sid", timer.SID)
 					continue
 				}
 
@@ -107,7 +111,7 @@ func checkStreamState() {
 					"sid", timer.SID, "mediatype", timer.MediaType, "resolution", timer.Resolution, "seconds", timer.GetTotalTime()))
 
 				if nerr != nil {
-					log.Errorf("checkStreamState rpc err => %v", nerr)
+					logger.Errorf(fmt.Sprintf("biz.checkStreamState rpc err=%v", nerr), "uid", timer.UID, "rid", timer.RID, "mid", timer.MID, "sid", timer.SID)
 				}
 
 				code := int(resp["errorCode"].(float64))
@@ -116,7 +120,9 @@ func checkStreamState() {
 					delete(substreams, sid)
 					substreamsLock.Unlock()
 				} else {
-					log.Errorf("checkStreamState report uid => %s,mid => %s, sid => %s stream state fail", timer.UID, timer.MID, timer.SID)
+					//log.Errorf("biz.checkStreamState report uid = %s,mid = %s, sid = %s stream state fail", timer.UID, timer.MID, timer.SID)
+					logger.Errorf(fmt.Sprintf("biz.checkStreamState report room %s uid=%s,mid=%s, sid=%s stream state failed", timer.RID, timer.UID,
+						timer.MID, timer.SID), "uid", timer.UID, "rid", timer.RID, "mid", timer.MID, "sid", timer.SID)
 				}
 			}
 		}

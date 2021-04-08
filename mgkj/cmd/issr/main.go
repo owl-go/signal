@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	_ "net/http/pprof"
 	"strconv"
@@ -9,6 +10,7 @@ import (
 	h "mgkj/infra/http"
 	conf "mgkj/pkg/conf/issr"
 	"mgkj/pkg/log"
+	lgr "mgkj/pkg/logger"
 	issr "mgkj/pkg/node/issr"
 	"mgkj/pkg/server"
 	"mgkj/pkg/util"
@@ -17,6 +19,11 @@ import (
 func main() {
 
 	log.Init(conf.Log.Level)
+
+	//init logger
+	factory := lgr.NewDefaultFactory(conf.Etcd.Addrs, conf.Nats.URL)
+	l := lgr.NewLogger(conf.Global.Ndc, conf.Global.Name, conf.Global.Nid, conf.Global.Nip, "info", true, factory)
+
 	if conf.Global.Pprof != "" {
 		go func() {
 			log.Infof("Start pprof on %s", conf.Global.Pprof)
@@ -33,7 +40,9 @@ func main() {
 	serviceNode.RegisterNode()
 	serviceWatcher := server.NewServiceWatcher(util.ProcessUrlString(conf.Etcd.Addrs))
 
-	issr.Init(serviceNode, serviceWatcher, conf.Nats.URL, conf.Kafka.URL)
+	issr.Init(serviceNode, serviceWatcher, conf.Nats.URL, conf.Kafka.URL, l)
+
+	l.Infof(fmt.Sprintf("issr %s start.", conf.Global.Nid))
 
 	select {}
 }

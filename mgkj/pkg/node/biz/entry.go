@@ -1,7 +1,7 @@
 package biz
 
 import (
-	"mgkj/pkg/log"
+	"fmt"
 	"mgkj/pkg/proto"
 	reg "mgkj/pkg/server"
 	"mgkj/pkg/timing"
@@ -46,6 +46,7 @@ func Entry(method string, peer *ws.Peer, msg map[string]interface{}, accept ws.A
 */
 // join 加入房间
 func join(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
+	logger.Infof(fmt.Sprintf("biz.join uid=%s msg=%v", peer.ID(), msg), "uid", peer.ID())
 	if invalid(msg, "rid", reject) {
 		return
 	}
@@ -54,12 +55,11 @@ func join(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 	uid := peer.ID()
 	rid := util.Val(msg, "rid")
 	info := util.Val(msg, "info")
-	log.Infof("biz.join uid=%s msg=%v", uid, msg)
 
 	// 查询islb节点
 	islb := FindIslbNode()
 	if islb == nil {
-		log.Errorf("islb node is not find")
+		logger.Errorf("biz.join islb node not found", "uid", uid, "rid", rid)
 		reject(codeIslbErr, codeStr(codeIslbErr))
 		return
 	}
@@ -68,7 +68,7 @@ func join(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 	find := false
 	rpc, find := rpcs[islb.Nid]
 	if !find {
-		log.Errorf("islb rpc not found")
+		logger.Errorf("biz.join islb rpc not found", "uid", uid, "rid", rid)
 		reject(codeIslbErr, codeStr(codeIslbErr))
 		return
 	}
@@ -100,6 +100,9 @@ func join(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 */
 // leave 离开房间
 func leave(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
+
+	logger.Infof(fmt.Sprintf("biz.leave uid=%s,msg=%v", peer.ID(), msg), "uid", peer.ID())
+
 	if invalid(msg, "rid", reject) {
 		return
 	}
@@ -107,12 +110,11 @@ func leave(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reje
 	// 获取参数
 	uid := peer.ID()
 	//rid := util.Val(msg, "rid")
-	log.Infof("biz.leave uid=%s msg=%v", uid, msg)
 
 	// 查询islb节点
 	islb := FindIslbNode()
 	if islb == nil {
-		log.Errorf("islb node is not find")
+		logger.Errorf("biz.leave islb node not found", "uid", uid)
 		reject(codeIslbErr, codeStr(codeIslbErr))
 		return
 	}
@@ -120,7 +122,7 @@ func leave(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reje
 	find := false
 	rpc, find := rpcs[islb.Nid]
 	if !find {
-		log.Errorf("islb rpc not found")
+		logger.Errorf("biz.leave islb rpc not found", "uid", uid)
 		reject(codeIslbErr, codeStr(codeIslbErr))
 		return
 	}
@@ -159,7 +161,7 @@ func keepalive(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	// 查询islb节点
 	islb := FindIslbNode()
 	if islb == nil {
-		log.Errorf("islb node is not find")
+		logger.Errorf("biz.keepalive islb node found", "uid", uid, "rid", rid)
 		reject(codeIslbErr, codeStr(codeIslbErr))
 		return
 	}
@@ -167,7 +169,7 @@ func keepalive(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	find := false
 	rpc, find := rpcs[islb.Nid]
 	if !find {
-		log.Errorf("islb rpc not found")
+		logger.Errorf("biz.keepalive islb rpc not found", "uid", uid, "rid", rid)
 		reject(codeIslbErr, codeStr(codeIslbErr))
 		return
 	}
@@ -190,6 +192,9 @@ func keepalive(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 */
 // publish 发布流
 func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
+
+	logger.Infof(fmt.Sprintf("biz.publish uid=%s,msg=%v", peer.ID(), msg), "uid", peer.ID())
+
 	if invalid(msg, "rid", reject) || invalid(msg, "jsep", reject) {
 		return
 	}
@@ -197,7 +202,6 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 	// 获取参数
 	uid := peer.ID()
 	rid := util.Val(msg, "rid")
-	log.Infof("biz.publish uid=%s msg=%v", uid, msg)
 
 	jsep := msg["jsep"].(map[string]interface{})
 	if invalid(jsep, "sdp", reject) {
@@ -206,13 +210,14 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 
 	room := GetRoom(rid)
 	if room == nil {
+		logger.Errorf("biz.publish room doesn't exist", "uid", uid, "rid", rid)
 		reject(codeRIDErr, codeStr(codeRIDErr))
 		return
 	}
 
 	sfu := FindSfuNodeByPayload()
 	if sfu == nil {
-		log.Errorf("sfu node is not find")
+		logger.Errorf("biz.publish sfu node not found", "uid", uid, "rid", rid)
 		reject(codeSfuErr, codeStr(codeSfuErr))
 		return
 	}
@@ -220,30 +225,30 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 	find := false
 	rpcSfu, find := rpcs[sfu.Nid]
 	if !find {
-		log.Errorf("sfu rpc not found")
+		logger.Errorf("biz.publish sfu rpc not found", "uid", uid, "rid", rid)
 		reject(codeSfuErr, codeStr(codeSfuErr))
 		return
 	}
 
-	// 获取sfu节点的resp
 	minfo := msg["minfo"]
 	if minfo == nil {
-		log.Errorf("minfo node is not find")
+		logger.Errorf("biz.publish minfo not found", "uid", uid, "rid", rid)
 		reject(codePubErr, codeStr(codePubErr))
 		return
 	}
 
 	minfo = msg["minfo"].(map[string]interface{})
+	// 获取sfu节点的resp
 	resp, err := rpcSfu.SyncRequest(proto.BizToSfuPublish, util.Map("rid", rid, "uid", uid, "minfo", minfo, "jsep", jsep))
 	if err != nil {
-		log.Errorf(err.Reason)
+		logger.Errorf(fmt.Sprintf("biz.publish request sfu err=%v", err.Reason), "uid", uid, "rid", rid)
 		reject(int(resp["errorCode"].(float64)), resp["errorReason"].(string))
 		return
 	}
 
 	// "method", proto.SfuToBizPublish, "errorCode", 0, "jsep", answer, "mid", mid
 	// "method", proto.SfuToBizPublish, "errorCode", 403, "errorReason", "publish: sdp parse failed"
-	log.Infof("biz.publish respHandler resp=%v", resp)
+	logger.Infof(fmt.Sprintf("biz.publish request sfu resp=%v", resp), "uid", uid, "rid", rid)
 
 	bPublish := false
 	rsp := make(map[string]interface{})
@@ -257,7 +262,7 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 	}
 
 	if !bPublish {
-		log.Errorf("publish is not suc")
+		logger.Errorf("biz.publish request sfu failed", "uid", uid, "rid", rid)
 		reject(code, resp["errorReason"].(string))
 		return
 	}
@@ -267,7 +272,7 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 	// 查询islb节点
 	islb := FindIslbNode()
 	if islb == nil {
-		log.Errorf("islb node is not find")
+		logger.Errorf("biz.publish islb node not found", "uid", uid, "rid", rid, "mid", mid)
 		reject(codeIslbErr, codeStr(codeIslbErr))
 		return
 	}
@@ -275,7 +280,7 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 	find = false
 	rpcIslb, find := rpcs[islb.Nid]
 	if !find {
-		log.Errorf("islb rpc not found")
+		logger.Errorf("biz.publish islb rpc not found", "uid", uid, "rid", rid, "mid", mid)
 		reject(codeIslbErr, codeStr(codeIslbErr))
 		return
 	}
@@ -299,6 +304,9 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 */
 // unpublish 取消发布流
 func unpublish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
+
+	logger.Infof(fmt.Sprintf("biz.unpublish uid=%s,msg=%v", peer.ID(), msg), "uid", peer.ID())
+
 	if invalid(msg, "rid", reject) || invalid(msg, "mid", reject) {
 		return
 	}
@@ -307,7 +315,6 @@ func unpublish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	uid := peer.ID()
 	rid := util.Val(msg, "rid")
 	mid := util.Val(msg, "mid")
-	log.Infof("biz.unpublish uid=%s msg=%v", uid, msg)
 
 	var sfu *reg.Node
 	nid := util.Val(msg, "nid")
@@ -317,7 +324,7 @@ func unpublish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 		sfu = FindSfuNodeByMid(rid, mid)
 	}
 	if sfu == nil {
-		log.Errorf("sfu node is not find")
+		logger.Errorf("biz.unpublish sfu node not found", "uid", uid, "rid", rid, "mid", mid)
 		reject(codeSfuErr, codeStr(codeSfuErr))
 		return
 	}
@@ -325,7 +332,7 @@ func unpublish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	find := false
 	rpcSfu, find := rpcs[sfu.Nid]
 	if !find {
-		log.Errorf("sfu rpc not found")
+		logger.Errorf("biz.unpublish sfu rpc not found", "uid", uid, "rid", rid, "mid", mid)
 		reject(codeSfuErr, codeStr(codeSfuErr))
 		return
 	}
@@ -335,7 +342,7 @@ func unpublish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	// 查询islb节点
 	islb := FindIslbNode()
 	if islb == nil {
-		log.Errorf("islb node is not find")
+		logger.Errorf("biz.unpublish islb node not found", "uid", uid, "rid", rid, "mid", mid)
 		reject(codeIslbErr, codeStr(codeIslbErr))
 		return
 	}
@@ -343,7 +350,7 @@ func unpublish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	find = false
 	rpcIslb, find := rpcs[islb.Nid]
 	if !find {
-		log.Errorf("islb rpc not found")
+		logger.Errorf("biz.unpublish islb rpc not found", "uid", uid, "rid", rid, "mid", mid)
 		reject(codeIslbErr, codeStr(codeIslbErr))
 		return
 	}
@@ -367,6 +374,9 @@ func unpublish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 */
 // subscribe 订阅流
 func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
+
+	logger.Infof(fmt.Sprintf("biz.subscribe uid=%s,msg=%v", peer.ID(), msg), "uid", peer.ID())
+
 	if invalid(msg, "rid", reject) || invalid(msg, "mid", reject) || invalid(msg, "jsep", reject) {
 		return
 	}
@@ -375,7 +385,6 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	uid := peer.ID()
 	rid := util.Val(msg, "rid")
 	mid := util.Val(msg, "mid")
-	log.Infof("biz.subscribe uid=%s msg=%v", uid, msg)
 
 	jsep := msg["jsep"].(map[string]interface{})
 	if invalid(jsep, "sdp", reject) {
@@ -384,7 +393,7 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 
 	minfo := msg["minfo"]
 	if minfo == nil {
-		log.Errorf("minfo node is not find")
+		logger.Errorf("biz.subscribe minfo not found", "uid", uid, "rid", rid, "mid", mid)
 		reject(codePubErr, codeStr(codePubErr))
 		return
 	}
@@ -398,7 +407,7 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	}
 
 	if sfu == nil {
-		log.Errorf("sfu node is not find")
+		logger.Errorf("biz.subscribe sfu not found", "uid", uid, "rid", rid, "mid", mid)
 		reject(codeSfuErr, codeStr(codeSfuErr))
 		return
 	}
@@ -406,7 +415,7 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	find := false
 	rpcSfu, find := rpcs[sfu.Nid]
 	if !find {
-		log.Errorf("sfu rpc not found")
+		logger.Errorf("biz.subscribe sfu rpc not found", "uid", uid, "rid", rid, "mid", mid)
 		reject(codeSfuErr, codeStr(codeSfuErr))
 		return
 	}
@@ -417,10 +426,12 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	rspSfu := make(map[string]interface{})
 	resp, err := rpcSfu.SyncRequest(proto.BizToSfuSubscribe, util.Map("rid", rid, "uid", uid, "mid", mid, "jsep", jsep, "minfo", minfo))
 	if err != nil {
-		log.Errorf(err.Reason)
+		logger.Errorf(fmt.Sprintf("biz.subscribe request sfu err=%v", err.Reason), "uid", uid, "rid", rid, "mid", mid)
 		reject(int(resp["errorCode"].(float64)), resp["errorReason"].(string))
 		return
 	}
+
+	logger.Infof(fmt.Sprintf("biz.subscribe request sfu resp=%v", resp), "uid", uid, "rid", rid, "mid", mid)
 
 	code := int(resp["errorCode"].(float64))
 	if code == 0 {
@@ -433,7 +444,7 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	}
 
 	if !find {
-		log.Errorf("subscribe is not suc")
+		logger.Errorf("biz.subscribe request sfu failed", "uid", uid, "rid", rid, "mid", mid)
 		reject(code, resp["errorReason"].(string))
 		return
 	}
@@ -474,6 +485,9 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 */
 // unsubscribe 取消订阅流
 func unsubscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
+
+	logger.Infof(fmt.Sprintf("biz.unsubscribe uid=%s,msg=%v", peer.ID(), msg), "uid", peer.ID())
+
 	if invalid(msg, "rid", reject) || invalid(msg, "mid", reject) {
 		return
 	}
@@ -481,7 +495,6 @@ func unsubscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc
 	uid := peer.ID()
 	rid := util.Val(msg, "rid")
 	mid := util.Val(msg, "mid")
-	log.Infof("biz.unsubscribe uid=%s msg=%v", uid, msg)
 
 	var sfu *reg.Node
 	nid := util.Val(msg, "nid")
@@ -492,7 +505,7 @@ func unsubscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc
 	}
 
 	if sfu == nil {
-		log.Errorf("sfu node is not find")
+		logger.Errorf("biz.unsubscribe sfu node not found", "uid", uid, "rid", rid, "sid", mid)
 		reject(codeSfuErr, codeStr(codeSfuErr))
 		return
 	}
@@ -500,7 +513,7 @@ func unsubscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc
 	find := false
 	rpcSfu, find := rpcs[sfu.Nid]
 	if !find {
-		log.Errorf("sfu rpc not found")
+		logger.Errorf("biz.unsubscribe sfu rpc not found", "uid", uid, "rid", rid, "sid", mid)
 		reject(codeSfuErr, codeStr(codeSfuErr))
 		return
 	}
@@ -510,9 +523,10 @@ func unsubscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc
 	//stream timer stop
 	substreamsLock.RLock()
 	if substreamtimer, ok := substreams[mid]; !ok {
-		log.Errorf("can't find sid => %s substream state", mid)
+		logger.Errorf("biz.unsubscribe can't find stream state", "uid", uid, "rid", rid, "sid", mid)
 	} else {
-		log.Infof("find uid => %s, sid => %s substream state", substreamtimer.UID, substreamtimer.SID)
+		logger.Infof(fmt.Sprintf("biz.unsubscribe find substream uid=%s,sid=%s", substreamtimer.UID, substreamtimer.SID),
+			"uid", uid, "rid", rid, "sid", mid)
 		//timer stop
 		substreamtimer.Stop()
 		//only stop timer ,clean this later in stream state report logic
@@ -581,6 +595,9 @@ func trickle(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 */
 // broadcast 客户端发送广播给对方
 func broadcast(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
+
+	logger.Infof(fmt.Sprintf("biz.broadcast uid=%s,msg=%v", peer.ID(), msg), "uid", peer.ID())
+
 	if invalid(msg, "rid", reject) {
 		return
 	}
@@ -591,7 +608,7 @@ func broadcast(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	// 查询islb节点
 	islb := FindIslbNode()
 	if islb == nil {
-		log.Errorf("islb node is not find")
+		logger.Errorf("biz.broadcast islb node not found", "uid", uid, "rid", rid)
 		reject(codeIslbErr, codeStr(codeIslbErr))
 		return
 	}
@@ -599,7 +616,7 @@ func broadcast(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	find := false
 	rpcIslb, find := rpcs[islb.Nid]
 	if !find {
-		log.Errorf("islb rpc not found")
+		logger.Errorf("biz.broadcast islb rpc not found", "uid", uid, "rid", rid)
 		reject(codeIslbErr, codeStr(codeIslbErr))
 		return
 	}

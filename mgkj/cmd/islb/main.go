@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	_ "net/http/pprof"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	conf "mgkj/pkg/conf/islb"
 	"mgkj/pkg/db"
 	"mgkj/pkg/log"
+	lgr "mgkj/pkg/logger"
 	islb "mgkj/pkg/node/islb"
 	"mgkj/pkg/server"
 	"mgkj/pkg/util"
@@ -23,6 +25,11 @@ func main() {
 	defer close()
 
 	log.Init(conf.Log.Level)
+
+	//init logger
+	factory := lgr.NewDefaultFactory(conf.Etcd.Addrs, conf.Nats.URL)
+	l := lgr.NewLogger(conf.Global.Ndc, conf.Global.Name, conf.Global.Nid, conf.Global.Nip, "info", true, factory)
+
 	if conf.Global.Pprof != "" {
 		go func() {
 			log.Infof("Start pprof on %s", conf.Global.Pprof)
@@ -49,7 +56,9 @@ func main() {
 		DB:    conf.Redis.TDB,
 	}
 
-	islb.Init(serviceNode, serviceWatcher, conf.Nats.URL, config, config1)
+	islb.Init(serviceNode, serviceWatcher, conf.Nats.URL, config, config1, l)
+
+	l.Infof(fmt.Sprintf("islb %s start.", conf.Global.Nid))
 
 	select {}
 }

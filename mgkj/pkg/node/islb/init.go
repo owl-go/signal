@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"mgkj/pkg/db"
+	lgr "mgkj/pkg/logger"
 	"mgkj/pkg/server"
 	"mgkj/pkg/util"
 
@@ -16,6 +17,7 @@ const (
 )
 
 var (
+	logger      *lgr.Logger
 	protoo      *nprotoo.NatsProtoo
 	broadcaster *nprotoo.Broadcaster
 	redis       *db.Redis
@@ -25,7 +27,8 @@ var (
 )
 
 // Init 初始化服务
-func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, natsURL string, config, config1 db.Config) {
+func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, natsURL string, config, config1 db.Config,
+	l *lgr.Logger) {
 	// 赋值
 	node = serviceNode
 	watch = ServiceWatcher
@@ -33,6 +36,7 @@ func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher
 	broadcaster = protoo.NewBroadcaster(node.GetEventChannel())
 	redis = db.NewRedis(config)
 	redis1 = db.NewRedis(config1)
+	logger = l
 	// 启动
 	handleRPCRequest(node.GetRPCChannel())
 }

@@ -1,7 +1,7 @@
 package biz
 
 import (
-	"mgkj/pkg/log"
+	"fmt"
 	"mgkj/pkg/proto"
 	"mgkj/pkg/util"
 	"strings"
@@ -12,7 +12,8 @@ func handleBroadcast(msg map[string]interface{}, subj string) {
 	//go func(msg map[string]interface{}) {
 	func(msg map[string]interface{}) {
 		defer util.Recover("biz.handleBroadcast")
-		log.Infof("biz.handleBroadcast msg=%v", msg)
+		//log.Infof("biz.handleBroadcast msg=%v", msg)
+		logger.Infof(fmt.Sprintf("biz.handleBroadcast msg=%v", msg))
 
 		method := util.Val(msg, "method")
 		data := msg["data"].(map[string]interface{})
@@ -49,20 +50,20 @@ func handleBroadcast(msg map[string]interface{}, subj string) {
 func SfuRemoveStream(key string) {
 	islb := FindIslbNode()
 	if islb == nil {
-		log.Errorf("islb node is not find")
+		logger.Errorf("biz.SfuRemoveStream islb node not found", "mid", key)
 		return
 	}
 
 	find := false
 	rpc, find := rpcs[islb.Nid]
 	if !find {
-		log.Errorf("SfuRemoveStream islb rpc not found")
+		logger.Errorf("biz.SfuRemoveStream islb rpc not found", "mid", key)
 		return
 	}
 
 	msid := strings.Split(key, "/")
 	if len(msid) < 6 {
-		log.Errorf("SfuRemoveStream key is err")
+		logger.Errorf("biz.SfuRemoveStream key is err", "mid", key)
 		return
 	}
 
@@ -77,7 +78,9 @@ func stopAllSubsTimerByMID(mid string) {
 		if mid == timer.MID {
 			if !timer.IsStopped() {
 				timer.Stop()
-				log.Infof("stopAllSubsTimerByMID MID => %s, SID => stream %s stopped", timer.MID, timer.SID)
+				//log.Infof("stopAllSubsTimerByMID MID = %s, SID = stream %s stopped", timer.MID, timer.SID)
+				logger.Infof(fmt.Sprintf("biz.stopAllSubsTimerByMID MID=%s, SID=%s stream stopped", timer.MID, timer.SID), "uid", timer.UID,
+					"rid", timer.RID, "mid", timer.MID, "sid", timer.SID)
 			}
 		}
 	}

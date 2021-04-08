@@ -1,6 +1,7 @@
 package sfu
 
 import (
+	lgr "mgkj/pkg/logger"
 	"mgkj/pkg/proto"
 	"mgkj/pkg/rtc"
 	"mgkj/pkg/server"
@@ -16,6 +17,7 @@ const (
 )
 
 var (
+	logger      *lgr.Logger
 	protoo      *nprotoo.NatsProtoo
 	broadcaster *nprotoo.Broadcaster
 	node        *server.ServiceNode
@@ -24,8 +26,9 @@ var (
 )
 
 // Init 初始化服务
-func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, natsURL string) {
+func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, natsURL string, l *lgr.Logger) {
 	// 赋值
+	logger = l
 	node = serviceNode
 	watch = ServiceWatcher
 	protoo = nprotoo.NewNatsProtoo(util.GenerateNatsUrlString(natsURL))

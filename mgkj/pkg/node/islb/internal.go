@@ -7,24 +7,25 @@ import (
 
 	nprotoo "github.com/gearghost/nats-protoo"
 
-	"mgkj/pkg/log"
 	"mgkj/pkg/proto"
 	"mgkj/pkg/util"
 )
 
 // handleRPCRequest 接收消息处理
 func handleRPCRequest(rpcID string) {
-	log.Infof("handleRPCRequest: rpcID => [%v]", rpcID)
+
+	logger.Infof(fmt.Sprintf("islb.handleRequest: rpcID=%s", rpcID), "rpcid", rpcID)
 
 	protoo.OnRequest(rpcID, func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
 		//go func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
 		func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
 			defer util.Recover("islb.handleRPCRequest")
 
-			log.Infof("islb.handleRPCRequest recv request=%v", request)
+			//log.Infof("islb.handleRPCRequest recv request=%v", request)
+			logger.Infof(fmt.Sprintf("islb.handleRPCRequest recv request=%s", request), "rpcid", rpcID)
 			method := request["method"].(string)
 			data := request["data"].(map[string]interface{})
-			log.Infof("method => %s, data => %v", method, data)
+			//log.Infof("method = %s, data = %v", method, data)
 
 			var result map[string]interface{}
 			err := util.NewNpError(400, fmt.Sprintf("Unkown method [%s]", method))
@@ -82,7 +83,8 @@ func clientlogin(data map[string]interface{}) (map[string]interface{}, *nprotoo.
 	// 写入key值
 	err := redis.Set(uKey, dist, redisShort)
 	if err != nil {
-		log.Errorf("redis.Set clientlogin err = %v", err)
+		//log.Errorf("redis.Set clientlogin err = %v", err)
+		logger.Errorf(fmt.Sprintf("islb.clientlogin redis.Set err=%v", err), "uid", uid)
 	}
 	return util.Map(), nil
 }
@@ -98,7 +100,8 @@ func clientlogout(data map[string]interface{}) (map[string]interface{}, *nprotoo
 	// 写入key值
 	err := redis.Del(uKey)
 	if err != nil {
-		log.Errorf("redis.Del clientloginout err = %v", err)
+		//log.Errorf("redis.Del clientlogout err = %v", err)
+		logger.Errorf(fmt.Sprintf("islb.clientlogout redis.Del err=%v", err), "uid", uid)
 	}
 	return util.Map(), nil
 }
@@ -115,7 +118,8 @@ func clientPeerHeartbeat(data map[string]interface{}) (map[string]interface{}, *
 	// 写入key值
 	err := redis.Set(uKey, dist, redisShort)
 	if err != nil {
-		log.Errorf("redis.Set clientPeerHeart err = %v", err)
+		//log.Errorf("redis.Set clientPeerHeartbeat err = %v", err)
+		logger.Errorf(fmt.Sprintf("islb.clientPeerHeartbeat redis.Set err=%v", err), "uid", uid)
 	}
 	return util.Map(), nil
 }
@@ -153,7 +157,8 @@ func clientJoin(data map[string]interface{}) (map[string]interface{}, *nprotoo.E
 	// 写入key值
 	err := redis.Set(uKey, info, redisShort)
 	if err != nil {
-		log.Errorf("redis.Set clientJoin err = %v", err)
+		//log.Errorf("redis.Set clientJoin err = %v", err)
+		logger.Errorf(fmt.Sprintf("islb.clientJoin redis.Set err=%v", err), "rid", rid, "uid", uid)
 	}
 	// 生成resp对象
 	broadcaster.Say(proto.IslbToBizOnJoin, util.Map("rid", rid, "uid", uid, "info", data["info"]))
@@ -174,7 +179,8 @@ func clientLeave(data map[string]interface{}) (map[string]interface{}, *nprotoo.
 		// 删除key值
 		err := redis.Del(key)
 		if err != nil {
-			log.Errorf("redis.Del clientLeave err = %v", err)
+			//log.Errorf("redis.Del clientLeave err = %v", err)
+			logger.Errorf(fmt.Sprintf("islb.clientLeave redis.Del err=%v", err), "rid", rid, "uid", uid)
 		} else {
 			broadcaster.Say(proto.IslbToBizOnLeave, util.Map("rid", rid, "uid", uid))
 		}
@@ -198,7 +204,8 @@ func streamAdd(data map[string]interface{}) (map[string]interface{}, *nprotoo.Er
 	// 写入key值
 	err := redis.Set(ukey, minfo, redisKeyTTL)
 	if err != nil {
-		log.Errorf("redis.Set streamAdd err = %v", err)
+		//log.Errorf("redis.Set streamAdd err = %v", err)
+		logger.Errorf(fmt.Sprintf("islb.streamAdd redis.Set err=%v", err), "rid", rid, "uid", uid, "mid", mid)
 	}
 
 	// 获取用户发布流对应的sfu信息
@@ -206,7 +213,8 @@ func streamAdd(data map[string]interface{}) (map[string]interface{}, *nprotoo.Er
 	// 写入key值
 	err = redis.Set(ukey, nid, redisKeyTTL)
 	if err != nil {
-		log.Errorf("redis.Set streamAdd err = %v", err)
+		//log.Errorf("islb.redis.Set streamAdd err = %v", err)
+		logger.Errorf(fmt.Sprintf("islb.streamAdd redis.Set err=%v", err), "rid", rid, "uid", uid, "mid", mid)
 	}
 	// 生成resp对象
 	broadcaster.Say(proto.IslbToBizOnStreamAdd, util.Map("rid", rid, "uid", uid, "mid", mid, "nid", nid, "minfo", data["minfo"]))
@@ -231,7 +239,8 @@ func streamRemove(data map[string]interface{}) (map[string]interface{}, *nprotoo
 			// 删除key值
 			err := redis.Del(ukey)
 			if err != nil {
-				log.Errorf("redis.Del streamRemove err = %v", err)
+				//log.Errorf("islb.redis.Del streamRemove err = %v", err)
+				logger.Errorf(fmt.Sprintf("islb.streamRemove media redis.Del err=%v", err), "rid", rid, "uid", uid)
 			}
 		}
 		ukey = "/pub/rid/" + rid + "/uid/" + uid + "/mid/*"
@@ -242,7 +251,8 @@ func streamRemove(data map[string]interface{}) (map[string]interface{}, *nprotoo
 			// 删除key值
 			err := redis.Del(ukey)
 			if err != nil {
-				log.Errorf("redis.Del streamRemove err = %v", err)
+				//log.Errorf("redis.Del streamRemove err = %v", err)
+				logger.Errorf(fmt.Sprintf("islb.streamRemove pub redis.Del err=%v", err), "rid", rid, "uid", uid)
 			} else {
 				// 生成resp对象
 				broadcaster.Say(proto.IslbToBizOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", mid))
@@ -257,7 +267,8 @@ func streamRemove(data map[string]interface{}) (map[string]interface{}, *nprotoo
 			// 删除key值
 			err := redis.Del(ukey)
 			if err != nil {
-				log.Errorf("redis.Del streamRemove err = %v", err)
+				//log.Errorf("redis.Del media streamRemove err = %v", err)
+				logger.Errorf(fmt.Sprintf("islb.streamRemove media redis.Del err=%v", err), "rid", rid, "uid", uid, "mid", mid)
 			}
 		}
 		// 获取用户发布流对应的sfu信息
@@ -269,7 +280,8 @@ func streamRemove(data map[string]interface{}) (map[string]interface{}, *nprotoo
 			// 删除key值
 			err := redis.Del(ukey)
 			if err != nil {
-				log.Errorf("redis.Del streamRemove err = %v", err)
+				//log.Errorf("redis.Del streamRemove err = %v", err)
+				logger.Errorf(fmt.Sprintf("islb.streamRemove pub redis.Del err=%v", err), "rid", rid, "uid", uid, "mid", mid)
 			} else {
 				// 生成resp对象
 				broadcaster.Say(proto.IslbToBizOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", mid))
@@ -292,7 +304,8 @@ func keeplive(data map[string]interface{}) (map[string]interface{}, *nprotoo.Err
 	// 写入key值
 	err := redis.Set(uKey, info, redisShort)
 	if err != nil {
-		log.Errorf("redis.Set keeplive err = %v", err)
+		//log.Errorf("redis.Set keeplive err = %v", err)
+		logger.Errorf(fmt.Sprintf("islb.keeplive redis.Set err=%v", err), "rid", rid, "uid", uid)
 	}
 	return util.Map(), nil
 }
@@ -319,7 +332,7 @@ func getSfuByMid(data map[string]interface{}) (map[string]interface{}, *nprotoo.
 	// 获取用户发布流对应的sfu信息
 	uKey := proto.GetMediaPubKey(rid, uid, mid)
 	nid := redis.Get(uKey)
-	log.Infof("getSfuByMid ==> %v", nid)
+	logger.Infof(fmt.Sprintf("islb.getSfuByMid nid=%s", nid), "rid", rid, "uid", uid, "mid", mid)
 	//resp := make(map[string]interface{})
 	if nid != "" {
 		resp := util.Map("errorCode", 0, "rid", rid, "mid", mid, "nid", nid)
@@ -359,7 +372,7 @@ func getMediaPubs(data map[string]interface{}) (map[string]interface{}, *nprotoo
 	}
 
 	resp := util.Map("errorCode", 0, "rid", rid, "pubs", pubs)
-	log.Infof("getMediaPubs: resp=%v", resp)
+	logger.Infof(fmt.Sprintf("islb.getMediaPubs resp=%v ", resp), "rid", rid)
 	return resp, nil
 }
 
@@ -404,7 +417,7 @@ func reportStreamState(data map[string]interface{}) (map[string]interface{}, *np
 	// 写入key值
 	state, err := json.Marshal(data)
 	if err != nil {
-		log.Errorf("reportStreamState json marshal fail")
+		logger.Errorf("islb.reportStreamState json marshal fail", "rid", rid, "uid", uid, "mid", mid)
 		return util.Map("errorCode", 1), nil
 	}
 
@@ -412,7 +425,7 @@ func reportStreamState(data map[string]interface{}) (map[string]interface{}, *np
 
 	//resp := make(map[string]interface{})
 	if err != nil {
-		log.Errorf("redis.Set stream state err = %v", err)
+		logger.Errorf(fmt.Sprintf("biz.reportStreamState redis.Set stream state err=%v", err), "rid", rid, "uid", uid, "mid", mid)
 		resp := util.Map("errorCode", 1)
 		return resp, nil
 	} else {

@@ -2,6 +2,7 @@ package biz
 
 import (
 	"mgkj/pkg/log"
+	lgr "mgkj/pkg/logger"
 	"mgkj/pkg/proto"
 	"mgkj/pkg/server"
 	"mgkj/pkg/util"
@@ -11,17 +12,19 @@ import (
 )
 
 var (
-	nats  *nprotoo.NatsProtoo
-	node  *server.ServiceNode
-	watch *server.ServiceWatcher
-	rpcs  = make(map[string]*nprotoo.Requestor)
+	logger *lgr.Logger
+	nats   *nprotoo.NatsProtoo
+	node   *server.ServiceNode
+	watch  *server.ServiceWatcher
+	rpcs   = make(map[string]*nprotoo.Requestor)
 )
 
 // Init 初始化服务
-func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, natsURL string) {
+func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, natsURL string, l *lgr.Logger) {
 	node = serviceNode
 	watch = ServiceWatcher
 	nats = nprotoo.NewNatsProtoo(util.GenerateNatsUrlString(natsURL))
+	logger = l
 	go watch.WatchServiceNode("", WatchServiceCallBack)
 }
 
@@ -232,7 +235,7 @@ func getIssrRequestor() *nprotoo.Requestor {
 	find := false
 	rpc, find := rpcs[issr.Nid]
 	if !find {
-		log.Errorf("Ss rpc not found")
+		log.Errorf("issr rpc not found")
 		return nil
 	}
 	return rpc
