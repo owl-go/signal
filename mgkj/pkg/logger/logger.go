@@ -284,28 +284,28 @@ func (l *Logger) Send(args ...interface{}) string {
 	return string(data)
 }
 
-func (l *Logger) Debug(msg string, args ...interface{}) string {
+func (l *Logger) Debugf(msg string, args ...interface{}) string {
 	if ce := l.check(DebugLevel, msg); ce != nil {
 		return ce.Send(args...)
 	}
 	return ""
 }
 
-func (l *Logger) Info(msg string, args ...interface{}) string {
+func (l *Logger) Infof(msg string, args ...interface{}) string {
 	if ce := l.check(InfoLevel, msg); ce != nil {
 		return ce.Send(args...)
 	}
 	return ""
 }
 
-func (l *Logger) Warn(msg string, args ...interface{}) string {
+func (l *Logger) Warnf(msg string, args ...interface{}) string {
 	if ce := l.check(WarnLevel, msg); ce != nil {
 		return ce.Send(args...)
 	}
 	return ""
 }
 
-func (l *Logger) Error(msg string, args ...interface{}) string {
+func (l *Logger) Errorf(msg string, args ...interface{}) string {
 	if ce := l.check(ErrorLevel, msg); ce != nil {
 		return ce.Send(args...)
 	}
