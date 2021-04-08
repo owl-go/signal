@@ -34,6 +34,11 @@ BUILD_PATH4=$APP_DIR/bin/$SFU
 BUILD_PATH5=$APP_DIR/bin/$ISSR
 BUILD_PATH6=$APP_DIR/bin/$LOGSVR
 
+
+echo "------------------start $LOGSVR------------------"
+echo "nohup $BUILD_PATH6 -c $LOGSVR_CFG >>$LOGSVR_LOG 2>&1 &"
+nohup $BUILD_PATH6 -c $LOGSVR_CFG >>$LOGSVR_LOG 2>&1 &
+
 echo "------------------start $BIZ------------------"
 echo "nohup $BUILD_PATH1 -c $BIZ_CFG >>$BIZ_LOG 2>&1 &"
 nohup $BUILD_PATH1 -c $BIZ_CFG >>$BIZ_LOG 2>&1 &
@@ -55,6 +60,3 @@ echo "------------------start $ISSR------------------"
 echo "nohup $BUILD_PATH5 -c $ISSR_CFG >>$ISSR_LOG 2>&1 &"
 nohup $BUILD_PATH5 -c $ISSR_CFG >>$ISSR_LOG 2>&1 &
 
-echo "------------------start $LOGSVR------------------"
-echo "nohup $BUILD_PATH6 -c $LOGSVR_CFG >>$LOGSVR_LOG 2>&1 &"
-nohup $BUILD_PATH6 -c $LOGSVR_CFG >>$LOGSVR_LOG 2>&1 &
