@@ -28,8 +28,8 @@ filebeat.inputs:
     paths:
       - /home/data/logsvr.log
     fields:
-      index: "zap_test_info"
-    tags: [ "zap_test" ]
+      index: "logsvr.log"
+    tags: [ "logsvr" ]
     json.keys_under_root: true
     json.overwrite_keys: true
     # Exclude lines. A list of regular expressions to match. It drops the lines that are
@@ -104,7 +104,7 @@ setup.template.enable: true
 # Starting with Beats version 6.0.0, the dashboards are loaded via the Kibana API.
 # This requires a Kibana endpoint configuration.
 setup.kibana:
-  host: "localhost:5601"
+  host: "47.112.142.132:5601"
 # Kibana Host
 # Scheme and port can be left out and will be set to the default (http and 5601)
 # In case you specify and additional path, the scheme is required: http://localhost:5601/path
@@ -134,18 +134,18 @@ setup.kibana:
 # Configure what output to use when sending the data collected by the beat.
 
 # ---------------------------- Elasticsearch Output ----------------------------
-output.elasticsearch:
-  # Array of hosts to connect to.
-  hosts: [ "localhost:9200" ]
-  indices:
-#    - index: "system_message"
+#output.elasticsearch:
+#  # Array of hosts to connect to.
+#  hosts: [ "localhost:9200" ]
+#  indices:
+##    - index: "system_message"
+##      when.contains:
+##        fields:
+##          index: 'system_message'
+#    - index: "logsvr.log"
 #      when.contains:
 #        fields:
-#          index: 'system_message'
-    - index: "logsvr"
-      when.contains:
-        fields:
-          index: 'logsvr'
+#          index: 'logsvr.log'
   # Protocol - either `http` (default) or `https`.
   #protocol: "https"
 
@@ -155,10 +155,14 @@ output.elasticsearch:
   #password: "changeme"
 
   # ------------------------------ Logstash Output -------------------------------
-  #output.logstash:
+output.logstash:
   # The Logstash hosts
-  # hosts: ["127.0.0.1:5044"]
-
+  hosts: ["47.112.142.132:5044"]
+  indices:
+    - index: "logsvr.log"
+      when.contains:
+        fields:
+          index: 'logsvr.log'
   # Optional SSL. By default is off.
   # List of root certificates for HTTPS server verifications
   #ssl.certificate_authorities: ["/etc/pki/root/ca.pem"]
