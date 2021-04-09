@@ -101,28 +101,24 @@ func checkStreamState() {
 				//log.Infof("checkStreamState uid = %s,mid = %s,sid = %s stream was stopped", timer.UID, timer.MID, timer.SID)
 				logger.Infof(fmt.Sprintf("checkStreamState room %s uid=%s,mid=%s,sid=%s stream was stopped", timer.RID, timer.UID, timer.MID, timer.SID),
 					"uid", timer.UID, "rid", timer.RID, "mid", timer.MID, "sid", timer.SID)
+
 				rpc := getIssrRequestor()
 				if rpc == nil {
 					logger.Errorf("biz.checkStreamState get issr requestor failed", "uid", timer.UID, "rid", timer.RID, "mid", timer.MID, "sid", timer.SID)
 					continue
 				}
 
-				resp, nerr := rpc.SyncRequest(proto.BizToIssrReportStreamState, util.Map("rid", timer.RID, "appid", timer.AppID, "uid", timer.UID, "mid", timer.MID,
+				_, err := rpc.SyncRequest(proto.BizToIssrReportStreamState, util.Map("rid", timer.RID, "appid", timer.AppID, "uid", timer.UID, "mid", timer.MID,
 					"sid", timer.SID, "mediatype", timer.MediaType, "resolution", timer.Resolution, "seconds", timer.GetTotalTime()))
 
-				if nerr != nil {
-					logger.Errorf(fmt.Sprintf("biz.checkStreamState rpc err=%v", nerr), "uid", timer.UID, "rid", timer.RID, "mid", timer.MID, "sid", timer.SID)
-				}
-
-				code := int(resp["errorCode"].(float64))
-				if code == 0 {
+				if err != nil {
+					logger.Errorf(fmt.Sprintf("biz.checkStreamState rpc err=%v", err.Reason), "uid", timer.UID, "rid", timer.RID, "mid", timer.MID, "sid", timer.SID)
+					logger.Errorf(fmt.Sprintf("biz.checkStreamState report room %s uid=%s,mid=%s, sid=%s stream state failed", timer.RID, timer.UID,
+						timer.MID, timer.SID), "uid", timer.UID, "rid", timer.RID, "mid", timer.MID, "sid", timer.SID)
+				} else {
 					substreamsLock.Lock()
 					delete(substreams, sid)
 					substreamsLock.Unlock()
-				} else {
-					//log.Errorf("biz.checkStreamState report uid = %s,mid = %s, sid = %s stream state fail", timer.UID, timer.MID, timer.SID)
-					logger.Errorf(fmt.Sprintf("biz.checkStreamState report room %s uid=%s,mid=%s, sid=%s stream state failed", timer.RID, timer.UID,
-						timer.MID, timer.SID), "uid", timer.UID, "rid", timer.RID, "mid", timer.MID, "sid", timer.SID)
 				}
 			}
 		}

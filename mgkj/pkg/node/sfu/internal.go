@@ -59,12 +59,12 @@ func publish(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error
 	logger.Infof(fmt.Sprintf("sfu.publish msg=%v", msg))
 	// 获取参数
 	if msg["jsep"] == nil {
-		return util.Map("errorCode", 401), nil
+		return nil, &nprotoo.Error{Code: -1, Reason: "can't find jsep"}
 	}
 
 	jsep, ok := msg["jsep"].(map[string]interface{})
 	if !ok {
-		return util.Map("errorCode", 402), nil
+		return nil, &nprotoo.Error{Code: -1, Reason: "jsep can't transform to map"}
 	}
 
 	sdp := util.Val(jsep, "sdp")
@@ -80,12 +80,12 @@ func publish(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error
 			router := rtc.GetOrNewRouter(key)
 			resp, err := router.AddPub(sdp, mid, node.NodeInfo().Nip, options)
 			if err != nil {
-				return util.Map("errorCode", 403), nil
+				return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("AddPub err:%v", err)}
 			}
-			return util.Map("errorCode", 0, "jsep", util.Map("type", "answer", "sdp", resp), "mid", mid), nil
+			return util.Map("jsep", util.Map("type", "answer", "sdp", resp), "mid", mid), nil
 		}
 	}
-	return util.Map("errorCode", 404), nil
+	return nil, &nprotoo.Error{Code: -1, Reason: "can't find media info"}
 }
 
 /*
@@ -112,12 +112,12 @@ func subscribe(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Err
 	logger.Infof(fmt.Sprintf("sfu.subscribe msg=%v", msg))
 	// 获取参数
 	if msg["jsep"] == nil {
-		return util.Map("errorCode", 401), nil
+		return nil, &nprotoo.Error{Code: -1, Reason: "can't find jsep"}
 	}
 
 	jsep, ok := msg["jsep"].(map[string]interface{})
 	if !ok {
-		return util.Map("errorCode", 402), nil
+		return nil, &nprotoo.Error{Code: -1, Reason: "jsep can't transform to map"}
 	}
 
 	sdp := util.Val(jsep, "sdp")
@@ -134,17 +134,17 @@ func subscribe(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Err
 			key := proto.GetMediaPubKey(rid, uid, mid)
 			router := rtc.GetRouter(key)
 			if router == nil {
-				return util.Map("errorCode", 403), nil
+				return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("can't get router:%s", key)}
 			}
 
 			resp, err := router.AddSub(sdp, subID, node.NodeInfo().Nip, minfo)
 			if err != nil {
-				return util.Map("errorCode", 404), nil
+				return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("AddSub err:%v", err)}
 			}
-			return util.Map("errorCode", 0, "jsep", util.Map("type", "answer", "sdp", resp), "mid", subID, "uid", uid), nil
+			return util.Map("jsep", util.Map("type", "answer", "sdp", resp), "mid", subID, "uid", uid), nil
 		}
 	}
-	return util.Map("errorCode", 405), nil
+	return nil, &nprotoo.Error{Code: -1, Reason: "can't find media info"}
 }
 
 /*
