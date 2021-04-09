@@ -335,11 +335,10 @@ func getSfuByMid(data map[string]interface{}) (map[string]interface{}, *nprotoo.
 	logger.Infof(fmt.Sprintf("islb.getSfuByMid nid=%s", nid), "rid", rid, "uid", uid, "mid", mid)
 	//resp := make(map[string]interface{})
 	if nid != "" {
-		resp := util.Map("errorCode", 0, "rid", rid, "mid", mid, "nid", nid)
+		resp := util.Map("rid", rid, "mid", mid, "nid", nid)
 		return resp, nil
 	} else {
-		resp := util.Map("errorCode", 1, "rid", rid, "mid", mid)
-		return resp, nil
+		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("can't find sfu node by mid:%s", mid)}
 	}
 }
 
@@ -355,8 +354,7 @@ func getMediaPubs(data map[string]interface{}) (map[string]interface{}, *nprotoo
 	for _, key := range redis.Keys("/media/rid/" + rid + "/uid/*") {
 		mid, uid, err := parseMediaKey(key)
 		if err != nil {
-			resp := util.Map("errorCode", 1, "rid", rid)
-			return resp, nil
+			return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("can't parse media key:%s", key)}
 		}
 
 		if uidTmp == uid {
@@ -371,7 +369,7 @@ func getMediaPubs(data map[string]interface{}) (map[string]interface{}, *nprotoo
 		pubs = append(pubs, pub)
 	}
 
-	resp := util.Map("errorCode", 0, "rid", rid, "pubs", pubs)
+	resp := util.Map("rid", rid, "pubs", pubs)
 	logger.Infof(fmt.Sprintf("islb.getMediaPubs resp=%v ", resp), "rid", rid)
 	return resp, nil
 }
@@ -400,11 +398,9 @@ func getPeerLive(data map[string]interface{}) (map[string]interface{}, *nprotoo.
 	info := redis.Get(uKey)
 	//resp := make(map[string]interface{})
 	if info != "" {
-		resp := util.Map("errorCode", 0)
-		return resp, nil
+		return util.Map(), nil
 	} else {
-		resp := util.Map("errorCode", 1)
-		return resp, nil
+		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("can't find peer info by key:%s", uKey)}
 	}
 }
 
@@ -417,8 +413,8 @@ func reportStreamState(data map[string]interface{}) (map[string]interface{}, *np
 	// 写入key值
 	state, err := json.Marshal(data)
 	if err != nil {
-		logger.Errorf("islb.reportStreamState json marshal fail", "rid", rid, "uid", uid, "mid", mid)
-		return util.Map("errorCode", 1), nil
+		logger.Errorf(fmt.Sprintf("islb.reportStreamState json marshal err=%v", err), "rid", rid, "uid", uid, "mid", mid)
+		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("json marshal err:%v", err)}
 	}
 
 	err = redis1.Set(sKey, string(state), 0)
@@ -426,10 +422,8 @@ func reportStreamState(data map[string]interface{}) (map[string]interface{}, *np
 	//resp := make(map[string]interface{})
 	if err != nil {
 		logger.Errorf(fmt.Sprintf("biz.reportStreamState redis.Set stream state err=%v", err), "rid", rid, "uid", uid, "mid", mid)
-		resp := util.Map("errorCode", 1)
-		return resp, nil
+		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("redis.Set err=%v", err)}
 	} else {
-		resp := util.Map("errorCode", 0)
-		return resp, nil
+		return util.Map(), nil
 	}
 }

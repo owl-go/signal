@@ -69,7 +69,7 @@ func join(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 	rpc, find := rpcs[islb.Nid]
 	if !find {
 		logger.Errorf("biz.join islb rpc not found", "uid", uid, "rid", rid)
-		reject(codeIslbErr, codeStr(codeIslbErr))
+		reject(codeIslbRpcErr, codeStr(codeIslbRpcErr))
 		return
 	}
 
@@ -123,7 +123,7 @@ func leave(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reje
 	rpc, find := rpcs[islb.Nid]
 	if !find {
 		logger.Errorf("biz.leave islb rpc not found", "uid", uid)
-		reject(codeIslbErr, codeStr(codeIslbErr))
+		reject(codeIslbRpcErr, codeStr(codeIslbRpcErr))
 		return
 	}
 
@@ -170,7 +170,7 @@ func keepalive(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	rpc, find := rpcs[islb.Nid]
 	if !find {
 		logger.Errorf("biz.keepalive islb rpc not found", "uid", uid, "rid", rid)
-		reject(codeIslbErr, codeStr(codeIslbErr))
+		reject(codeIslbRpcErr, codeStr(codeIslbRpcErr))
 		return
 	}
 
@@ -226,14 +226,14 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 	rpcSfu, find := rpcs[sfu.Nid]
 	if !find {
 		logger.Errorf("biz.publish sfu rpc not found", "uid", uid, "rid", rid)
-		reject(codeSfuErr, codeStr(codeSfuErr))
+		reject(codeSfuRpcErr, codeStr(codeSfuRpcErr))
 		return
 	}
 
 	minfo := msg["minfo"]
 	if minfo == nil {
 		logger.Errorf("biz.publish minfo not found", "uid", uid, "rid", rid)
-		reject(codePubErr, codeStr(codePubErr))
+		reject(codeMinfoErr, codeStr(codeMinfoErr))
 		return
 	}
 
@@ -242,30 +242,15 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 	resp, err := rpcSfu.SyncRequest(proto.BizToSfuPublish, util.Map("rid", rid, "uid", uid, "minfo", minfo, "jsep", jsep))
 	if err != nil {
 		logger.Errorf(fmt.Sprintf("biz.publish request sfu err=%v", err.Reason), "uid", uid, "rid", rid)
-		reject(int(resp["errorCode"].(float64)), resp["errorReason"].(string))
+		reject(err.Code, err.Reason)
 		return
 	}
 
-	// "method", proto.SfuToBizPublish, "errorCode", 0, "jsep", answer, "mid", mid
-	// "method", proto.SfuToBizPublish, "errorCode", 403, "errorReason", "publish: sdp parse failed"
 	logger.Infof(fmt.Sprintf("biz.publish request sfu resp=%v", resp), "uid", uid, "rid", rid)
 
-	bPublish := false
 	rsp := make(map[string]interface{})
-	code := int(resp["errorCode"].(float64))
-	if code == 0 {
-		bPublish = true
-		rsp["jsep"] = resp["jsep"]
-		rsp["mid"] = resp["mid"]
-	} else {
-		bPublish = false
-	}
-
-	if !bPublish {
-		logger.Errorf("biz.publish request sfu failed", "uid", uid, "rid", rid)
-		reject(code, resp["errorReason"].(string))
-		return
-	}
+	rsp["jsep"] = resp["jsep"]
+	rsp["mid"] = resp["mid"]
 
 	nid := sfu.Nid
 	mid := util.Val(rsp, "mid")
@@ -281,7 +266,7 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 	rpcIslb, find := rpcs[islb.Nid]
 	if !find {
 		logger.Errorf("biz.publish islb rpc not found", "uid", uid, "rid", rid, "mid", mid)
-		reject(codeIslbErr, codeStr(codeIslbErr))
+		reject(codeIslbRpcErr, codeStr(codeIslbRpcErr))
 		return
 	}
 	// 通知islb
@@ -333,7 +318,7 @@ func unpublish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	rpcSfu, find := rpcs[sfu.Nid]
 	if !find {
 		logger.Errorf("biz.unpublish sfu rpc not found", "uid", uid, "rid", rid, "mid", mid)
-		reject(codeSfuErr, codeStr(codeSfuErr))
+		reject(codeSfuRpcErr, codeStr(codeSfuRpcErr))
 		return
 	}
 
@@ -351,7 +336,7 @@ func unpublish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	rpcIslb, find := rpcs[islb.Nid]
 	if !find {
 		logger.Errorf("biz.unpublish islb rpc not found", "uid", uid, "rid", rid, "mid", mid)
-		reject(codeIslbErr, codeStr(codeIslbErr))
+		reject(codeIslbRpcErr, codeStr(codeIslbRpcErr))
 		return
 	}
 
@@ -394,7 +379,7 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	minfo := msg["minfo"]
 	if minfo == nil {
 		logger.Errorf("biz.subscribe minfo not found", "uid", uid, "rid", rid, "mid", mid)
-		reject(codePubErr, codeStr(codePubErr))
+		reject(codeMinfoErr, codeStr(codeMinfoErr))
 		return
 	}
 
@@ -416,38 +401,26 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	rpcSfu, find := rpcs[sfu.Nid]
 	if !find {
 		logger.Errorf("biz.subscribe sfu rpc not found", "uid", uid, "rid", rid, "mid", mid)
-		reject(codeSfuErr, codeStr(codeSfuErr))
+		reject(codeSfuRpcErr, codeStr(codeSfuRpcErr))
 		return
 	}
 
 	// 获取sfu节点的resp
-	find = false
 	minfo = msg["minfo"].(map[string]interface{})
 	rspSfu := make(map[string]interface{})
 	resp, err := rpcSfu.SyncRequest(proto.BizToSfuSubscribe, util.Map("rid", rid, "uid", uid, "mid", mid, "jsep", jsep, "minfo", minfo))
 	if err != nil {
 		logger.Errorf(fmt.Sprintf("biz.subscribe request sfu err=%v", err.Reason), "uid", uid, "rid", rid, "mid", mid)
-		reject(int(resp["errorCode"].(float64)), resp["errorReason"].(string))
+		reject(err.Code, err.Reason)
 		return
 	}
 
 	logger.Infof(fmt.Sprintf("biz.subscribe request sfu resp=%v", resp), "uid", uid, "rid", rid, "mid", mid)
 
-	code := int(resp["errorCode"].(float64))
-	if code == 0 {
-		find = true
-		rspSfu["jsep"] = resp["jsep"]
-		rspSfu["sid"] = resp["mid"]
-		rspSfu["uid"] = resp["uid"]
-	} else {
-		find = false
-	}
+	rspSfu["jsep"] = resp["jsep"]
+	rspSfu["sid"] = resp["mid"]
+	rspSfu["uid"] = resp["uid"]
 
-	if !find {
-		logger.Errorf("biz.subscribe request sfu failed", "uid", uid, "rid", rid, "mid", mid)
-		reject(code, resp["errorReason"].(string))
-		return
-	}
 	//add stream timer then start
 	var mediatype string
 	sid := rspSfu["sid"].(string)
@@ -514,7 +487,7 @@ func unsubscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc
 	rpcSfu, find := rpcs[sfu.Nid]
 	if !find {
 		logger.Errorf("biz.unsubscribe sfu rpc not found", "uid", uid, "rid", rid, "sid", mid)
-		reject(codeSfuErr, codeStr(codeSfuErr))
+		reject(codeSfuRpcErr, codeStr(codeSfuRpcErr))
 		return
 	}
 
@@ -617,7 +590,7 @@ func broadcast(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	rpcIslb, find := rpcs[islb.Nid]
 	if !find {
 		logger.Errorf("biz.broadcast islb rpc not found", "uid", uid, "rid", rid)
-		reject(codeIslbErr, codeStr(codeIslbErr))
+		reject(codeIslbRpcErr, codeStr(codeIslbRpcErr))
 		return
 	}
 

@@ -50,26 +50,20 @@ func report(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error)
 	logger.Infof(fmt.Sprintf("issr.report msg=%v", msg))
 	// 判断参数
 	if msg["appid"] == nil {
-		return util.Map("errorCode", 401), nil
+		return nil, &nprotoo.Error{Code: -1, Reason: "can't find appid"}
 	}
 	islb := getIslbRequestor()
 	if islb == nil {
 		logger.Errorf("issr.report can't find islb requestor")
-		return util.Map("errorCode", 402), nil
+		return nil, &nprotoo.Error{Code: -1, Reason: "can't find islb node"}
 	}
 
-	resp, nerr := islb.SyncRequest(proto.IssrToIslbReportStreamState, msg)
+	_, nerr := islb.SyncRequest(proto.IssrToIslbReportStreamState, msg)
 	if nerr != nil {
 		logger.Errorf(fmt.Sprintf("issr.report islb rpc err=%v", nerr))
-		return util.Map("errorCode", 403), nil
+		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("request islb to record err:%v", nerr)}
 	}
 
-	code := int(resp["errorCode"].(float64))
-
-	if code != 0 {
-		logger.Errorf("issr.report islb request fail")
-		return util.Map("errorCode", 404), nil
-	}
 	seconds := int64(msg["seconds"].(float64))
 	//change seconds to minutes
 	delete(msg, "seconds")
@@ -84,13 +78,13 @@ func report(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error)
 	str, err := json.Marshal(msg)
 	if err != nil {
 		logger.Errorf(fmt.Sprintf("issr.report json marshal failed=%v", err))
-		return util.Map("errorCode", 405), nil
+		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("json marshal err:%v", err)}
 	}
-	logger.Infof("issr.report json = %s", string(str))
+	logger.Infof(fmt.Sprintf("issr.report json = %s", string(str)))
 	err = kafkaProducer.Produce("Livs-Usage-Event", string(str))
 	if err != nil {
-		logger.Errorf(fmt.Sprintf("issr.report produce error=%v", err))
-		return util.Map("errorCode", 406), nil
+		logger.Errorf(fmt.Sprintf("issr.report kafka produce error=%v", err))
+		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("kafka produce err:%v", err)}
 	}
-	return util.Map("errorCode", 0), nil
+	return util.Map(), nil
 }

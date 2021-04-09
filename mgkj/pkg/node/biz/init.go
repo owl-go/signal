@@ -111,25 +111,15 @@ func FindSfuNodeByMid(rid, mid string) *server.Node {
 		return nil
 	}
 
-	// "errorCode", 1, "rid", rid, "mid", mid
-	// "errorCode", 0, "rid", rid, "mid", mid, "nid", nid
 	log.Infof("FindSfuNodeByMid resp ==> %v", resp)
 
-	find = false
 	var sfu *server.Node
-	nErr := int(resp["errorCode"].(float64))
-	if nErr == 0 {
-		nid := util.Val(resp, "nid")
-		if nid != "" {
-			sfu = FindSfuNodeByID(nid)
-			find = true
-		}
+	nid := util.Val(resp, "nid")
+	if nid != "" {
+		sfu = FindSfuNodeByID(nid)
 	}
 
-	if find {
-		return sfu
-	}
-	return nil
+	return sfu
 }
 
 // FindMediaPubs 查询房间所有的其他人的发布流
@@ -155,14 +145,8 @@ func FindMediaPubs(peer *ws.Peer, rid string) bool {
 
 	log.Infof("FindMediaPubs resp ==> %v", resp)
 
-	nErr := int(resp["errorCode"].(float64))
-	if nErr != 0 {
-		log.Errorf("FindMediaPubs errorCode = %d", nErr)
-		return false
-	}
-
 	if resp["pubs"] == nil {
-		log.Errorf("FindMediaPubs pubs = nil")
+		log.Errorf("FindMediaPubs pubs is nil")
 		return false
 	}
 
@@ -201,16 +185,9 @@ func FindPeerIsLive(rid, uid string) bool {
 		return false
 	}
 
-	// "method", proto.IslbToBizPeerLive, "errorCode", 1
-	// "method", proto.IslbToBizPeerLive, "errorCode", 0
 	log.Infof("FindPeerIsLive resp ==> %v", resp)
 
-	find = false
-	nErr := int(resp["errorCode"].(float64))
-	if nErr == 0 {
-		find = true
-	}
-	return find
+	return true
 }
 
 // findIssrNode 查询全局的可用的Issr节点
