@@ -12,10 +12,13 @@ const (
 	codeMIDErr
 	codeJsepErr
 	codeSdpErr
+	codeMinfoErr
 	codePubErr
 	codeSubErr
 	codeSfuErr
 	codeIslbErr
+	codeSfuRpcErr
+	codeIslbRpcErr
 	codeUnknownErr
 )
 
@@ -26,10 +29,13 @@ var codeErr = map[int]string{
 	codeMIDErr:     "mid not found",
 	codeJsepErr:    "jsep not found",
 	codeSdpErr:     "sdp not found",
+	codeMinfoErr:   "media info not found",
 	codePubErr:     "pub not found",
 	codeSubErr:     "sub not found",
 	codeSfuErr:     "sfu not found",
 	codeIslbErr:    "islb not found",
+	codeSfuRpcErr:  "sfu rpc not found",
+	codeIslbRpcErr: "islb rpc not found",
 	codeUnknownErr: "unknown error",
 }
 
@@ -57,12 +63,6 @@ func invalid(msg map[string]interface{}, key string, reject ws.RejectFunc) bool 
 			return true
 		case "sdp":
 			reject(codeSdpErr, codeStr(codeSdpErr))
-			return true
-		case "sfu":
-			reject(codeSfuErr, codeStr(codeSfuErr))
-			return true
-		case "islb":
-			reject(codeIslbErr, codeStr(codeIslbErr))
 			return true
 		}
 	}
