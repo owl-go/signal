@@ -2,8 +2,8 @@ package biz
 
 import (
 	"fmt"
+	dis "mgkj/infra/discovery"
 	"mgkj/pkg/proto"
-	reg "mgkj/pkg/server"
 	"mgkj/pkg/timing"
 	"mgkj/pkg/ws"
 	"mgkj/util"
@@ -307,7 +307,7 @@ func unpublish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	rid := util.Val(msg, "rid")
 	mid := util.Val(msg, "mid")
 
-	var sfu *reg.Node
+	var sfu *dis.Node
 	nid := util.Val(msg, "nid")
 	if nid != "" {
 		sfu = FindSfuNodeByID(nid)
@@ -387,7 +387,7 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 		return
 	}
 
-	var sfu *reg.Node
+	var sfu *dis.Node
 	nid := util.Val(msg, "nid")
 	if nid != "" {
 		sfu = FindSfuNodeByID(nid)
@@ -472,7 +472,7 @@ func unsubscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc
 	rid := util.Val(msg, "rid")
 	mid := util.Val(msg, "mid")
 
-	var sfu *reg.Node
+	var sfu *dis.Node
 	nid := util.Val(msg, "nid")
 	if nid != "" {
 		sfu = FindSfuNodeByID(nid)
@@ -539,7 +539,7 @@ func trickle(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 		ispub := util.Val(msg, "ispub")
 		log.Infof("biz.trickle uid=%s msg=%v", uid, msg)
 
-		var sfu *reg.Node
+		var sfu *dis.Node
 		nid := util.Val(msg, "nid")
 		if nid != "" {
 			sfu = FindSfuNodeByID(nid)
@@ -552,7 +552,7 @@ func trickle(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 			return
 		}
 
-		rpc := protoo.NewRequestor(reg.GetRPCChannel(*sfu))
+		rpc := protoo.NewRequestor(dis.GetRPCChannel(*sfu))
 		rpc.AsyncRequest(proto.BizToSfuTrickleICE, util.Map("rid", rid, "sid", sid, "mid", mid, "ice", ice, "ispub", ispub))
 	*/
 	// resp

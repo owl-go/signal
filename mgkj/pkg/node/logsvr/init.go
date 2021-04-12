@@ -2,10 +2,10 @@ package logsvr
 
 import (
 	"fmt"
+	dis "mgkj/infra/discovery"
 	"mgkj/pkg/db"
 	"mgkj/pkg/log"
 	lgr "mgkj/pkg/logger"
-	"mgkj/pkg/server"
 
 	nprotoo "github.com/gearghost/nats-protoo"
 	"github.com/gin-gonic/gin"
@@ -14,14 +14,14 @@ import (
 var (
 	nats   *nprotoo.NatsProtoo
 	rpcs   = make(map[string]*nprotoo.Requestor)
-	node   *server.ServiceNode
-	watch  *server.ServiceWatcher
+	node   *dis.ServiceNode
+	watch  *dis.ServiceWatcher
 	mysql  *db.MysqlDriver
 	logger *lgr.Logger
 )
 
 // Init 初始化服务
-func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, natsURL string, config db.MysqlConfig) {
+func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL string, config db.MysqlConfig) {
 	node = serviceNode
 	watch = ServiceWatcher
 	nats = nprotoo.NewNatsProtoo(natsURL)
@@ -63,16 +63,16 @@ func Close() {
 }
 
 // WatchServiceCallBack 查看所有的Node节点
-func WatchServiceCallBack(state server.NodeStateType, node server.Node) {
-	if state == server.ServerUp {
+func WatchServiceCallBack(state dis.NodeStateType, node dis.Node) {
+	if state == dis.ServerUp {
 		log.Infof("WatchServiceCallBack node up %v", node)
 		id := node.Nid
 		_, found := rpcs[id]
 		if !found {
-			rpcID := server.GetRPCChannel(node)
+			rpcID := dis.GetRPCChannel(node)
 			rpcs[id] = nats.NewRequestor(rpcID)
 		}
-	} else if state == server.ServerDown {
+	} else if state == dis.ServerDown {
 		log.Infof("WatchServiceCallBack node down %v", node.Nid)
 		if _, found := rpcs[node.Nid]; found {
 			delete(rpcs, node.Nid)
@@ -81,7 +81,7 @@ func WatchServiceCallBack(state server.NodeStateType, node server.Node) {
 }
 
 // FindIslbNode 查询全局的可用的islb节点
-func FindIslbNode() *server.Node {
+func FindIslbNode() *dis.Node {
 	servers, find := watch.GetNodes("islb")
 	if find {
 		for _, node := range servers {

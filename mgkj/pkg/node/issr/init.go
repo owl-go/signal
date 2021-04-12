@@ -1,10 +1,10 @@
 package issr
 
 import (
+	dis "mgkj/infra/discovery"
 	"mgkj/infra/kafka"
 	"mgkj/pkg/log"
 	lgr "mgkj/pkg/logger"
-	"mgkj/pkg/server"
 	"mgkj/util"
 
 	nprotoo "github.com/gearghost/nats-protoo"
@@ -16,12 +16,12 @@ var (
 	protoo        *nprotoo.NatsProtoo
 	kafkaClient   *kafka.KafkaClient
 	kafkaProducer *kafka.SyncProducer
-	node          *server.ServiceNode
-	watch         *server.ServiceWatcher
+	node          *dis.ServiceNode
+	watch         *dis.ServiceWatcher
 )
 
 // Init 初始化服务
-func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, natsURL, kafkaURL string, l *lgr.Logger) {
+func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL, kafkaURL string, l *lgr.Logger) {
 	// 赋值
 	logger = l
 	node = serviceNode
@@ -39,7 +39,7 @@ func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher
 		panic(err)
 	}
 	kafkaProducer = producer
-	//连接nats-server
+	//连接nats
 	protoo = nprotoo.NewNatsProtoo(util.GenerateNatsUrlString(natsURL))
 	// 启动MQ监听
 	handleRPCRequest(node.GetRPCChannel())
@@ -48,18 +48,18 @@ func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher
 }
 
 // WatchServiceCallBack 查看所有的Node节点
-func WatchServiceCallBack(state server.NodeStateType, node server.Node) {
-	if state == server.ServerUp {
+func WatchServiceCallBack(state dis.NodeStateType, node dis.Node) {
+	if state == dis.ServerUp {
 		log.Infof("WatchServiceCallBack node up %v", node)
 		if node.Name == "islb" {
 			id := node.Nid
 			_, found := rpcs[id]
 			if !found {
-				rpcID := server.GetRPCChannel(node)
+				rpcID := dis.GetRPCChannel(node)
 				rpcs[id] = protoo.NewRequestor(rpcID)
 			}
 		}
-	} else if state == server.ServerDown {
+	} else if state == dis.ServerDown {
 		log.Infof("WatchServiceCallBack node down %v", node.Nid)
 		if _, found := rpcs[node.Nid]; found {
 			delete(rpcs, node.Nid)
@@ -68,7 +68,7 @@ func WatchServiceCallBack(state server.NodeStateType, node server.Node) {
 }
 
 // findIslbNode 查询全局的可用的islb节点
-func findIslbNode() *server.Node {
+func findIslbNode() *dis.Node {
 	servers, find := watch.GetNodes("islb")
 	if find {
 		for _, node := range servers {

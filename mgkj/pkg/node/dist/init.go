@@ -1,7 +1,7 @@
 package dist
 
 import (
-	"mgkj/pkg/server"
+	dis "mgkj/infra/discovery"
 
 	"mgkj/util"
 
@@ -10,13 +10,13 @@ import (
 
 var (
 	nats  *nprotoo.NatsProtoo
-	node  *server.ServiceNode
-	watch *server.ServiceWatcher
+	node  *dis.ServiceNode
+	watch *dis.ServiceWatcher
 	rpcs  = make(map[string]*nprotoo.Requestor)
 )
 
 // Init 初始化服务
-func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, natsURL string) {
+func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL string) {
 	node = serviceNode
 	watch = ServiceWatcher
 	nats = nprotoo.NewNatsProtoo(util.GenerateNatsUrlString(natsURL))
@@ -39,23 +39,23 @@ func Close() {
 }
 
 // WatchServiceCallBack 查看所有的Node节点
-func WatchServiceCallBack(state server.NodeStateType, node server.Node) {
-	if state == server.ServerUp {
+func WatchServiceCallBack(state dis.NodeStateType, node dis.Node) {
+	if state == dis.ServerUp {
 		if node.Name == "islb" || node.Name == "dist" {
 			id := node.Nid
 			_, found := rpcs[id]
 			if !found {
-				rpcID := server.GetRPCChannel(node)
+				rpcID := dis.GetRPCChannel(node)
 				rpcs[id] = nats.NewRequestor(rpcID)
 			}
 		}
-	} else if state == server.ServerDown {
+	} else if state == dis.ServerDown {
 		delete(rpcs, node.Nid)
 	}
 }
 
 // FindIslbNode 查询全局的可用的islb节点
-func FindIslbNode() *server.Node {
+func FindIslbNode() *dis.Node {
 	servers, find := watch.GetNodes("islb")
 	if find {
 		for _, node := range servers {
@@ -66,7 +66,7 @@ func FindIslbNode() *server.Node {
 }
 
 // FindDistNodeByID 查询指定id的dist节点
-func FindDistNodeByID(nid string) *server.Node {
+func FindDistNodeByID(nid string) *dis.Node {
 	dist, find := watch.GetNodeByID(nid)
 	if find {
 		return dist
@@ -75,7 +75,7 @@ func FindDistNodeByID(nid string) *server.Node {
 }
 
 // FindBizNodeByPayload 查询指定区域下的可用的biz节点
-func FindBizNodeByPayload() *server.Node {
+func FindBizNodeByPayload() *dis.Node {
 	biz, find := watch.GetNodeByPayload(node.NodeInfo().Ndc, "biz")
 	if find {
 		return biz
@@ -84,7 +84,7 @@ func FindBizNodeByPayload() *server.Node {
 }
 
 // FindSfuNodeByPayload 查询指定区域下的可用的sfu节点
-func FindSfuNodeByPayload() *server.Node {
+func FindSfuNodeByPayload() *dis.Node {
 	sfu, find := watch.GetNodeByPayload(node.NodeInfo().Ndc, "sfu")
 	if find {
 		return sfu

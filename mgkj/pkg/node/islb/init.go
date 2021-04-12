@@ -3,9 +3,9 @@ package node
 import (
 	"time"
 
+	dis "mgkj/infra/discovery"
 	"mgkj/pkg/db"
 	lgr "mgkj/pkg/logger"
-	"mgkj/pkg/server"
 	"mgkj/util"
 
 	nprotoo "github.com/gearghost/nats-protoo"
@@ -22,12 +22,12 @@ var (
 	broadcaster *nprotoo.Broadcaster
 	redis       *db.Redis
 	redis1      *db.Redis
-	node        *server.ServiceNode
-	watch       *server.ServiceWatcher
+	node        *dis.ServiceNode
+	watch       *dis.ServiceWatcher
 )
 
 // Init 初始化服务
-func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, natsURL string, config, config1 db.Config,
+func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL string, config, config1 db.Config,
 	l *lgr.Logger) {
 	// 赋值
 	node = serviceNode

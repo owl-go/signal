@@ -7,13 +7,13 @@ import (
 	_ "net/http/pprof"
 	"strconv"
 
+	dis "mgkj/infra/discovery"
 	h "mgkj/infra/http"
 	conf "mgkj/pkg/conf/islb"
 	"mgkj/pkg/db"
 	"mgkj/pkg/log"
 	lgr "mgkj/pkg/logger"
 	islb "mgkj/pkg/node/islb"
-	"mgkj/pkg/server"
 	"mgkj/util"
 )
 
@@ -42,9 +42,9 @@ func main() {
 	g := httpserver.Group("/api/v1", nil, nil)
 	g.Post("/probe", probe, nil)
 
-	serviceNode := server.NewServiceNode(util.ProcessUrlString(conf.Etcd.Addrs), conf.Global.Ndc, conf.Global.Nid, conf.Global.Name, conf.Global.Nip)
+	serviceNode := dis.NewServiceNode(util.ProcessUrlString(conf.Etcd.Addrs), conf.Global.Ndc, conf.Global.Nid, conf.Global.Name, conf.Global.Nip)
 	serviceNode.RegisterNode()
-	serviceWatcher := server.NewServiceWatcher(util.ProcessUrlString(conf.Etcd.Addrs))
+	serviceWatcher := dis.NewServiceWatcher(util.ProcessUrlString(conf.Etcd.Addrs))
 	config := db.Config{
 		Addrs: conf.Redis.Addrs,
 		Pwd:   conf.Redis.Pwd,

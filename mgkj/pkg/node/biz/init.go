@@ -1,10 +1,10 @@
 package biz
 
 import (
+	dis "mgkj/infra/discovery"
 	"mgkj/pkg/log"
 	lgr "mgkj/pkg/logger"
 	"mgkj/pkg/proto"
-	"mgkj/pkg/server"
 	"mgkj/pkg/ws"
 	"mgkj/util"
 
@@ -14,13 +14,13 @@ import (
 var (
 	logger *lgr.Logger
 	nats   *nprotoo.NatsProtoo
-	node   *server.ServiceNode
-	watch  *server.ServiceWatcher
+	node   *dis.ServiceNode
+	watch  *dis.ServiceWatcher
 	rpcs   = make(map[string]*nprotoo.Requestor)
 )
 
 // Init 初始化服务
-func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, natsURL string, l *lgr.Logger) {
+func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL string, l *lgr.Logger) {
 	node = serviceNode
 	watch = ServiceWatcher
 	nats = nprotoo.NewNatsProtoo(util.GenerateNatsUrlString(natsURL))
@@ -42,27 +42,27 @@ func Close() {
 }
 
 // WatchServiceCallBack 查看所有的Node节点
-func WatchServiceCallBack(state server.NodeStateType, node server.Node) {
-	if state == server.ServerUp {
+func WatchServiceCallBack(state dis.NodeStateType, node dis.Node) {
+	if state == dis.ServerUp {
 		// 判断是否广播节点
 		if node.Name == "islb" || node.Name == "sfu" {
-			eventID := server.GetEventChannel(node)
+			eventID := dis.GetEventChannel(node)
 			nats.OnBroadcast(eventID, handleBroadcast)
 		}
 
 		id := node.Nid
 		_, found := rpcs[id]
 		if !found {
-			rpcID := server.GetRPCChannel(node)
+			rpcID := dis.GetRPCChannel(node)
 			rpcs[id] = nats.NewRequestor(rpcID)
 		}
-	} else if state == server.ServerDown {
+	} else if state == dis.ServerDown {
 		delete(rpcs, node.Nid)
 	}
 }
 
 // FindIslbNode 查询全局的可用的islb节点
-func FindIslbNode() *server.Node {
+func FindIslbNode() *dis.Node {
 	servers, find := watch.GetNodes("islb")
 	if find {
 		for _, node := range servers {
@@ -73,7 +73,7 @@ func FindIslbNode() *server.Node {
 }
 
 // FindSfuNodeByID 查询指定区域下的可用的sfu节点
-func FindSfuNodeByID(nid string) *server.Node {
+func FindSfuNodeByID(nid string) *dis.Node {
 	sfu, find := watch.GetNodeByID(nid)
 	if find {
 		return sfu
@@ -82,7 +82,7 @@ func FindSfuNodeByID(nid string) *server.Node {
 }
 
 // FindSfuNodeByPayload 查询指定区域下的可用的sfu节点
-func FindSfuNodeByPayload() *server.Node {
+func FindSfuNodeByPayload() *dis.Node {
 	sfu, find := watch.GetNodeByPayload(node.NodeInfo().Ndc, "sfu")
 	if find {
 		return sfu
@@ -91,7 +91,7 @@ func FindSfuNodeByPayload() *server.Node {
 }
 
 // FindSfuNodeByMid 根据mid向islb查询指定的sfu节点
-func FindSfuNodeByMid(rid, mid string) *server.Node {
+func FindSfuNodeByMid(rid, mid string) *dis.Node {
 	islb := FindIslbNode()
 	if islb == nil {
 		log.Errorf("FindSfuNodeByMid islb not found")
@@ -113,7 +113,7 @@ func FindSfuNodeByMid(rid, mid string) *server.Node {
 
 	log.Infof("FindSfuNodeByMid resp ==> %v", resp)
 
-	var sfu *server.Node
+	var sfu *dis.Node
 	nid := util.Val(resp, "nid")
 	if nid != "" {
 		sfu = FindSfuNodeByID(nid)
@@ -191,7 +191,7 @@ func FindPeerIsLive(rid, uid string) bool {
 }
 
 // findIssrNode 查询全局的可用的Issr节点
-func findIssrNode() *server.Node {
+func findIssrNode() *dis.Node {
 	servers, find := watch.GetNodes("issr")
 	if find {
 		for _, node := range servers {

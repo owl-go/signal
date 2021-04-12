@@ -6,11 +6,11 @@ import (
 	_ "net/http/pprof"
 	"strconv"
 
+	dis "mgkj/infra/discovery"
 	h "mgkj/infra/http"
 	conf "mgkj/pkg/conf/dist"
 	"mgkj/pkg/log"
 	"mgkj/pkg/node/dist"
-	"mgkj/pkg/server"
 	"mgkj/util"
 )
 
@@ -34,9 +34,9 @@ func main() {
 	g := httpserver.Group("/api/v1", nil, nil)
 	g.Post("/probe", probe, nil)
 
-	serviceNode := server.NewServiceNode(util.ProcessUrlString(conf.Etcd.Addrs), conf.Global.Ndc, conf.Global.Nid, conf.Global.Name, conf.Global.Nip)
+	serviceNode := dis.NewServiceNode(util.ProcessUrlString(conf.Etcd.Addrs), conf.Global.Ndc, conf.Global.Nid, conf.Global.Name, conf.Global.Nip)
 	serviceNode.RegisterNode()
-	serviceWatcher := server.NewServiceWatcher(util.ProcessUrlString(conf.Etcd.Addrs))
+	serviceWatcher := dis.NewServiceWatcher(util.ProcessUrlString(conf.Etcd.Addrs))
 	dist.Init(serviceNode, serviceWatcher, conf.Nats.URL)
 	dist.InitCallServer(conf.Signal.Host, conf.Signal.Port, conf.Signal.Cert, conf.Signal.Key)
 

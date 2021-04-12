@@ -1,10 +1,10 @@
 package sfu
 
 import (
+	dis "mgkj/infra/discovery"
 	lgr "mgkj/pkg/logger"
 	"mgkj/pkg/proto"
 	"mgkj/pkg/rtc"
-	"mgkj/pkg/server"
 	"mgkj/util"
 	"sync"
 	"time"
@@ -20,13 +20,13 @@ var (
 	logger      *lgr.Logger
 	protoo      *nprotoo.NatsProtoo
 	broadcaster *nprotoo.Broadcaster
-	node        *server.ServiceNode
-	watch       *server.ServiceWatcher
+	node        *dis.ServiceNode
+	watch       *dis.ServiceWatcher
 	routersLock sync.RWMutex
 )
 
 // Init 初始化服务
-func Init(serviceNode *server.ServiceNode, ServiceWatcher *server.ServiceWatcher, natsURL string, l *lgr.Logger) {
+func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL string, l *lgr.Logger) {
 	// 赋值
 	logger = l
 	node = serviceNode
