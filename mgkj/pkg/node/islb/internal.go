@@ -61,6 +61,8 @@ func handleRPCRequest(rpcID string) {
 				result, err = getPeerLive(data)
 			case proto.IssrToIslbReportStreamState:
 				result, err = reportStreamState(data)
+			case proto.BizToIslbListusers:
+				result, err = listusers(data)
 			}
 			if err != nil {
 				reject(err.Code, err.Reason)
@@ -426,4 +428,30 @@ func reportStreamState(data map[string]interface{}) (map[string]interface{}, *np
 	} else {
 		return util.Map(), nil
 	}
+}
+
+func listusers(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
+	rid := util.Val(data, "rid")
+	uid := util.Val(data, "uid")
+	if rid == "" {
+		return nil, &nprotoo.Error{Code: -1, Reason: "rid can't be empty"}
+	}
+	if uid == "" {
+		return nil, &nprotoo.Error{Code: -1, Reason: "uid can't be empty"}
+	}
+
+	users := make([]map[string]interface{}, 0)
+
+	uKey := "/user/rid/" + rid + "/uid/*"
+	allkeys := redis.Keys(uKey)
+	for _, key := range allkeys {
+		id := strings.Split(key, "/")[5]
+		if id == uid {
+			continue
+		}
+		userinfo := redis.Get(key)
+		user := util.Map("uid", id, "info", userinfo)
+		users = append(users, user)
+	}
+	return util.Map("users", users), nil
 }

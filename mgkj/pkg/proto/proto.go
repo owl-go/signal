@@ -73,6 +73,8 @@ const (
 	ClientToBizTrickleICE = "trickle"
 	// ClientToBizBroadcast C->Biz 发送广播
 	ClientToBizBroadcast = "broadcast"
+	//ClientToBizListusers C->Biz 列出其他所有用户信息
+	ClientToBizListusers = "listusers"
 
 	// BizToClientOnJoin biz->C 有人加入房间
 	BizToClientOnJoin = "peer-join"
@@ -123,6 +125,8 @@ const (
 	BizToIslbKeepLive = ClientToBizKeepAlive
 	// BizToIslbGetSfuInfo biz->islb 根据mid查询对应的sfu
 	BizToIslbGetSfuInfo = "getSfuInfo"
+	//BizToIslbListusers biz->islb 列出其他所有用户信息
+	BizToIslbListusers = ClientToBizListusers
 	// IslbToBizGetSfuInfo islb->biz 返回mid对应的sfu
 	IslbToBizGetSfuInfo = BizToIslbGetSfuInfo
 	// BizToIslbGetMediaPubs biz->islb 获取房间内所有的发布流

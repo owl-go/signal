@@ -30,6 +30,8 @@ func Entry(method string, peer *ws.Peer, msg map[string]interface{}, accept ws.A
 		trickle(peer, msg, accept, reject)
 	case proto.ClientToBizBroadcast:
 		broadcast(peer, msg, accept, reject)
+	case proto.ClientToBizListusers:
+		listusers(peer, msg, accept, reject)
 	default:
 		ws.DefaultReject(codeUnknownErr, codeStr(codeUnknownErr))
 	}
@@ -65,7 +67,6 @@ func join(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 	}
 
 	// 删除以前加入过的房间数据
-	find := false
 	rpc, find := rpcs[islb.Nid]
 	if !find {
 		logger.Errorf("biz.join islb rpc not found", "uid", uid, "rid", rid)
@@ -86,8 +87,17 @@ func join(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 	rpc.SyncRequest(proto.BizToIslbOnJoin, util.Map("rid", rid, "uid", uid, "info", info))
 	// 查询房间存在的发布流
 	FindMediaPubs(peer, rid)
+
+	resp, err := rpc.SyncRequest(proto.BizToIslbListusers, util.Map("rid", rid, "uid", uid))
+	if err != nil {
+		logger.Errorf(fmt.Sprintf("biz.listusers request islb err=%s", err.Reason), "rid", rid, "uid", uid)
+		reject(err.Code, err.Reason)
+	}
+
+	result := util.Map("users", resp["users"])
+
 	// resp
-	accept(emptyMap)
+	accept(result)
 }
 
 /*
@@ -119,7 +129,6 @@ func leave(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reje
 		return
 	}
 
-	find := false
 	rpc, find := rpcs[islb.Nid]
 	if !find {
 		logger.Errorf("biz.leave islb rpc not found", "uid", uid)
@@ -166,7 +175,6 @@ func keepalive(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 		return
 	}
 
-	find := false
 	rpc, find := rpcs[islb.Nid]
 	if !find {
 		logger.Errorf("biz.keepalive islb rpc not found", "uid", uid, "rid", rid)
@@ -222,7 +230,6 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 		return
 	}
 
-	find := false
 	rpcSfu, find := rpcs[sfu.Nid]
 	if !find {
 		logger.Errorf("biz.publish sfu rpc not found", "uid", uid, "rid", rid)
@@ -262,7 +269,6 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 		return
 	}
 
-	find = false
 	rpcIslb, find := rpcs[islb.Nid]
 	if !find {
 		logger.Errorf("biz.publish islb rpc not found", "uid", uid, "rid", rid, "mid", mid)
@@ -314,7 +320,6 @@ func unpublish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 		return
 	}
 
-	find := false
 	rpcSfu, find := rpcs[sfu.Nid]
 	if !find {
 		logger.Errorf("biz.unpublish sfu rpc not found", "uid", uid, "rid", rid, "mid", mid)
@@ -332,7 +337,6 @@ func unpublish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 		return
 	}
 
-	find = false
 	rpcIslb, find := rpcs[islb.Nid]
 	if !find {
 		logger.Errorf("biz.unpublish islb rpc not found", "uid", uid, "rid", rid, "mid", mid)
@@ -397,7 +401,6 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 		return
 	}
 
-	find := false
 	rpcSfu, find := rpcs[sfu.Nid]
 	if !find {
 		logger.Errorf("biz.subscribe sfu rpc not found", "uid", uid, "rid", rid, "mid", mid)
@@ -483,7 +486,6 @@ func unsubscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc
 		return
 	}
 
-	find := false
 	rpcSfu, find := rpcs[sfu.Nid]
 	if !find {
 		logger.Errorf("biz.unsubscribe sfu rpc not found", "uid", uid, "rid", rid, "sid", mid)
@@ -586,7 +588,6 @@ func broadcast(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 		return
 	}
 
-	find := false
 	rpcIslb, find := rpcs[islb.Nid]
 	if !find {
 		logger.Errorf("biz.broadcast islb rpc not found", "uid", uid, "rid", rid)
@@ -597,4 +598,37 @@ func broadcast(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	rpcIslb.AsyncRequest(proto.BizToIslbBroadcast, util.Map("rid", rid, "uid", uid, "data", msg["data"]))
 	// resp
 	accept(emptyMap)
+}
+
+func listusers(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
+
+	logger.Infof(fmt.Sprintf("biz.listusers uid=%s,msg=%v", peer.ID(), msg), "uid", peer.ID())
+
+	if invalid(msg, "rid", reject) {
+		return
+	}
+	uid := peer.ID()
+	rid := util.Val(msg, "rid")
+
+	// 查询islb节点
+	islb := FindIslbNode()
+	if islb == nil {
+		logger.Errorf("biz.broadcast islb node not found", "uid", uid, "rid", rid)
+		reject(codeIslbErr, codeStr(codeIslbErr))
+		return
+	}
+
+	rpcIslb, find := rpcs[islb.Nid]
+	if !find {
+		logger.Errorf("biz.broadcast islb rpc not found", "uid", uid, "rid", rid)
+		reject(codeIslbRpcErr, codeStr(codeIslbRpcErr))
+		return
+	}
+	resp, err := rpcIslb.SyncRequest(proto.BizToIslbListusers, util.Map("rid", rid, "uid", uid))
+	if err != nil {
+		logger.Errorf(fmt.Sprintf("biz.listusers request islb err=%s", err.Reason), "rid", rid, "uid", uid)
+		reject(err.Code, err.Reason)
+	}
+	result := util.Map("users", resp["users"])
+	accept(result)
 }
