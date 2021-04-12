@@ -278,9 +278,9 @@ func (l *Logger) Send(args ...interface{}) string {
 		}
 	}
 	data, _ := json.Marshal(options)
-
-	l.factory.OutPut(string(data)) //将日志输出
-
+	if l.factory != nil {
+		l.factory.OutPut(string(data)) //将日志输出
+	}
 	return string(data)
 }
 
