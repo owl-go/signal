@@ -29,10 +29,6 @@ output.elasticsearch: #输出到elasticsearch
   # Array of hosts to connect to.
   hosts: [ "localhost:9200" ]
   indices:
-#    - index: "system_message"
-#      when.contains:
-#        fields:
-#          index: 'system_message'
     - index: "logsvr"
       when.contains:
         fields:
