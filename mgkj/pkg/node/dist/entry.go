@@ -45,7 +45,6 @@ func login(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reje
 		return
 	}
 
-	find := false
 	rpc, find := rpcs[islb.Nid]
 	if !find {
 		log.Errorf("islb rpc not found")
@@ -78,7 +77,6 @@ func logout(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rej
 		return
 	}
 
-	find := false
 	rpc, find := rpcs[islb.Nid]
 	if !find {
 		log.Errorf("islb rpc not found")
@@ -111,7 +109,6 @@ func heartbeat(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 		return
 	}
 
-	find := false
 	rpc, find := rpcs[islb.Nid]
 	if !find {
 		log.Errorf("islb rpc not found")
@@ -161,7 +158,6 @@ func call(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 		return
 	}
 
-	find := false
 	rpc, find := rpcs[islb.Nid]
 	if !find {
 		log.Errorf("islb rpc not found")
@@ -176,27 +172,20 @@ func call(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 		callee := calleer.(string)
 		resp, err := rpc.SyncRequest(proto.DistToIslbPeerInfo, util.Map("uid", callee))
 		if err != nil {
+			log.Errorf("dist.call request islb err=%s", err.Reason)
+			reject(err.Code, err.Reason)
 			return
 		}
-		/* "method", proto.IslbToDistPeerInfo, "errorCode", 0, "nid", dist */
-		/* "method", proto.IslbToDistPeerInfo, "errorCode", 1 */
-		nErr := int(resp["errorCode"].(float64))
-		if nErr == 0 {
-			// 获取节点
-			nid := resp["nid"].(string)
-			dist := FindDistNodeByID(nid)
-			if dist != nil {
-				find := false
-				rpc, find := rpcs[dist.Nid]
-				if !find {
-					nCount = nCount + 1
-					peersTmp = append(peersTmp, callee)
-				} else {
-					rpc.AsyncRequest(proto.DistToDistCall, util.Map("caller", caller, "callee", callee, "rid", rid, "nid", node.NodeInfo().Nid, "type", ctype, "peers", peers, "isGroup", isGroup))
-				}
-			} else {
+		// 获取节点
+		nid := resp["nid"].(string)
+		dist := FindDistNodeByID(nid)
+		if dist != nil {
+			rpc, find := rpcs[dist.Nid]
+			if !find {
 				nCount = nCount + 1
 				peersTmp = append(peersTmp, callee)
+			} else {
+				rpc.AsyncRequest(proto.DistToDistCall, util.Map("caller", caller, "callee", callee, "rid", rid, "nid", node.NodeInfo().Nid, "type", ctype, "peers", peers, "isGroup", isGroup))
 			}
 		} else {
 			nCount = nCount + 1
@@ -244,7 +233,6 @@ func acceptcall(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc,
 		return
 	}
 
-	find := false
 	rpc, find := rpcs[dist.Nid]
 	if !find {
 		log.Errorf("dist rpc not found")
@@ -292,7 +280,6 @@ func rejectcall(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc,
 		return
 	}
 
-	find := false
 	rpc, find := rpcs[dist.Nid]
 	if !find {
 		log.Errorf("dist rpc not found")

@@ -138,10 +138,9 @@ func getPeerinfo(data map[string]interface{}) (map[string]interface{}, *nprotoo.
 	dist := redis.Get(uKey)
 	//resp := make(map[string]interface{})
 	if dist == "" {
-		resp := util.Map("errorCode", 1)
-		return resp, nil
+		return nil, &nprotoo.Error{Code: -1, Reason: "dist node can't found"}
 	} else {
-		resp := util.Map("errorCode", 0, "nid", dist)
+		resp := util.Map("nid", dist)
 		return resp, nil
 	}
 }
