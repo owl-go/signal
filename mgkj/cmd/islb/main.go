@@ -9,8 +9,8 @@ import (
 
 	dis "mgkj/infra/discovery"
 	h "mgkj/infra/http"
+	db "mgkj/infra/redis"
 	conf "mgkj/pkg/conf/islb"
-	"mgkj/pkg/db"
 	"mgkj/pkg/log"
 	lgr "mgkj/pkg/logger"
 	islb "mgkj/pkg/node/islb"

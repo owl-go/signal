@@ -4,7 +4,7 @@ import (
 	"time"
 
 	dis "mgkj/infra/discovery"
-	"mgkj/pkg/db"
+	db "mgkj/infra/redis"
 	lgr "mgkj/pkg/logger"
 	"mgkj/util"
 

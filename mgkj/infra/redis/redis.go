@@ -3,9 +3,9 @@ package db
 import (
 	"time"
 
-	"mgkj/pkg/log"
+	"log"
 
-	"github.com/go-redis/redis"
+	db "github.com/go-redis/redis"
 )
 
 // Config Redis配置对象
@@ -17,8 +17,8 @@ type Config struct {
 
 // Redis Redis对象
 type Redis struct {
-	cluster     *redis.ClusterClient
-	single      *redis.Client
+	cluster     *db.ClusterClient
+	single      *db.Client
 	clusterMode bool
 }
 
@@ -30,8 +30,8 @@ func NewRedis(c Config) *Redis {
 
 	r := &Redis{}
 	if len(c.Addrs) == 1 {
-		r.single = redis.NewClient(
-			&redis.Options{
+		r.single = db.NewClient(
+			&db.Options{
 				Addr:         c.Addrs[0], // use default Addr
 				Password:     c.Pwd,      // no password set
 				DB:           c.DB,       // use default DB
@@ -40,7 +40,7 @@ func NewRedis(c Config) *Redis {
 				WriteTimeout: 5 * time.Second,
 			})
 		if err := r.single.Ping().Err(); err != nil {
-			log.Errorf(err.Error())
+			log.Fatalf(err.Error())
 			return nil
 		}
 		r.clusterMode = false
@@ -48,8 +48,8 @@ func NewRedis(c Config) *Redis {
 	}
 
 	// 集群对象赋值
-	r.cluster = redis.NewClusterClient(
-		&redis.ClusterOptions{
+	r.cluster = db.NewClusterClient(
+		&db.ClusterOptions{
 			Addrs:        c.Addrs,
 			Password:     c.Pwd,
 			DialTimeout:  3 * time.Second,
@@ -57,7 +57,7 @@ func NewRedis(c Config) *Redis {
 			WriteTimeout: 5 * time.Second,
 		})
 	if err := r.cluster.Ping().Err(); err != nil {
-		log.Errorf(err.Error())
+		log.Fatalf(err.Error())
 	}
 
 	r.clusterMode = true
