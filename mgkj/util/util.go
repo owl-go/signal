@@ -7,14 +7,14 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"mgkj/pkg/log"
+	"log"
 )
 
 // MarshalStr 将map转换成string
 func MarshalStr(m map[string]string) string {
 	byt, err := json.Marshal(m)
 	if err != nil {
-		log.Errorf(err.Error())
+		log.Printf(err.Error())
 		return ""
 	}
 	return string(byt)
@@ -24,7 +24,7 @@ func MarshalStr(m map[string]string) string {
 func Marshal(m map[string]interface{}) string {
 	byt, err := json.Marshal(m)
 	if err != nil {
-		log.Errorf(err.Error())
+		log.Printf(err.Error())
 		return ""
 	}
 	return string(byt)
@@ -45,7 +45,7 @@ func Val(msg map[string]interface{}, key string) string {
 	case map[string]interface{}:
 		return Marshal(val.(map[string]interface{}))
 	default:
-		log.Errorf("util.Val val=%v", val)
+		log.Printf("util.Val val=%v", val)
 		return ""
 	}
 }
@@ -54,7 +54,7 @@ func Val(msg map[string]interface{}, key string) string {
 func Unmarshal(str string) map[string]interface{} {
 	var data map[string]interface{}
 	if err := json.Unmarshal([]byte(str), &data); err != nil {
-		log.Errorf(err.Error())
+		log.Printf(err.Error())
 		return data
 	}
 	return data
@@ -101,8 +101,8 @@ func RandStr(l int) string {
 func Recover(flag string) {
 	_, _, l, _ := runtime.Caller(1)
 	if err := recover(); err != nil {
-		log.Errorf("[%s] Recover panic line => %v", flag, l)
-		log.Errorf("[%s] Recover err => %v", flag, err)
+		log.Printf("[%s] Recover panic line => %v", flag, l)
+		log.Printf("[%s] Recover err => %v", flag, err)
 		debug.PrintStack()
 	}
 }

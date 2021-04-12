@@ -40,7 +40,7 @@ func NewRedis(c Config) *Redis {
 				WriteTimeout: 5 * time.Second,
 			})
 		if err := r.single.Ping().Err(); err != nil {
-			log.Fatalf(err.Error())
+			log.Printf(err.Error())
 			return nil
 		}
 		r.clusterMode = false
@@ -57,7 +57,7 @@ func NewRedis(c Config) *Redis {
 			WriteTimeout: 5 * time.Second,
 		})
 	if err := r.cluster.Ping().Err(); err != nil {
-		log.Fatalf(err.Error())
+		log.Printf(err.Error())
 	}
 
 	r.clusterMode = true

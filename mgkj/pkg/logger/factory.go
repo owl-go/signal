@@ -49,7 +49,8 @@ func NewDefaultFactory(etcdUrls string, natsURL string) *DefaultFactory {
 
 	client, err := clientv3.New(conf)
 	if err != nil {
-		log.Fatal(err)
+		log.Printf(err.Error())
+		return nil
 	}
 	s.etcdClients = client
 	s.logSvrRpcs = make(map[string]*nprotoo.Requestor)
@@ -60,7 +61,8 @@ func NewDefaultFactory(etcdUrls string, natsURL string) *DefaultFactory {
 	resp, err := client.Get(ctx, "", clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortDescend))
 	if err != nil {
 		cancel()
-		log.Fatal(err)
+		log.Printf(err.Error())
+		return nil
 	}
 	cancel()
 	//fmt.Println("resp:", resp)
