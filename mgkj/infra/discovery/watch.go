@@ -1,4 +1,4 @@
-package server
+package discovery
 
 import (
 	"mgkj/pkg/log"
