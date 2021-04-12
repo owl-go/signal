@@ -35,7 +35,7 @@ func main() {
 		Database: conf.Mysql.Database,
 	}
 	logsvr.InitLogger(conf.Global.Ndc, conf.Global.Name, conf.Global.Nid, conf.Global.Nip, conf.Log.Level,
-		conf.Etcd.Addrs, conf.Nats.URL, true) //初始化logger
+		conf.Etcd.Addrs, conf.Nats.NatsLog, true) //初始化logger
 
 	logsvr.SetLoggerOutput(conf.Log.Filename, conf.Log.MaxSize, conf.Log.MaxAge, conf.Log.Maxbackups) //设置日志输出
 

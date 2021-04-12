@@ -21,7 +21,7 @@ func main() {
 	log.Init(conf.Log.Level)
 
 	//init logger
-	factory := lgr.NewDefaultFactory(conf.Etcd.Addrs, conf.Nats.URL)
+	factory := lgr.NewDefaultFactory(conf.Etcd.Addrs, conf.Nats.NatsLog)
 	l := lgr.NewLogger(conf.Global.Ndc, conf.Global.Name, conf.Global.Nid, conf.Global.Nip, "info", true, factory)
 
 	if conf.Global.Pprof != "" {

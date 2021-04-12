@@ -4,13 +4,13 @@ pprof = ":6065"
 # server
 dc = "shenzhen"
 name = "logsvr"
-nid = "shenzhen_logsvr_2"
+nid = "shenzhen_logsvr_1"
 nip = "192.168.1.72"
 
 [log]
 level = "info"
 filename = "./all.log"
-maxsize = 1
+maxsize = 500
 maxage = 5
 maxbackups = 30
 encoder = "json"
@@ -30,7 +30,7 @@ port = "8445"
 
 [nats]
 url = "127.0.0.1:4222"
-
+natslog = "127.0.0.1:4222"
 [mysql]
 host = "127.0.0.1"
 port = "3306"

@@ -55,7 +55,8 @@ type signal struct {
 }
 
 type nats struct {
-	URL string `mapstructure:"url"`
+	URL     string `mapstructure:"url"`
+	NatsLog string `mapstructure:"natslog"`
 }
 
 type probe struct {

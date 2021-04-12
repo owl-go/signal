@@ -64,7 +64,8 @@ type logsvr struct {
 }
 
 type nats struct {
-	URL string `mapstructure:"url"`
+	URL     string `mapstructure:"url"`
+	NatsLog string `mapstructure:"natslog"`
 }
 type mysql struct {
 	Host     string `mapstructure:"host"`

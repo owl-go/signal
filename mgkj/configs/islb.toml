@@ -15,7 +15,7 @@ addrs = "127.0.0.1:2379"
 
 [nats]
 url = "127.0.0.1:4222"
-
+natslog = "127.0.0.1:4222"
 [redis]
 addrs = [":6379"]
 password = ""
