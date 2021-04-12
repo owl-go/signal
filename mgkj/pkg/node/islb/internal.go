@@ -28,7 +28,7 @@ func handleRPCRequest(rpcID string) {
 			//log.Infof("method = %s, data = %v", method, data)
 
 			var result map[string]interface{}
-			err := util.NewNpError(400, fmt.Sprintf("Unkown method [%s]", method))
+			err := &nprotoo.Error{Code: 400, Reason: fmt.Sprintf("Unkown method [%s]", method)}
 
 			switch method {
 			/* 处理和dist服务器通信 */

@@ -19,7 +19,7 @@ func handleRPCRequest(rpcID string) {
 			method := request["method"].(string)
 			data := request["data"].(map[string]interface{})
 			var result map[string]interface{}
-			err := util.NewNpError(400, fmt.Sprintf("Unkown method [%s]", method))
+			err := &nprotoo.Error{Code: 400, Reason: fmt.Sprintf("Unkown method [%s]", method)}
 			switch method {
 			case proto.ToLogsvr:
 				logger.Print(data["data"].(string))
