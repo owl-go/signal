@@ -10,7 +10,7 @@ import (
 	"mgkj/pkg/proto"
 	"mgkj/pkg/rtc/plugins"
 	"mgkj/pkg/rtc/transport"
-	"mgkj/pkg/util"
+	"mgkj/util"
 
 	sdps "github.com/gearghost/sdp/transform"
 	"github.com/pion/rtcp"

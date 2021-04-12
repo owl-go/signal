@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"mgkj/pkg/proto"
-	"mgkj/pkg/util"
+	"mgkj/util"
 
 	nprotoo "github.com/gearghost/nats-protoo"
 	"go.etcd.io/etcd/clientv3"

@@ -13,7 +13,7 @@ import (
 	lgr "mgkj/pkg/logger"
 	"mgkj/pkg/node/sfu"
 	"mgkj/pkg/server"
-	"mgkj/pkg/util"
+	"mgkj/util"
 )
 
 func close() {

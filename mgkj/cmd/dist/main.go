@@ -11,7 +11,7 @@ import (
 	"mgkj/pkg/log"
 	"mgkj/pkg/node/dist"
 	"mgkj/pkg/server"
-	"mgkj/pkg/util"
+	"mgkj/util"
 )
 
 func close() {

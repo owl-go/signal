@@ -5,7 +5,7 @@ import (
 	"mgkj/pkg/log"
 	lgr "mgkj/pkg/logger"
 	"mgkj/pkg/server"
-	"mgkj/pkg/util"
+	"mgkj/util"
 
 	nprotoo "github.com/gearghost/nats-protoo"
 )

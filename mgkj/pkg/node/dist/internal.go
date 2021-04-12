@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"mgkj/pkg/log"
 	"mgkj/pkg/proto"
-	"mgkj/pkg/util"
+	"mgkj/util"
 
 	nprotoo "github.com/gearghost/nats-protoo"
 )

@@ -13,7 +13,7 @@ import (
 	lgr "mgkj/pkg/logger"
 	issr "mgkj/pkg/node/issr"
 	"mgkj/pkg/server"
-	"mgkj/pkg/util"
+	"mgkj/util"
 )
 
 func main() {

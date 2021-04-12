@@ -2,7 +2,7 @@ package server
 
 import (
 	"encoding/json"
-	"mgkj/pkg/util"
+	"mgkj/util"
 )
 
 // NodeStateType 节点状态

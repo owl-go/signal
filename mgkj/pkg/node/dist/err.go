@@ -1,8 +1,8 @@
 package dist
 
 import (
-	"mgkj/pkg/util"
 	"mgkj/pkg/ws"
+	"mgkj/util"
 )
 
 const (

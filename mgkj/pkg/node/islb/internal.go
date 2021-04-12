@@ -8,7 +8,7 @@ import (
 	nprotoo "github.com/gearghost/nats-protoo"
 
 	"mgkj/pkg/proto"
-	"mgkj/pkg/util"
+	"mgkj/util"
 )
 
 // handleRPCRequest 接收消息处理

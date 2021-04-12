@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"mgkj/pkg/proto"
 	"mgkj/pkg/timing"
-	"mgkj/pkg/util"
 	"mgkj/pkg/ws"
+	"mgkj/util"
 	"sync"
 	"time"
 )

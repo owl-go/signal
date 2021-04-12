@@ -5,8 +5,8 @@ import (
 	"mgkj/pkg/proto"
 	reg "mgkj/pkg/server"
 	"mgkj/pkg/timing"
-	"mgkj/pkg/util"
 	"mgkj/pkg/ws"
+	"mgkj/util"
 )
 
 // Entry 信令处理

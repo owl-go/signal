@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"mgkj/pkg/log"
-	"mgkj/pkg/util"
 	"mgkj/pkg/ws"
+	"mgkj/util"
 
 	"github.com/gearghost/go-protoo/transport"
 )

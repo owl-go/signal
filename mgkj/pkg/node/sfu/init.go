@@ -5,7 +5,7 @@ import (
 	"mgkj/pkg/proto"
 	"mgkj/pkg/rtc"
 	"mgkj/pkg/server"
-	"mgkj/pkg/util"
+	"mgkj/util"
 	"sync"
 	"time"
 

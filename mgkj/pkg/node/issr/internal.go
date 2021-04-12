@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"mgkj/pkg/proto"
-	"mgkj/pkg/util"
+	"mgkj/util"
 	"time"
 
 	nprotoo "github.com/gearghost/nats-protoo"

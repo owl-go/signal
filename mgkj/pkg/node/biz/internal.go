@@ -3,7 +3,7 @@ package biz
 import (
 	"fmt"
 	"mgkj/pkg/proto"
-	"mgkj/pkg/util"
+	"mgkj/util"
 	"strings"
 )
 

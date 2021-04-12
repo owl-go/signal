@@ -6,7 +6,7 @@ import (
 	"mgkj/pkg/log"
 	logsvr "mgkj/pkg/node/logsvr"
 	"mgkj/pkg/server"
-	"mgkj/pkg/util"
+	"mgkj/util"
 	"net/http"
 	_ "net/http/pprof"
 )

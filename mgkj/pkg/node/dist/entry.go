@@ -3,8 +3,8 @@ package dist
 import (
 	"mgkj/pkg/log"
 	"mgkj/pkg/proto"
-	"mgkj/pkg/util"
 	"mgkj/pkg/ws"
+	"mgkj/util"
 )
 
 func Entry(method string, peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
