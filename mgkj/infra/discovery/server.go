@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"mgkj/pkg/log"
+	"log"
 )
 
 // ServiceNode 服务注册对象
@@ -74,10 +74,10 @@ func (serverNode *ServiceNode) keepRegistered(node Node) {
 	for {
 		err := serverNode.etcd.Keep(node.Nid, node.GetNodeValue())
 		if err != nil {
-			log.Errorf("keepRegistered err = %s", err)
+			log.Printf("keepRegistered err = %s", err)
 			time.Sleep(5 * time.Second)
 		} else {
-			log.Infof("Node [%s] keepRegistered success!", node.Nid)
+			log.Printf("Node [%s] keepRegistered success!", node.Nid)
 			return
 		}
 	}
@@ -88,10 +88,10 @@ func (serverNode *ServiceNode) updateRegistered(node Node) {
 	for {
 		err := serverNode.etcd.Update(node.Nid, node.GetNodeValue())
 		if err != nil {
-			log.Errorf("updateRegistered err = %s", err)
+			log.Printf("updateRegistered err = %s", err)
 			time.Sleep(5 * time.Second)
 		} else {
-			log.Infof("Node [%s] updateRegistered success!", node.Nid)
+			log.Printf("Node [%s] updateRegistered success!", node.Nid)
 			return
 		}
 	}

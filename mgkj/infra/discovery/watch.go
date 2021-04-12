@@ -1,7 +1,7 @@
 package discovery
 
 import (
-	"mgkj/pkg/log"
+	"log"
 	"strconv"
 	"sync"
 
@@ -29,7 +29,7 @@ func NewServiceWatcher(endpoints []string) *ServiceWatcher {
 		etcd:     watch,
 		callback: nil,
 	}
-	log.Infof("New Service Watcher: etcd => %v", endpoints)
+	log.Printf("New Service Watcher: etcd => %v", endpoints)
 	return serviceWatcher
 }
 
@@ -126,7 +126,7 @@ func (serviceWatcher *ServiceWatcher) WatchNode(ch clientv3.WatchChan) {
 						serviceWatcher.nodes[nid] = node
 						serviceWatcher.nodeLook.Unlock()
 
-						log.Infof("Node Up [%v]", node)
+						log.Printf("Node Up [%v]", node)
 						if serviceWatcher.callback != nil {
 							serviceWatcher.callback(ServerUp, node)
 						}
@@ -136,7 +136,7 @@ func (serviceWatcher *ServiceWatcher) WatchNode(ch clientv3.WatchChan) {
 					nid := string(ev.Kv.Key)
 					node, find := serviceWatcher.GetNodeByID(nid)
 					if find {
-						log.Infof("Node Down [%v]", node)
+						log.Printf("Node Down [%v]", node)
 						if serviceWatcher.callback != nil {
 							serviceWatcher.callback(ServerDown, *node)
 						}
@@ -159,7 +159,7 @@ func (serviceWatcher *ServiceWatcher) WatchServiceNode(prefix string, callback S
 func (serviceWatcher *ServiceWatcher) GetServiceNodes(prefix string) {
 	rsp, err := serviceWatcher.etcd.GetResponseByPrefix(prefix)
 	if err != nil {
-		log.Infof(err.Error())
+		log.Printf(err.Error())
 	}
 	for _, val := range rsp.Kvs {
 		nodeobj := Decode(val.Value)
@@ -175,7 +175,7 @@ func (serviceWatcher *ServiceWatcher) GetServiceNodes(prefix string) {
 			serviceWatcher.nodes[node.Nid] = node
 			serviceWatcher.nodeLook.Unlock()
 
-			log.Infof("find Node [%v]", node)
+			log.Printf("find Node [%v]", node)
 			if serviceWatcher.callback != nil {
 				serviceWatcher.callback(ServerUp, node)
 			}

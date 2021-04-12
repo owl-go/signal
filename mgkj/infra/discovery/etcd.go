@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"mgkj/pkg/log"
+	"log"
 
 	"go.etcd.io/etcd/clientv3"
 )
@@ -37,7 +37,7 @@ func NewEtcd(endpoints []string) (*Etcd, error) {
 	})
 
 	if err != nil {
-		log.Errorf("newEtcd err=%v", err)
+		log.Printf("newEtcd err=%v", err)
 		return nil, err
 	}
 
@@ -52,17 +52,17 @@ func NewEtcd(endpoints []string) (*Etcd, error) {
 func (e *Etcd) Keep(key, value string) error {
 	resp, err := e.client.Grant(context.TODO(), defaultGrantTimeout)
 	if err != nil {
-		log.Errorf("Etcd Grant err = %s %v", key, err)
+		log.Printf("Etcd Grant err = %s %v", key, err)
 		return err
 	}
 	_, err = e.client.Put(context.TODO(), key, value, clientv3.WithLease(resp.ID))
 	if err != nil {
-		log.Errorf("Etcd Put err = %s %v", key, err)
+		log.Printf("Etcd Put err = %s %v", key, err)
 		return err
 	}
 	ch, err := e.client.KeepAlive(context.TODO(), resp.ID)
 	if err != nil {
-		log.Errorf("Etcd KeepAlive err = %s %v", key, err)
+		log.Printf("Etcd KeepAlive err = %s %v", key, err)
 		return err
 	}
 	go func() {
@@ -77,7 +77,7 @@ func (e *Etcd) Keep(key, value string) error {
 	e.liveKeyIDLock.Lock()
 	e.liveKeyID[key] = resp.ID
 	e.liveKeyIDLock.Unlock()
-	log.Infof("Etcd keep ok = %s %v", key, value)
+	log.Printf("Etcd keep ok = %s %v", key, value)
 	return nil
 }
 
@@ -91,7 +91,7 @@ func (e *Etcd) Update(key, value string) error {
 		// 出错就重新来keep
 		err = e.Keep(key, value)
 		if err != nil {
-			log.Errorf("Etcd Update err = %s %s %v", key, value, err)
+			log.Printf("Etcd Update err = %s %s %v", key, value, err)
 		}
 	}
 	return err

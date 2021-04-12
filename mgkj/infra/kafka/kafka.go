@@ -2,7 +2,7 @@ package kafka
 
 import (
 	"errors"
-	"mgkj/pkg/log"
+	"log"
 	"strings"
 
 	"github.com/Shopify/sarama"
@@ -55,10 +55,10 @@ func (s *SyncProducer) Produce(topic, message string) error {
 	msg.Value = sarama.StringEncoder(message)
 	pid, offset, err := s.SendMessage(msg)
 	if err != nil {
-		log.Errorf("send message failed,err => %v", err)
+		log.Printf("send message failed,err => %v", err)
 		return err
 	}
-	log.Infof("sent success, pid:%v offset:%v", pid, offset)
+	log.Printf("sent success, pid:%v offset:%v", pid, offset)
 	return nil
 }
 
