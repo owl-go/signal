@@ -8,8 +8,6 @@ import (
 	"strings"
 
 	"mgkj/pkg/log"
-
-	"github.com/pion/webrtc/v2"
 )
 
 // MarshalStr 将map转换成string
@@ -107,16 +105,6 @@ func Recover(flag string) {
 		log.Errorf("[%s] Recover err => %v", flag, err)
 		debug.PrintStack()
 	}
-}
-
-// IsVideo 判断pt是否是视频
-func IsVideo(pt uint8) bool {
-	if pt == webrtc.DefaultPayloadTypeVP8 ||
-		pt == webrtc.DefaultPayloadTypeVP9 ||
-		pt == webrtc.DefaultPayloadTypeH264 {
-		return true
-	}
-	return false
 }
 
 func ProcessUrlString(url string) []string {

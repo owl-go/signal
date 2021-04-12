@@ -7,10 +7,10 @@ import (
 
 	"mgkj/pkg/log"
 	"mgkj/pkg/rtc/transport"
-	"mgkj/pkg/util"
 
 	"github.com/pion/rtcp"
 	"github.com/pion/rtp"
+	"github.com/pion/webrtc/v2"
 )
 
 const (
@@ -132,7 +132,7 @@ func (j *JitterBuffer) WriteRTP(pkt *rtp.Packet) error {
 	pt := pkt.PayloadType
 
 	// only video, because opus doesn't need nack, use fec: `a=fmtp:111 minptime=10;useinbandfec=1`
-	if util.IsVideo(pt) {
+	if IsVideo(pt) {
 		buffer := j.GetBuffer(ssrc)
 		if buffer == nil {
 			buffer = j.AddBuffer(ssrc)
@@ -187,7 +187,7 @@ func (j *JitterBuffer) rembLoop() {
 			time.Sleep(time.Duration(j.config.REMBCycle) * time.Second)
 			for _, buffer := range j.GetBuffers() {
 				// only calc video recently
-				if !util.IsVideo(buffer.GetPayloadType()) {
+				if !IsVideo(buffer.GetPayloadType()) {
 					continue
 				}
 				j.lostRate, j.bandwidth = buffer.GetLostRateBandwidth(uint64(j.config.REMBCycle))
@@ -239,7 +239,7 @@ func (j *JitterBuffer) pliLoop() {
 			}
 			time.Sleep(time.Duration(j.config.PLICycle) * time.Second)
 			for _, buffer := range j.GetBuffers() {
-				if util.IsVideo(buffer.GetPayloadType()) {
+				if IsVideo(buffer.GetPayloadType()) {
 					pli := &rtcp.PictureLossIndication{SenderSSRC: buffer.GetSSRC(), MediaSSRC: buffer.GetSSRC()}
 					if j.Pub == nil {
 						continue
@@ -282,4 +282,14 @@ func (j *JitterBuffer) Stat() string {
 		out += fmt.Sprintf("ssrc:%d payload:%d | lostRate:%.2f | bandwidth:%dkbps | %s", ssrc, buffer.GetPayloadType(), j.lostRate, j.bandwidth, buffer.GetStat())
 	}
 	return out
+}
+
+//IsVideo
+func IsVideo(pt uint8) bool {
+	if pt == webrtc.DefaultPayloadTypeVP8 ||
+		pt == webrtc.DefaultPayloadTypeVP9 ||
+		pt == webrtc.DefaultPayloadTypeH264 {
+		return true
+	}
+	return false
 }
