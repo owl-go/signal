@@ -3,7 +3,7 @@ package logsvr
 import (
 	"fmt"
 	dis "mgkj/infra/discovery"
-	"mgkj/pkg/db"
+	db "mgkj/infra/mysql"
 	"mgkj/pkg/log"
 	lgr "mgkj/pkg/logger"
 

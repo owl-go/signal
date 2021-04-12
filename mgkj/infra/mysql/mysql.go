@@ -1,10 +1,10 @@
-package db
+package mysql
 
 import (
 	"database/sql"
 	"fmt"
 
-	"mgkj/pkg/log"
+	"log"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -36,11 +36,11 @@ func NewMysqlDriver(c MysqlConfig) *MysqlDriver {
 	}
 	dbConn, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/mysql", dbDriver.Username, dbDriver.Password, dbDriver.Host, dbDriver.Port))
 	if err != nil {
-		log.Errorf(err.Error())
+		log.Fatalf(err.Error())
 	}
 	_, err = dbConn.Exec("CREATE DATABASE IF NOT EXISTS " + dbDriver.Database + " DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_general_ci;")
 	if err != nil {
-		log.Errorf(err.Error())
+		log.Fatalf(err.Error())
 
 	}
 	dbDriver.Open()
@@ -65,7 +65,7 @@ func (dbDriver *MysqlDriver) Close() {
 func (dbDriver *MysqlDriver) Insert(table string, keys []string, values [][]interface{}) (int64, error) {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Errorf(err.(string))
+			log.Fatalf(err.(string))
 		}
 	}()
 	preSql := "INSERT INTO  `" + table + "` "
@@ -121,7 +121,7 @@ func (dbDriver *MysqlDriver) Insert(table string, keys []string, values [][]inte
 func (dbDriver *MysqlDriver) Exec(sql string, args ...interface{}) (int64, error) {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Errorf(err.(string))
+			log.Fatalf(err.(string))
 		}
 	}()
 	smts, err := dbDriver.DbCon.Prepare(sql)
@@ -141,7 +141,7 @@ func (dbDriver *MysqlDriver) Exec(sql string, args ...interface{}) (int64, error
 func (dbDriver *MysqlDriver) FindOne(sql string, args ...interface{}) (row *sql.Row) {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Errorf(err.(string))
+			log.Fatalf(err.(string))
 		}
 	}()
 	row = dbDriver.DbCon.QueryRow(sql, args...)
@@ -152,7 +152,7 @@ func (dbDriver *MysqlDriver) FindOne(sql string, args ...interface{}) (row *sql.
 func (dbDriver *MysqlDriver) Find(sql string, args ...interface{}) (rows *sql.Rows, err error) {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Errorf(err.(string))
+			log.Fatalf(err.(string))
 		}
 	}()
 	rows, err = dbDriver.DbCon.Query(sql, args...)
@@ -163,7 +163,7 @@ func (dbDriver *MysqlDriver) Find(sql string, args ...interface{}) (rows *sql.Ro
 func (dbDriver *MysqlDriver) Delete(sql string, args ...interface{}) (int64, error) {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Errorf(err.(string))
+			log.Fatalf(err.(string))
 		}
 	}()
 	smts, err := dbDriver.DbCon.Prepare(sql)
@@ -184,7 +184,7 @@ func (dbDriver *MysqlDriver) Delete(sql string, args ...interface{}) (int64, err
 func (dbDriver *MysqlDriver) Update(sql string, args ...interface{}) (int64, error) {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Errorf(err.(string))
+			log.Fatalf(err.(string))
 		}
 	}()
 	smts, err := dbDriver.DbCon.Prepare(sql)

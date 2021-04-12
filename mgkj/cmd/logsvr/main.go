@@ -2,8 +2,8 @@ package main
 
 import (
 	dis "mgkj/infra/discovery"
+	db "mgkj/infra/mysql"
 	conf "mgkj/pkg/conf/logsvr"
-	"mgkj/pkg/db"
 	"mgkj/pkg/log"
 	logsvr "mgkj/pkg/node/logsvr"
 	"mgkj/util"
