@@ -13,14 +13,14 @@
 # ============================== Filebeat inputs ===============================
 
 filebeat.inputs:
-#  - type: log
-#    tail_files: true
-#    enabled: true
-#    paths:
-#      - /var/log/messages*
-#    fields:
-#      index: "system_message"
-#    tags: [ "sys-msg" ]
+  #  - type: log
+  #    tail_files: true
+  #    enabled: true
+  #    paths:
+  #      - /var/log/messages*
+  #    fields:
+  #      index: "system_message"
+  #    tags: [ "sys-msg" ]
 
   - type: log
     tail_files: true
@@ -28,8 +28,8 @@ filebeat.inputs:
     paths:
       - /home/data/all.log
     fields:
-      index: "zap_test_info"
-    tags: [ "zap_test" ]
+      index: "logsvr"
+    tags: [ "log" ]
     json.keys_under_root: true
     json.overwrite_keys: true
     # Exclude lines. A list of regular expressions to match. It drops the lines that are
@@ -138,10 +138,10 @@ output.elasticsearch:
   # Array of hosts to connect to.
   hosts: [ "localhost:9200" ]
   indices:
-#    - index: "system_message"
-#      when.contains:
-#        fields:
-#          index: 'system_message'
+    #    - index: "system_message"
+    #      when.contains:
+    #        fields:
+    #          index: 'system_message'
     - index: "logsvr"
       when.contains:
         fields:
