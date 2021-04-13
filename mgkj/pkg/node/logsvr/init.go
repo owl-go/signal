@@ -62,6 +62,9 @@ func Close() {
 	if watch != nil {
 		watch.Close()
 	}
+	if esClient != nil {
+		esClient.Stop()
+	}
 }
 
 // WatchServiceCallBack 查看所有的Node节点

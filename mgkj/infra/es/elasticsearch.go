@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/olivere/elastic/v7"
-	"mgkj/util"
 	"strings"
+
+	"mgkj/util"
+
+	"github.com/olivere/elastic/v7"
 )
 
 type EsClient struct {

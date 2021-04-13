@@ -1,14 +1,15 @@
 package main
 
 import (
+	"mgkj/util"
+	"net/http"
+	_ "net/http/pprof"
+
 	dis "mgkj/infra/discovery"
 	db "mgkj/infra/mysql"
 	conf "mgkj/pkg/conf/logsvr"
 	"mgkj/pkg/log"
 	logsvr "mgkj/pkg/node/logsvr"
-	"mgkj/util"
-	"net/http"
-	_ "net/http/pprof"
 )
 
 func close() {
