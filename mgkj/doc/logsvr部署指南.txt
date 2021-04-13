@@ -6,34 +6,5 @@ maxsize = 1
 maxage = 5
 maxbackups = 30
 encoder = "json"
-2、docker 部署时需要将日志目录映射到主机目录上 /home/data
-3、filebeat安装和配置
-安装filebeat
-https://www.elastic.co/cn/downloads/beats/filebeat
-启动filebeat
-sudo ./filebeat -e -c filebeat.yml
-使用filebeat.yml文件
-filebeat.inputs:
- - type: log
-    tail_files: true
-    enabled: true
-    paths:
-      - /home/data/all.log #指定文件路径
-    fields:
-      index: "zap_test_info" #设置index
-    tags: [ "zap_test" ]
-    json.keys_under_root: true #json解析
-    json.overwrite_keys: true
-#output配置只能配置一个 elasticsearch或者logstash
-output.elasticsearch: #输出到elasticsearch
-  # Array of hosts to connect to.
-  hosts: [ "localhost:9200" ]
-  indices:
-    - index: "logsvr"
-      when.contains:
-        fields:
-          index: 'logsvr'
-#输出到logstash logstash需要配置beat监听端口
-output.logstash:
-  # The Logstash hosts
-  hosts: ["127.0.0.1:5044"]
+[elasticsearch] #增加了elasticsearch地址 多个地址用逗号分开
+url = "127.0.0.1:9200"
