@@ -128,3 +128,17 @@ func GenerateNatsUrlString(url string) string {
 	return result
 
 }
+func ProcessUrlStringWithHttp(url string) []string {
+	urls := strings.Split(url, ",")
+	for i, s := range urls {
+		urls[i] = "http://" + strings.TrimSpace(s)
+	}
+	return urls
+}
+func ProcessUrlStringWithHttps(url string) []string {
+	urls := strings.Split(url, ",")
+	for i, s := range urls {
+		urls[i] = "https://" + strings.TrimSpace(s)
+	}
+	return urls
+}

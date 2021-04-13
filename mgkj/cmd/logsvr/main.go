@@ -39,7 +39,7 @@ func main() {
 
 	logsvr.SetLoggerOutput(conf.Log.Filename, conf.Log.MaxSize, conf.Log.MaxAge, conf.Log.Maxbackups) //设置日志输出
 
-	logsvr.Init(serviceNode, serviceWatcher, conf.Nats.URL, config)
+	logsvr.Init(serviceNode, serviceWatcher, conf.Nats.URL, config, conf.Es.Url)
 
 	go logsvr.InitHttpServer(conf.LogSvr.Host, conf.LogSvr.Port, conf.LogSvr.Key, conf.LogSvr.Cert)
 	select {}

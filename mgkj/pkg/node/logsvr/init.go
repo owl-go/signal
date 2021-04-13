@@ -2,31 +2,33 @@ package logsvr
 
 import (
 	"fmt"
+	nprotoo "github.com/gearghost/nats-protoo"
+	"github.com/gin-gonic/gin"
 	dis "mgkj/infra/discovery"
+	es "mgkj/infra/es"
 	db "mgkj/infra/mysql"
 	"mgkj/pkg/log"
 	lgr "mgkj/pkg/logger"
-
-	nprotoo "github.com/gearghost/nats-protoo"
-	"github.com/gin-gonic/gin"
 )
 
 var (
-	nats   *nprotoo.NatsProtoo
-	rpcs   = make(map[string]*nprotoo.Requestor)
-	node   *dis.ServiceNode
-	watch  *dis.ServiceWatcher
-	mysql  *db.MysqlDriver
-	logger *lgr.Logger
+	nats     *nprotoo.NatsProtoo
+	rpcs     = make(map[string]*nprotoo.Requestor)
+	node     *dis.ServiceNode
+	watch    *dis.ServiceWatcher
+	mysql    *db.MysqlDriver
+	logger   *lgr.Logger
+	esClient *es.EsClient
 )
 
 // Init 初始化服务
-func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL string, config db.MysqlConfig) {
+func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL string, config db.MysqlConfig, esUrl string) {
 	node = serviceNode
 	watch = ServiceWatcher
 	nats = nprotoo.NewNatsProtoo(natsURL)
 	rpcs = make(map[string]*nprotoo.Requestor)
 	mysql = db.NewMysqlDriver(config)
+	esClient, _ = es.NewEsClient(esUrl)
 	go watch.WatchServiceNode("", WatchServiceCallBack)
 	handleRPCRequest(node.GetRPCChannel())
 

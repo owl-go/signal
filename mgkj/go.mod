@@ -16,6 +16,7 @@ require (
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/natefinch/lumberjack v2.0.0+incompatible
+	github.com/olivere/elastic/v7 v7.0.24
 	github.com/pion/ion-log v1.0.0
 	github.com/pion/rtcp v1.2.6
 	github.com/pion/rtp v1.6.2

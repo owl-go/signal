@@ -2,6 +2,7 @@ package logsvr
 
 import (
 	"fmt"
+	"time"
 
 	"mgkj/pkg/log"
 	"mgkj/pkg/proto"
@@ -22,7 +23,19 @@ func handleRPCRequest(rpcID string) {
 			err := &nprotoo.Error{Code: 400, Reason: fmt.Sprintf("Unkown method [%s]", method)}
 			switch method {
 			case proto.ToLogsvr:
-				logger.Print(data["data"].(string))
+				msg, ok := data["data"].(string)
+				if ok {
+					if esClient != nil {
+						index := fmt.Sprintf("logsvr-%s", time.Now().Format("2006-01-02"))
+						err := esClient.AddDoc(index, "", msg)
+						if err != nil {
+							log.Errorf(err.Error())
+						}
+					} else {
+						logger.Print(data["data"].(string))
+					}
+				}
+
 			default:
 				log.Warnf("logsvr.handleRPCMsgs invalid protocol method=%s", method)
 			}

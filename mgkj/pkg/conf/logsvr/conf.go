@@ -17,8 +17,8 @@ var (
 	// Etcd Etcd设置
 	Etcd = &cfg.Etcd
 	//日志收集服
-	LogSvr   = &cfg.LogSvr
-	TraceCfg = &cfg.TraceCfg
+	LogSvr = &cfg.LogSvr
+	Es     = &cfg.Es
 	// nats-server 消息中间件设置
 	Nats  = &cfg.Nats
 	Mysql = &cfg.Mysql
@@ -48,8 +48,8 @@ type log struct {
 	Encoder    string `mapstructure:"encoder"`
 }
 
-type opentracting struct {
-	HostPort string `mapstructure:"hostport"`
+type elasticsearch struct {
+	Url string `mapstructure:"url"`
 }
 
 type etcd struct {
@@ -76,14 +76,14 @@ type mysql struct {
 }
 
 type config struct {
-	Global   global       `mapstructure:"global"`
-	Log      log          `mapstructure:"log"`
-	TraceCfg opentracting `mapstructure:"opentracting"`
-	Etcd     etcd         `mapstructure:"etcd"`
-	LogSvr   logsvr       `mapstructure:"logsvr"`
-	Nats     nats         `mapstructure:"nats"`
-	Mysql    mysql        `mapstructure:"mysql"`
-	CfgFile  string
+	Global  global        `mapstructure:"global"`
+	Log     log           `mapstructure:"log"`
+	Es      elasticsearch `mapstructure:"elasticsearch"`
+	Etcd    etcd          `mapstructure:"etcd"`
+	LogSvr  logsvr        `mapstructure:"logsvr"`
+	Nats    nats          `mapstructure:"nats"`
+	Mysql   mysql         `mapstructure:"mysql"`
+	CfgFile string
 }
 
 func showHelp() {
