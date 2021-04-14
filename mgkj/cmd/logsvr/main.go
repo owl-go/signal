@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"mgkj/util"
 	"net/http"
 	_ "net/http/pprof"
+	"strconv"
 
 	dis "mgkj/infra/discovery"
+	h "mgkj/infra/http"
 	db "mgkj/infra/mysql"
 	conf "mgkj/pkg/conf/logsvr"
 	"mgkj/pkg/log"
@@ -25,6 +28,11 @@ func main() {
 			http.ListenAndServe(conf.Global.Pprof, nil)
 		}()
 	}
+	httpserver := h.Http{}
+	httpserver.Init(conf.Probe.Host, strconv.Itoa(conf.Probe.Port))
+	g := httpserver.Group("/api/v1", nil, nil)
+	g.Post("/probe", probe, nil)
+
 	serviceNode := dis.NewServiceNode(util.ProcessUrlString(conf.Etcd.Addrs), conf.Global.Ndc, conf.Global.Nid, conf.Global.Name, conf.Global.Nip)
 	serviceNode.RegisterNode()
 	serviceWatcher := dis.NewServiceWatcher(util.ProcessUrlString(conf.Etcd.Addrs))
@@ -40,9 +48,13 @@ func main() {
 
 	logsvr.SetLoggerOutput(conf.Log.Filename, conf.Log.MaxSize, conf.Log.MaxAge, conf.Log.Maxbackups) //设置日志输出
 
-	logsvr.Init(serviceNode, serviceWatcher, conf.Nats.URL, config, conf.Es.Url)
+	logsvr.Init(serviceNode, serviceWatcher, conf.Nats.URL, config, conf.Es.Url, conf.Log.Index)
 
 	go logsvr.InitHttpServer(conf.LogSvr.Host, conf.LogSvr.Port, conf.LogSvr.Key, conf.LogSvr.Cert)
 	select {}
 
+}
+
+func probe(ctx context.Context, w http.ResponseWriter, req *http.Request) {
+	w.Write([]byte("OK"))
 }

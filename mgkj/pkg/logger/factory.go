@@ -4,14 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"log"
-
 	"sync"
 	"time"
 
-	"mgkj/pkg/proto"
 	"mgkj/util"
 
-	"github.com/Shopify/sarama"
 	nprotoo "github.com/gearghost/nats-protoo"
 	"go.etcd.io/etcd/clientv3"
 )
@@ -58,12 +55,6 @@ func NewDefaultFactory(etcdUrls string, natsURL string) *DefaultFactory {
 	s.etcdClients = client
 	s.logSvrRpcs = make(map[string]*nprotoo.Requestor)
 	s.nats = nprotoo.NewNatsProtoo(util.GenerateNatsUrlString(natsURL))
-	config := sarama.NewConfig()
-	config.Producer.Return.Successes = true
-	config.Producer.RequiredAcks = sarama.WaitForAll
-	config.Producer.Partitioner = sarama.NewRandomPartitioner
-	config.Producer.Timeout = 5 * time.Second
-
 	//获取所有节点
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	resp, err := client.Get(ctx, "", clientv3.WithPrefix(), clientv3.WithSort(clientv3.SortByKey, clientv3.SortDescend))
@@ -159,7 +150,7 @@ func (s *DefaultFactory) getLogsvrNode() *nprotoo.Requestor {
 func (s *DefaultFactory) OutPut(msg string) {
 	nprotoo := s.getLogsvrNode()
 	if nprotoo != nil {
-		nprotoo.AsyncRequest(proto.ToLogsvr, util.Map("data", msg))
+		nprotoo.AsyncRequest("toLogsvr", util.Map("data", msg))
 	}
 }
 

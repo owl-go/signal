@@ -12,7 +12,7 @@ import (
 )
 
 // handleRPCMsgs 处理其他模块发送过来的消息
-func handleRPCRequest(rpcID string) {
+func handleRPCRequest(rpcID string, index string) {
 	log.Infof("handleRPCRequest: rpcID => [%v]", rpcID)
 	nats.OnRequest(rpcID, func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
 		go func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
@@ -26,8 +26,8 @@ func handleRPCRequest(rpcID string) {
 				msg, ok := data["data"].(string)
 				if ok {
 					if esClient != nil {
-						index := fmt.Sprintf("logsvr-%s", time.Now().Format("2006-01-02"))
-						err := esClient.AddDoc(index, "", msg)
+						docIndex := fmt.Sprintf("%s-%s", index, time.Now().Format("2006-01-02"))
+						err := esClient.AddDoc(docIndex, "", msg)
 						if err != nil {
 							log.Errorf(err.Error())
 							logger.Print(data["data"].(string))

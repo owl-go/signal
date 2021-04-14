@@ -24,7 +24,7 @@ var (
 )
 
 // Init 初始化服务
-func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL string, config db.MysqlConfig, esUrl string) {
+func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL string, config db.MysqlConfig, esUrl string, index string) {
 	node = serviceNode
 	watch = ServiceWatcher
 	nats = nprotoo.NewNatsProtoo(natsURL)
@@ -32,7 +32,7 @@ func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, nats
 	mysql = db.NewMysqlDriver(config)
 	esClient, _ = es.NewEsClient(esUrl)
 	go watch.WatchServiceNode("", WatchServiceCallBack)
-	handleRPCRequest(node.GetRPCChannel())
+	handleRPCRequest(node.GetRPCChannel(), index)
 
 }
 

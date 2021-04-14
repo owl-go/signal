@@ -22,6 +22,8 @@ var (
 	// nats-server 消息中间件设置
 	Nats  = &cfg.Nats
 	Mysql = &cfg.Mysql
+	// http探针
+	Probe = &cfg.Probe
 )
 
 func init() {
@@ -42,6 +44,7 @@ type global struct {
 type log struct {
 	Level      string `mapstructure:"level"`
 	Filename   string `mapstructure:"filename"`
+	Index      string `mapstructure:"index"`
 	MaxSize    int    `mapstructure:"maxsize"`
 	MaxAge     int    `mapstructure:"maxage"`
 	Maxbackups int    `mapstructure:"maxbackups"`
@@ -74,6 +77,12 @@ type mysql struct {
 	Password string `mapstructure:"password"`
 	Database string `mapstructure:"database"`
 }
+type probe struct {
+	Host string `mapstructure:"host"`
+	Port int    `mapstructure:"port"`
+	Cert string `mapstructure:"cert"`
+	Key  string `mapstructure:"key"`
+}
 
 type config struct {
 	Global  global        `mapstructure:"global"`
@@ -83,6 +92,7 @@ type config struct {
 	LogSvr  logsvr        `mapstructure:"logsvr"`
 	Nats    nats          `mapstructure:"nats"`
 	Mysql   mysql         `mapstructure:"mysql"`
+	Probe   probe         `mapstructure:"probe"`
 	CfgFile string
 }
 

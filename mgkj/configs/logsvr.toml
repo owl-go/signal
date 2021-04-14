@@ -10,6 +10,7 @@ nip = "192.168.1.72"
 [log]
 level = "info"
 filename = "./all.log"
+index = "logsvr-dev"
 maxsize = 500
 maxage = 5
 maxbackups = 30
@@ -37,3 +38,6 @@ port = "3306"
 username = "root"
 password = "123456"
 database = "logsvr"
+[probe]
+host = "0.0.0.0"
+port = "80"
