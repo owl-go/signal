@@ -150,7 +150,7 @@ func (s *DefaultFactory) getLogsvrNode() *nprotoo.Requestor {
 func (s *DefaultFactory) OutPut(msg string) {
 	nprotoo := s.getLogsvrNode()
 	if nprotoo != nil {
-		nprotoo.AsyncRequest("toLogsvr", util.Map("data", msg))
+		nprotoo.AsyncRequest(topic, util.Map("data", msg))
 	}
 }
 
