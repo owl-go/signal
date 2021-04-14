@@ -75,3 +75,9 @@ func tracingReport(c *gin.Context) {
 	response(c, 200, 0, "success")
 	return
 }
+
+//健康监测
+func probeHandler(c *gin.Context) {
+	response(c, 200, 0, "success")
+	return
+}

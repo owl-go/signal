@@ -30,6 +30,7 @@ func handleRPCRequest(rpcID string) {
 						err := esClient.AddDoc(index, "", msg)
 						if err != nil {
 							log.Errorf(err.Error())
+							logger.Print(data["data"].(string))
 						}
 					} else {
 						logger.Print(data["data"].(string))
