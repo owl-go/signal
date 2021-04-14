@@ -3,15 +3,15 @@ package issr
 import (
 	dis "mgkj/infra/discovery"
 	"mgkj/infra/kafka"
+	logger2 "mgkj/infra/logger"
 	"mgkj/pkg/log"
-	lgr "mgkj/pkg/logger"
 	"mgkj/util"
 
 	nprotoo "github.com/gearghost/nats-protoo"
 )
 
 var (
-	logger        *lgr.Logger
+	logger        *logger2.Logger
 	rpcs          map[string]*nprotoo.Requestor
 	protoo        *nprotoo.NatsProtoo
 	kafkaClient   *kafka.KafkaClient
@@ -21,7 +21,7 @@ var (
 )
 
 // Init 初始化服务
-func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL, kafkaURL string, l *lgr.Logger) {
+func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL, kafkaURL string, l *logger2.Logger) {
 	// 赋值
 	logger = l
 	node = serviceNode

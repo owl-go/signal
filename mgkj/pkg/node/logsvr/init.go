@@ -2,15 +2,14 @@ package logsvr
 
 import (
 	"fmt"
+	logger2 "mgkj/infra/logger"
 
+	nprotoo "github.com/gearghost/nats-protoo"
+	"github.com/gin-gonic/gin"
 	dis "mgkj/infra/discovery"
 	es "mgkj/infra/es"
 	db "mgkj/infra/mysql"
 	"mgkj/pkg/log"
-	lgr "mgkj/pkg/logger"
-
-	nprotoo "github.com/gearghost/nats-protoo"
-	"github.com/gin-gonic/gin"
 )
 
 var (
@@ -19,7 +18,7 @@ var (
 	node     *dis.ServiceNode
 	watch    *dis.ServiceWatcher
 	mysql    *db.MysqlDriver
-	logger   *lgr.Logger
+	logger   *logger2.Logger
 	esClient *es.EsClient
 )
 
@@ -37,8 +36,8 @@ func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, nats
 }
 
 func InitLogger(dc, name, nid, nip, level string, etcdUrls string, natsUrl string, addCaller bool) {
-	factory := lgr.NewDefaultFactory(etcdUrls, natsUrl)
-	logger = lgr.NewLogger(dc, name, nid, nip, level, addCaller, factory)
+	factory := logger2.NewDefaultFactory(etcdUrls, natsUrl)
+	logger = logger2.NewLogger(dc, name, nid, nip, level, addCaller, factory)
 }
 
 func SetLoggerOutput(filename string, maxsize int, maxage int, maxBackup int) {

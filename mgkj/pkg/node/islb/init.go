@@ -1,11 +1,11 @@
 package node
 
 import (
+	logger2 "mgkj/infra/logger"
 	"time"
 
 	dis "mgkj/infra/discovery"
 	db "mgkj/infra/redis"
-	lgr "mgkj/pkg/logger"
 	"mgkj/util"
 
 	nprotoo "github.com/gearghost/nats-protoo"
@@ -17,7 +17,7 @@ const (
 )
 
 var (
-	logger      *lgr.Logger
+	logger      *logger2.Logger
 	protoo      *nprotoo.NatsProtoo
 	broadcaster *nprotoo.Broadcaster
 	redis       *db.Redis
@@ -28,7 +28,7 @@ var (
 
 // Init 初始化服务
 func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL string, config, config1 db.Config,
-	l *lgr.Logger) {
+	l *logger2.Logger) {
 	// 赋值
 	node = serviceNode
 	watch = ServiceWatcher

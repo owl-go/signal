@@ -2,7 +2,7 @@ package sfu
 
 import (
 	dis "mgkj/infra/discovery"
-	lgr "mgkj/pkg/logger"
+	logger2 "mgkj/infra/logger"
 	"mgkj/pkg/proto"
 	"mgkj/pkg/rtc"
 	"mgkj/util"
@@ -17,7 +17,7 @@ const (
 )
 
 var (
-	logger      *lgr.Logger
+	logger      *logger2.Logger
 	protoo      *nprotoo.NatsProtoo
 	broadcaster *nprotoo.Broadcaster
 	node        *dis.ServiceNode
@@ -26,7 +26,7 @@ var (
 )
 
 // Init 初始化服务
-func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL string, l *lgr.Logger) {
+func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL string, l *logger2.Logger) {
 	// 赋值
 	logger = l
 	node = serviceNode

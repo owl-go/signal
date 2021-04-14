@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"mgkj/infra/logger"
 	"net/http"
 	_ "net/http/pprof"
 	"strconv"
@@ -11,7 +12,6 @@ import (
 	h "mgkj/infra/http"
 	conf "mgkj/pkg/conf/sfu"
 	"mgkj/pkg/log"
-	lgr "mgkj/pkg/logger"
 	"mgkj/pkg/node/sfu"
 	"mgkj/util"
 )
@@ -25,8 +25,8 @@ func main() {
 	defer close()
 
 	//init logger
-	factory := lgr.NewDefaultFactory(conf.Etcd.Addrs, conf.Nats.NatsLog)
-	l := lgr.NewLogger(conf.Global.Ndc, conf.Global.Name, conf.Global.Nid, conf.Global.Nip, "info", true, factory)
+	factory := logger.NewDefaultFactory(conf.Etcd.Addrs, conf.Nats.NatsLog)
+	l := logger.NewLogger(conf.Global.Ndc, conf.Global.Name, conf.Global.Nid, conf.Global.Nip, "info", true, factory)
 
 	if conf.Global.Pprof != "" {
 		go func() {

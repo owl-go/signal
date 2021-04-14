@@ -2,8 +2,8 @@ package biz
 
 import (
 	dis "mgkj/infra/discovery"
+	logger2 "mgkj/infra/logger"
 	"mgkj/pkg/log"
-	lgr "mgkj/pkg/logger"
 	"mgkj/pkg/proto"
 	"mgkj/pkg/ws"
 	"mgkj/util"
@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	logger *lgr.Logger
+	logger *logger2.Logger
 	nats   *nprotoo.NatsProtoo
 	node   *dis.ServiceNode
 	watch  *dis.ServiceWatcher
@@ -20,7 +20,7 @@ var (
 )
 
 // Init 初始化服务
-func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL string, l *lgr.Logger) {
+func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL string, l *logger2.Logger) {
 	node = serviceNode
 	watch = ServiceWatcher
 	nats = nprotoo.NewNatsProtoo(util.GenerateNatsUrlString(natsURL))
