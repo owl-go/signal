@@ -31,15 +31,6 @@ func handleRPCRequest(rpcID string) {
 			err := &nprotoo.Error{Code: 400, Reason: fmt.Sprintf("Unkown method [%s]", method)}
 
 			switch method {
-			/* 处理和dist服务器通信 */
-			case proto.DistToIslbLogin:
-				result, err = clientlogin(data)
-			case proto.DistToIslbLogout:
-				result, err = clientlogout(data)
-			case proto.DistToIslbPeerHeartbeat:
-				result, err = clientPeerHeartbeat(data)
-			case proto.DistToIslbPeerInfo:
-				result, err = getPeerinfo(data)
 			/* 处理和biz服务器通信 */
 			case proto.BizToIslbOnJoin:
 				result, err = clientJoin(data)
@@ -71,78 +62,6 @@ func handleRPCRequest(rpcID string) {
 			}
 		}(request, accept, reject)
 	})
-}
-
-/*
-	"method", proto.DistToIslbLogin, "uid", uid, "nid", nid
-*/
-// clientlogin 有人登录到dist服务器
-func clientlogin(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
-	uid := util.Val(data, "uid")
-	dist := util.Val(data, "nid")
-	// 获取用户信息保存的key
-	uKey := proto.GetUserDistKey(uid)
-	// 写入key值
-	err := redis.Set(uKey, dist, redisShort)
-	if err != nil {
-		//log.Errorf("redis.Set clientlogin err = %v", err)
-		logger.Errorf(fmt.Sprintf("islb.clientlogin redis.Set err=%v", err), "uid", uid)
-	}
-	return util.Map(), nil
-}
-
-/*
-	"method", proto.DistToIslbLogout, "uid", uid, "nid", nid
-*/
-// clientlogout 有人退录到dist服务器
-func clientlogout(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
-	uid := util.Val(data, "uid")
-	// 获取用户信息保存的key
-	uKey := proto.GetUserDistKey(uid)
-	// 写入key值
-	err := redis.Del(uKey)
-	if err != nil {
-		//log.Errorf("redis.Del clientlogout err = %v", err)
-		logger.Errorf(fmt.Sprintf("islb.clientlogout redis.Del err=%v", err), "uid", uid)
-	}
-	return util.Map(), nil
-}
-
-/*
-	"method", proto.DistToIslbPeerHeartbeat, "uid", uid, "nid", nid
-*/
-// clientPeerHeartbeat 有人发送心跳到dist服务器,更新key的时间
-func clientPeerHeartbeat(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
-	uid := util.Val(data, "uid")
-	dist := util.Val(data, "nid")
-	// 获取用户信息保存的key
-	uKey := proto.GetUserDistKey(uid)
-	// 写入key值
-	err := redis.Set(uKey, dist, redisShort)
-	if err != nil {
-		//log.Errorf("redis.Set clientPeerHeartbeat err = %v", err)
-		logger.Errorf(fmt.Sprintf("islb.clientPeerHeartbeat redis.Set err=%v", err), "uid", uid)
-	}
-	return util.Map(), nil
-}
-
-/*
-	"method", proto.DistToIslbPeerInfo, "uid", uid
-*/
-// getPeerinfo 获取Peer在哪个Dist服务器
-func getPeerinfo(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
-	// 获取参数
-	uid := util.Val(data, "uid")
-	// 获取用户信息保存的key
-	uKey := proto.GetUserDistKey(uid)
-	dist := redis.Get(uKey)
-	//resp := make(map[string]interface{})
-	if dist == "" {
-		return nil, &nprotoo.Error{Code: -1, Reason: "dist node can't found"}
-	} else {
-		resp := util.Map("nid", dist)
-		return resp, nil
-	}
 }
 
 /*

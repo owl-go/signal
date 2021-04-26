@@ -5,19 +5,13 @@ echo "$APP_DIR"
 cd $APP_DIR
 
 BIZ=biz
-DIST=dist
 ISLB=islb
 SFU=sfu
 ISSR=issr
-LOGSVR=logsvr
 
 echo "------------------stop $BIZ------------------"
 echo "pkill $BIZ"
 pkill $BIZ
-
-echo "------------------stop $DIST------------------"
-echo "pkill $DIST"
-pkill $DIST
 
 echo "------------------stop $ISLB------------------"
 echo "pkill $ISLB"
@@ -30,7 +24,3 @@ pkill $SFU
 echo "------------------stop $ISSR------------------"
 echo "pkill $ISSR"
 pkill $ISSR
-
-echo "------------------stop $LOGSVR------------------"
-echo "pkill $LOGSVR"
-pkill $LOGSVR
