@@ -28,10 +28,10 @@ maxbuffertime = 1000
 
 # if sfu behind nat, set iceserver
 [[webrtc.iceserver]]
-urls = ["stun:115.231.90.179:3478"]
+urls = ["stun:120.238.78.214:3478"]
 
 [[webrtc.iceserver]]
-urls = ["turn:115.231.90.179:3478"]
+urls = ["turn:120.238.78.214:3478"]
 username = "demo"
 credential = "123456"
 
