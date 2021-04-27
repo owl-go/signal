@@ -29,16 +29,15 @@ BUILD_PATH5=$APP_DIR/bin/$ISSR
 echo "------------------start $BIZ------------------"
 echo "nohup $BUILD_PATH1 -c $BIZ_CFG >>$BIZ_LOG 2>&1 &"
 nohup $BUILD_PATH1 -c $BIZ_CFG >>$BIZ_LOG 2>&1 &
-
+sleep 1s
 echo "------------------start $ISLB------------------"
 echo "nohup $BUILD_PATH3 -c $ISLB_CFG >>$ISLB_LOG 2>&1 &"
 nohup $BUILD_PATH3 -c $ISLB_CFG >>$ISLB_LOG 2>&1 &
-
+sleep 1s
 echo "------------------start $SFU------------------"
 echo "nohup $BUILD_PATH4 -c $SFU_CFG >>$SFU_LOG 2>&1 &"
 nohup $BUILD_PATH4 -c $SFU_CFG >>$SFU_LOG 2>&1 &
-
-
+sleep 1s
 echo "------------------start $ISSR------------------"
 echo "nohup $BUILD_PATH5 -c $ISSR_CFG >>$ISSR_LOG 2>&1 &"
 nohup $BUILD_PATH5 -c $ISSR_CFG >>$ISSR_LOG 2>&1 &
