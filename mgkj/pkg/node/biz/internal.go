@@ -35,7 +35,7 @@ func handleBroadcast(msg map[string]interface{}, subj string) {
 			NotifyAllWithoutID(rid, uid, proto.BizToClientOnStreamRemove, data)
 			//when publisher's stream remove,stop all the stream timer
 			mid := util.Val(data, "mid")
-			stopAllSubsTimerByMID(mid)
+			updateSubTimersByMID(rid, mid)
 		case proto.IslbToBizBroadcast:
 			/* "method", proto.IslbToBizBroadcast, "rid", rid, "uid", uid, "data", data */
 			NotifyAllWithoutID(rid, uid, proto.BizToClientBroadcast, data)
@@ -73,14 +73,38 @@ func SfuRemoveStream(key string) {
 	rpc.AsyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", mid))
 }
 
-func stopAllSubsTimerByMID(mid string) {
-	for _, timer := range substreams {
-		if mid == timer.MID {
-			if !timer.IsStopped() {
-				timer.Stop()
-				//log.Infof("stopAllSubsTimerByMID MID = %s, SID = stream %s stopped", timer.MID, timer.SID)
-				logger.Infof(fmt.Sprintf("biz.stopAllSubsTimerByMID MID=%s, SID=%s stream stopped", timer.MID, timer.SID), "uid", timer.UID,
-					"rid", timer.RID, "mid", timer.MID, "sid", timer.SID)
+func updateSubTimersByMID(rid, mid string) {
+	roomNode := GetRoom(rid)
+	if roomNode != nil {
+		peers := roomNode.room.GetPeers()
+		for _, peer := range peers {
+			timer := peer.GetStreamTimer()
+			if timer != nil && !timer.IsStopped() {
+				removedStreams, isModeChanged := timer.RemoveStreamByMID(mid)
+				//it must be video change to audio,cuz it at least have one last dummy audio stream in the end.
+				if isModeChanged {
+					timer.Stop()
+					err := reportStreamTiming(timer, true, false)
+					if err != nil {
+						logger.Errorf(fmt.Sprintf("biz.removeSubStreamByMID reportStreamTiming when removed MID:%s stream, err:%v", mid, err), "rid", timer.RID, "uid", timer.UID,
+							"mid", mid)
+					}
+					timer.Renew()
+				} else {
+					if removedStreams != nil && removedStreams[0].MediaType != "audio" && timer.GetCurrentMode() != "audio" {
+						isResolutionChanged := timer.UpdateResolution()
+						if isResolutionChanged {
+							timer.Stop()
+							isNotLastStream := timer.GetStreamsCount() > 1
+							err := reportStreamTiming(timer, true, isNotLastStream)
+							if err != nil {
+								logger.Errorf(fmt.Sprintf("biz.removeSubStreamByMID reportStreamTiming when removed MID:%s stream, err:%v", mid, err), "rid", timer.RID, "uid", timer.UID,
+									"mid", mid)
+							}
+							timer.Renew()
+						}
+					}
+				}
 			}
 		}
 	}

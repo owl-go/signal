@@ -2,6 +2,7 @@ package ws
 
 import (
 	"mgkj/pkg/log"
+	"mgkj/pkg/timing"
 
 	"github.com/gearghost/go-protoo/peer"
 	"github.com/gearghost/go-protoo/transport"
@@ -10,7 +11,8 @@ import (
 // Peer peer对象
 type Peer struct {
 	peer.Peer
-	appid string
+	streamtimer *timing.StreamTimer
+	appid       string
 }
 
 // NewPeer 初始化peer对象
@@ -30,6 +32,14 @@ func (p *Peer) SetAppID(appid string) {
 
 func (p *Peer) GetAppID() string {
 	return p.appid
+}
+
+func (p *Peer) SetStreamTimer(timer *timing.StreamTimer) {
+	p.streamtimer = timer
+}
+
+func (p *Peer) GetStreamTimer() *timing.StreamTimer {
+	return p.streamtimer
 }
 
 // On 事件处理

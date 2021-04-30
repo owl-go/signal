@@ -58,6 +58,13 @@ func join(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 	rid := util.Val(msg, "rid")
 	info := util.Val(msg, "info")
 
+	//create stream timer and add the dummy audio stream,then start
+	timer := timing.NewStreamTimer(rid, uid, peer.GetAppID())
+	peer.SetStreamTimer(timer)
+	dummyAudioStream := timing.NewStreamInfo("dummy-audio", "dummy-audio", "audio", "")
+	timer.AddStream(dummyAudioStream)
+	timer.Start()
+
 	// 查询islb节点
 	islb := FindIslbNode()
 	if islb == nil {
@@ -142,6 +149,13 @@ func leave(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reje
 		rpc.SyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", ridTmp, "uid", uid, "mid", ""))
 		rpc.SyncRequest(proto.BizToIslbOnLeave, util.Map("rid", ridTmp, "uid", uid))
 		DelPeer(ridTmp, uid)
+	}
+	//stop timer if didn't stop then report
+	timer := peer.GetStreamTimer()
+	if !timer.IsStopped() {
+		timer.Stop()
+		isVideo := timer.GetCurrentMode() == "video"
+		reportStreamTiming(timer, isVideo, false)
 	}
 	// resp
 	accept(emptyMap)
@@ -424,7 +438,7 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	rspSfu["sid"] = resp["mid"]
 	rspSfu["uid"] = resp["uid"]
 
-	//add stream timer then start
+	//add stream to timer then start
 	var mediatype string
 	sid := rspSfu["sid"].(string)
 	isVideo := minfo.(map[string]interface{})["video"].(bool)
@@ -438,13 +452,28 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 		mediatype = "video"
 	}
 	resolution := minfo.(map[string]interface{})["resolution"].(string)
-	substreamsLock.Lock()
-	if _, ok := substreams[sid]; !ok {
-		streamtimer := timing.NewStreamTimer(rid, mid, sid, peer.GetAppID(), resolution, mediatype)
-		substreams[sid] = streamtimer
-		streamtimer.Start()
+	timer := peer.GetStreamTimer()
+	if timer != nil {
+		isModeChanged := timer.AddStream(timing.NewStreamInfo(mid, sid, mediatype, resolution))
+		if isModeChanged {
+			//this must be audio report
+			timer.UpdateResolution()
+			timer.Stop()
+			reportStreamTiming(timer, false, false)
+			timer.Renew()
+		} else {
+			if mediatype == "video" {
+				isResolutionChanged := timer.UpdateResolution()
+				if isResolutionChanged {
+					timer.Stop()
+					//report this interval
+					reportStreamTiming(timer, true, true)
+					//then renew timer
+					timer.Renew()
+				}
+			}
+		}
 	}
-	substreamsLock.Unlock()
 	// resp
 	accept(rspSfu)
 }
@@ -495,18 +524,29 @@ func unsubscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc
 
 	rpcSfu.AsyncRequest(proto.BizToSfuUnSubscribe, util.Map("rid", rid, "uid", uid, "mid", mid))
 
-	//stream timer stop
-	substreamsLock.RLock()
-	if substreamtimer, ok := substreams[mid]; !ok {
-		logger.Errorf("biz.unsubscribe can't find stream state", "uid", uid, "rid", rid, "sid", mid)
-	} else {
-		logger.Infof(fmt.Sprintf("biz.unsubscribe find substream uid=%s,sid=%s", substreamtimer.UID, substreamtimer.SID),
-			"uid", uid, "rid", rid, "sid", mid)
-		//timer stop
-		substreamtimer.Stop()
-		//only stop timer ,clean this later in stream state report logic
+	//remove stream from timer then according to the state,decide what to do
+	timer := peer.GetStreamTimer()
+	if timer != nil {
+		removed, isModeChanged := timer.RemoveStreamBySID(mid)
+		if removed != nil {
+			if isModeChanged {
+				//this must be video to audio
+				timer.Stop()
+				reportStreamTiming(timer, true, true)
+				timer.Renew()
+			} else {
+				isResolutionChanged := timer.UpdateResolution()
+				//check whether total resolution change or not,to determine timer stop or not
+				if isResolutionChanged {
+					timer.Stop()
+					//report this interval
+					reportStreamTiming(timer, true, true)
+					//then timer renew
+					timer.Renew()
+				}
+			}
+		}
 	}
-	substreamsLock.RUnlock()
 	// resp
 	accept(emptyMap)
 }

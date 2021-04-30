@@ -1,10 +1,12 @@
 package biz
 
 import (
+	"errors"
 	dis "mgkj/infra/discovery"
 	logger2 "mgkj/infra/logger"
 	"mgkj/pkg/log"
 	"mgkj/pkg/proto"
+	"mgkj/pkg/timing"
 	"mgkj/pkg/ws"
 	"mgkj/util"
 
@@ -216,4 +218,51 @@ func getIssrRequestor() *nprotoo.Requestor {
 		return nil
 	}
 	return rpc
+}
+
+func reportStreamTiming(timer *timing.StreamTimer, isVideo, isInterval bool) error {
+	log.Infof("reportStreamTiming:uid:%s,count:%d,lastmode:%s,mode:%s,lastres:%s,res:%s", timer.UID, timer.GetStreamsCount(), timer.GetLastMode(), timer.GetCurrentMode(),
+		timer.GetLastResolution(), timer.GetCurrentResolution())
+
+	rpc := getIssrRequestor()
+
+	if rpc == nil {
+		return errors.New("can't found issr node")
+	}
+	var resolution string
+	var mode string
+	if isVideo {
+		mode = "video"
+		if isInterval {
+			resolution = timer.GetLastResolution()
+		} else {
+			resolution = timer.GetCurrentResolution()
+		}
+	} else {
+		mode = "audio"
+	}
+
+	seconds := timer.GetTotalSeconds()
+
+	if seconds != 0 {
+		if mode == "audio" {
+			_, err := rpc.SyncRequest(proto.BizToIssrReportStreamState, util.Map("appid", timer.AppID, "rid", timer.RID, "uid", timer.UID,
+				"mediatype", mode, "seconds", seconds))
+			if err != nil {
+				return errors.New(err.Reason)
+			}
+		} else {
+			if resolution != "" {
+				_, err := rpc.SyncRequest(proto.BizToIssrReportStreamState, util.Map("appid", timer.AppID, "rid", timer.RID, "uid", timer.UID,
+					"mediatype", mode, "resolution", resolution, "seconds", seconds))
+				if err != nil {
+					return errors.New(err.Reason)
+				}
+			} else {
+				return errors.New("resolution is empty")
+			}
+		}
+	}
+
+	return nil
 }

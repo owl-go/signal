@@ -18,7 +18,7 @@ func handleRPCRequest(rpcID string) {
 	protoo.OnRequest(rpcID, func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
 		go func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
 			defer util.Recover("issr.handleRPCRequest")
-			logger.Infof(fmt.Sprintf("issr.handleRPCRequest recv request=%v", request), "rpcid", rpcID)
+			//logger.Infof(fmt.Sprintf("issr.handleRPCRequest recv request=%v", request), "rpcid", rpcID)
 			method := request["method"].(string)
 			data := request["data"].(map[string]interface{})
 
@@ -47,7 +47,6 @@ func handleRPCRequest(rpcID string) {
 */
 // report 上报拉流计时数据
 func report(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
-	logger.Infof(fmt.Sprintf("issr.report msg=%v", msg))
 	// 判断参数
 	if msg["appid"] == nil {
 		return nil, &nprotoo.Error{Code: -1, Reason: "can't find appid"}
@@ -64,23 +63,24 @@ func report(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error)
 		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("request islb to record err:%v", nerr)}
 	}
 
-	seconds := int64(msg["seconds"].(float64))
+	/*seconds := int64(msg["seconds"].(float64))
 	//change seconds to minutes
 	delete(msg, "seconds")
 	minutes := seconds / 60
 	if seconds%60 != 0 {
 		minutes += 1
 	}
-	msg["usage"] = minutes
-	timestamp := time.Now().Unix()
+	msg["usage"] = minutes*/
+
+	timestamp := time.Now().UnixNano() / 1000
 	msg["timestamp"] = timestamp
-	//
+
 	str, err := json.Marshal(msg)
 	if err != nil {
 		logger.Errorf(fmt.Sprintf("issr.report json marshal failed=%v", err))
 		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("json marshal err:%v", err)}
 	}
-	logger.Infof(fmt.Sprintf("issr.report json = %s", string(str)))
+	logger.Infof(fmt.Sprintf("issr.report msg: %s", string(str)))
 	err = kafkaProducer.Produce("Livs-Usage-Event", string(str))
 	if err != nil {
 		logger.Errorf(fmt.Sprintf("issr.report kafka produce error=%v", err))

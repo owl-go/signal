@@ -81,6 +81,14 @@ func in(transport *transport.WebSocketTransport, request *http.Request) {
 	handleClose := func(code int, err string) {
 		//log.Infof("signal.in handleClose = peer (%s) ", peer.ID())
 		logger.Infof(fmt.Sprintf("signal.in handleClose = peer %s", peer.ID()), "uid", id)
+		timer := peer.GetStreamTimer()
+		if timer != nil {
+			if !timer.IsStopped() {
+				timer.Stop()
+				isVideo := timer.GetCurrentMode() == "video"
+				reportStreamTiming(timer, isVideo, false)
+			}
+		}
 		peer.Close()
 	}
 

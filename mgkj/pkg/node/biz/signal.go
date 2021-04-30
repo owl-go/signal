@@ -3,7 +3,6 @@ package biz
 import (
 	"fmt"
 	"mgkj/pkg/proto"
-	"mgkj/pkg/timing"
 	"mgkj/pkg/ws"
 	"mgkj/util"
 	"sync"
@@ -16,18 +15,15 @@ const (
 )
 
 var (
-	substreams     = make(map[string]*timing.StreamTimer)
-	substreamsLock sync.RWMutex
-	rooms          = make(map[string]*RoomNode)
-	roomLock       sync.RWMutex
-	wsReq          func(method string, peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc)
+	rooms    = make(map[string]*RoomNode)
+	roomLock sync.RWMutex
+	wsReq    func(method string, peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc)
 )
 
 // InitSignalServer 初始化biz服务器
 func InitSignalServer(host string, port int, cert, key string) {
 	initWebSocket(host, port, cert, key, Entry)
 	go checkRoom()
-	go checkStreamState()
 }
 
 func initWebSocket(host string, port int, cert, key string, handler interface{}) {
@@ -67,9 +63,9 @@ func checkRoom() {
 
 					rpc.AsyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", ""))
 					rpc.AsyncRequest(proto.BizToIslbOnLeave, util.Map("rid", rid, "uid", uid))
+					//stop this user's timer when disconnect
+					stopStreamTimer(rid, uid)
 					node.room.RemovePeer(uid)
-					//stop all this user's timers
-					stopAllStreamTimer(rid, uid)
 				}
 			}
 			if len(node.room.GetPeers()) == 0 {
@@ -81,44 +77,21 @@ func checkRoom() {
 	}
 }
 
-func stopAllStreamTimer(rid, uid string) {
-	for _, timer := range substreams {
-		if timer.RID == rid && timer.UID == uid && !timer.IsStopped() {
-			timer.Stop()
-			//log.Infof("biz.stopAllStreamTimer room %s uid =%s sid = %s stopped.", timer.RID,timer.UID, timer.SID)
-			logger.Infof(fmt.Sprintf("biz.stopAllStreamTimer room %s uid=%s mid=%s sid=%s stopped.", timer.RID, timer.UID, timer.MID, timer.SID),
-				"uid", timer.UID, "rid", timer.RID, "mid", timer.MID, "sid", timer.SID)
-		}
-	}
-}
-
-func checkStreamState() {
-	t := time.NewTicker(streamTimingCycle)
-	defer t.Stop()
-	for range t.C {
-		for sid, timer := range substreams {
-			if timer.IsStopped() {
-				//log.Infof("checkStreamState uid = %s,mid = %s,sid = %s stream was stopped", timer.UID, timer.MID, timer.SID)
-				logger.Infof(fmt.Sprintf("checkStreamState room %s uid=%s,mid=%s,sid=%s stream was stopped", timer.RID, timer.UID, timer.MID, timer.SID),
-					"uid", timer.UID, "rid", timer.RID, "mid", timer.MID, "sid", timer.SID)
-
-				rpc := getIssrRequestor()
-				if rpc == nil {
-					logger.Errorf("biz.checkStreamState get issr requestor failed", "uid", timer.UID, "rid", timer.RID, "mid", timer.MID, "sid", timer.SID)
-					continue
-				}
-
-				_, err := rpc.SyncRequest(proto.BizToIssrReportStreamState, util.Map("rid", timer.RID, "appid", timer.AppID, "uid", timer.UID, "mid", timer.MID,
-					"sid", timer.SID, "mediatype", timer.MediaType, "resolution", timer.Resolution, "seconds", timer.GetTotalTime()))
-
+func stopStreamTimer(rid, uid string) {
+	roomNode := GetRoom(rid)
+	peer := roomNode.room.GetPeer(uid)
+	if peer != nil {
+		timer := peer.GetStreamTimer()
+		if timer != nil {
+			if !timer.IsStopped() {
+				timer.Stop()
+				logger.Infof(fmt.Sprintf("biz.stopDisconnetedTimer room %s uid=%s stream was stopped", timer.RID, timer.UID),
+					"uid", timer.UID, "rid", timer.RID)
+				//cuz this timer was disconnected, it will stop and delete,so should use current resolution
+				isVideo := timer.GetCurrentMode() == "video"
+				err := reportStreamTiming(timer, isVideo, false)
 				if err != nil {
-					logger.Errorf(fmt.Sprintf("biz.checkStreamState rpc err=%v", err.Reason), "uid", timer.UID, "rid", timer.RID, "mid", timer.MID, "sid", timer.SID)
-					logger.Errorf(fmt.Sprintf("biz.checkStreamState report room %s uid=%s,mid=%s, sid=%s stream state failed", timer.RID, timer.UID,
-						timer.MID, timer.SID), "uid", timer.UID, "rid", timer.RID, "mid", timer.MID, "sid", timer.SID)
-				} else {
-					substreamsLock.Lock()
-					delete(substreams, sid)
-					substreamsLock.Unlock()
+					logger.Errorf(fmt.Sprintf("biz.cleanDisconnetedTimer rpc err=%v", err), "uid", timer.UID, "rid", timer.RID)
 				}
 			}
 		}
