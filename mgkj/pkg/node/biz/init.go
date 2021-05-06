@@ -7,7 +7,6 @@ import (
 	"mgkj/pkg/log"
 	"mgkj/pkg/proto"
 	"mgkj/pkg/timing"
-	"mgkj/pkg/ws"
 	"mgkj/util"
 
 	nprotoo "github.com/gearghost/nats-protoo"
@@ -22,11 +21,12 @@ var (
 )
 
 // Init 初始化服务
-func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL string, l *logger2.Logger) {
+func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL string, log *logger2.Logger) {
 	node = serviceNode
 	watch = ServiceWatcher
 	nats = nprotoo.NewNatsProtoo(util.GenerateNatsUrlString(natsURL))
-	logger = l
+	logger = log
+	handleRPCRequest(node.GetRPCChannel())
 	go watch.WatchServiceNode("", WatchServiceCallBack)
 }
 
@@ -74,7 +74,48 @@ func FindIslbNode() *dis.Node {
 	return nil
 }
 
-// FindSfuNodeByID 查询指定区域下的可用的sfu节点
+// FindBizNodeByID 查询指定id的biz节点
+func FindBizNodeByID(nid string) *dis.Node {
+	biz, find := watch.GetNodeByID(nid)
+	if find {
+		return biz
+	}
+	return nil
+}
+
+// FindBizNodeByUid 根据rid, uid查询指定的biz节点
+func FindBizNodeByUid(rid, uid string) *dis.Node {
+	islb := FindIslbNode()
+	if islb == nil {
+		log.Errorf("FindBizNodeByUid islb not found")
+		return nil
+	}
+
+	find := false
+	rpc, find := rpcs[islb.Nid]
+	if !find {
+		log.Errorf("FindBizNodeByUid islb rpc not found")
+		return nil
+	}
+
+	resp, err := rpc.SyncRequest(proto.BizToIslbGetBizInfo, util.Map("rid", rid, "uid", uid))
+	if err != nil {
+		log.Errorf(err.Reason)
+		return nil
+	}
+
+	log.Infof("FindBizNodeByUid resp ==> %v", resp)
+
+	var biz *dis.Node
+	nid := util.Val(resp, "nid")
+	if nid != "" {
+		biz = FindBizNodeByID(nid)
+	}
+
+	return biz
+}
+
+// FindSfuNodeByID 查询指定id的sfu节点
 func FindSfuNodeByID(nid string) *dis.Node {
 	sfu, find := watch.GetNodeByID(nid)
 	if find {
@@ -92,7 +133,7 @@ func FindSfuNodeByPayload() *dis.Node {
 	return nil
 }
 
-// FindSfuNodeByMid 根据mid向islb查询指定的sfu节点
+// FindSfuNodeByMid 根据rid, mid查询指定的sfu节点
 func FindSfuNodeByMid(rid, mid string) *dis.Node {
 	islb := FindIslbNode()
 	if islb == nil {
@@ -124,72 +165,82 @@ func FindSfuNodeByMid(rid, mid string) *dis.Node {
 	return sfu
 }
 
+// FindRoomUsers 查询房间所有人信息
+func FindRoomUsers(uid, rid string) (bool, []interface{}) {
+	islb := FindIslbNode()
+	if islb == nil {
+		log.Errorf("FindRoomUsers islb not found")
+		return false, nil
+	}
+
+	find := false
+	rpc, find := rpcs[islb.Nid]
+	if !find {
+		log.Errorf("FindRoomUsers islb rpc not found")
+		return false, nil
+	}
+
+	resp, err := rpc.SyncRequest(proto.BizToIslbGetRoomUsers, util.Map("rid", rid, "uid", uid))
+	if err != nil {
+		log.Errorf(err.Reason)
+		return false, nil
+	}
+
+	log.Infof("FindRoomUsers resp ==> %v", resp)
+
+	if resp["users"] == nil {
+		log.Errorf("FindRoomUsers pubs is nil")
+		return false, nil
+	}
+
+	users := resp["users"].([]interface{})
+	return true, users
+}
+
 // FindMediaPubs 查询房间所有的其他人的发布流
-func FindMediaPubs(peer *ws.Peer, rid string) bool {
+func FindMediaPubs(uid, rid string) (bool, []interface{}) {
 	islb := FindIslbNode()
 	if islb == nil {
 		log.Errorf("FindMediaPubs islb not found")
-		return false
+		return false, nil
 	}
 
 	find := false
 	rpc, find := rpcs[islb.Nid]
 	if !find {
 		log.Errorf("FindMediaPubs islb rpc not found")
-		return false
+		return false, nil
 	}
 
-	resp, err := rpc.SyncRequest(proto.BizToIslbGetMediaPubs, util.Map("rid", rid, "uid", peer.ID()))
+	resp, err := rpc.SyncRequest(proto.BizToIslbGetMediaPubs, util.Map("rid", rid, "uid", uid))
 	if err != nil {
 		log.Errorf(err.Reason)
-		return false
+		return false, nil
 	}
 
 	log.Infof("FindMediaPubs resp ==> %v", resp)
 
 	if resp["pubs"] == nil {
 		log.Errorf("FindMediaPubs pubs is nil")
-		return false
+		return false, nil
 	}
 
-	roomid := resp["rid"].(string)
 	pubs := resp["pubs"].([]interface{})
-	for _, pub := range pubs {
-		uid := pub.(map[string]interface{})["uid"].(string)
-		mid := pub.(map[string]interface{})["mid"].(string)
-		nid := pub.(map[string]interface{})["nid"].(string)
-		minfo := pub.(map[string]interface{})["minfo"].(map[string]interface{})
-		if mid != "" {
-			peer.Notify(proto.BizToClientOnStreamAdd, util.Map("rid", roomid, "uid", uid, "mid", mid, "nid", nid, "minfo", minfo))
+	return true, pubs
+
+	/*
+		roomid := resp["rid"].(string)
+		pubs := resp["pubs"].([]interface{})
+		for _, pub := range pubs {
+			uid := pub.(map[string]interface{})["uid"].(string)
+			mid := pub.(map[string]interface{})["mid"].(string)
+			nid := pub.(map[string]interface{})["nid"].(string)
+			minfo := pub.(map[string]interface{})["minfo"].(map[string]interface{})
+			if mid != "" {
+				peer.Notify(proto.BizToClientOnStreamAdd, util.Map("rid", roomid, "uid", uid, "mid", mid, "nid", nid, "minfo", minfo))
+			}
 		}
-	}
-	return true
-}
-
-// FindPeerIsLive 查询peer是否还存活
-func FindPeerIsLive(rid, uid string) bool {
-	islb := FindIslbNode()
-	if islb == nil {
-		log.Errorf("FindPeerIsLive islb not found")
-		return false
-	}
-
-	find := false
-	rpc, find := rpcs[islb.Nid]
-	if !find {
-		log.Errorf("FindPeerIsLive islb rpc not found")
-		return false
-	}
-
-	resp, err := rpc.SyncRequest(proto.BizToIslbPeerLive, util.Map("rid", rid, "uid", uid))
-	if err != nil {
-		log.Errorf(err.Reason)
-		return false
-	}
-
-	log.Infof("FindPeerIsLive resp ==> %v", resp)
-
-	return true
+		return true*/
 }
 
 // findIssrNode 查询全局的可用的Issr节点

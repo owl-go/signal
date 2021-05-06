@@ -18,7 +18,7 @@ const (
 
 var (
 	logger      *logger2.Logger
-	protoo      *nprotoo.NatsProtoo
+	nats        *nprotoo.NatsProtoo
 	broadcaster *nprotoo.Broadcaster
 	redis       *db.Redis
 	redis1      *db.Redis
@@ -27,24 +27,23 @@ var (
 )
 
 // Init 初始化服务
-func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL string, config, config1 db.Config,
-	l *logger2.Logger) {
+func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL string, config, config1 db.Config, log *logger2.Logger) {
 	// 赋值
 	node = serviceNode
 	watch = ServiceWatcher
-	protoo = nprotoo.NewNatsProtoo(util.GenerateNatsUrlString(natsURL))
-	broadcaster = protoo.NewBroadcaster(node.GetEventChannel())
+	nats = nprotoo.NewNatsProtoo(util.GenerateNatsUrlString(natsURL))
+	broadcaster = nats.NewBroadcaster(node.GetEventChannel())
 	redis = db.NewRedis(config)
 	redis1 = db.NewRedis(config1)
-	logger = l
+	logger = log
 	// 启动
 	handleRPCRequest(node.GetRPCChannel())
 }
 
 // Close 关闭连接
 func Close() {
-	if protoo != nil {
-		protoo.Close()
+	if nats != nil {
+		nats.Close()
 	}
 	if node != nil {
 		node.Close()

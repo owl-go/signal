@@ -21,6 +21,7 @@ const (
 	ClientToBizLeave = "leave"
 	// ClientToBizKeepAlive C->Biz 保活
 	ClientToBizKeepAlive = "keepalive"
+
 	// ClientToBizPublish C->Biz 发布流
 	ClientToBizPublish = "publish"
 	// ClientToBizUnPublish C->Biz 取消发布流
@@ -31,10 +32,11 @@ const (
 	ClientToBizUnSubscribe = "unsubscribe"
 	// ClientToBizTrickleICE C->Biz 发送ice数据
 	ClientToBizTrickleICE = "trickle"
-	// ClientToBizBroadcast C->Biz 发送广播
+
+	// ClientToBizBroadcast C->Biz 发送广播给房间里所有用户
 	ClientToBizBroadcast = "broadcast"
-	//ClientToBizListusers C->Biz 列出其他所有用户信息
-	ClientToBizListusers = "listusers"
+	// ClientToBizGetRoomUsers C->Biz 获取房间所有用户信息
+	ClientToBizGetRoomUsers = "listusers"
 
 	// BizToClientOnJoin biz->C 有人加入房间
 	BizToClientOnJoin = "peer-join"
@@ -45,7 +47,14 @@ const (
 	// BizToClientOnStreamRemove biz->C 有人取消发布流
 	BizToClientOnStreamRemove = "stream-remove"
 	// BizToClientBroadcast biz->C 有人发送广播
-	BizToClientBroadcast = ClientToBizBroadcast
+	BizToClientBroadcast = "broadcast"
+	// BizToBizOnKick biz->biz 有人被服务器踢下线
+	BizToBizOnKick    = "peer-kick"
+	BizToClientOnKick = "peer-kick"
+
+	/*
+		biz与sfu服务器通信
+	*/
 
 	// BizToSfuPublish Biz->Sfu 发布流
 	BizToSfuPublish = "publish"
@@ -57,52 +66,47 @@ const (
 	BizToSfuUnSubscribe = "unsubscribe"
 	// BizToSfuTrickleICE Biz->Sfu 发送ice数据
 	BizToSfuTrickleICE = "trickle"
-
-	// SfuToBizPublish Sfu->Biz 发布流返回
-	SfuToBizPublish = BizToSfuPublish
-	// SfuToBizSubscribe Sfu->Biz 订阅流返回
-	SfuToBizSubscribe = BizToSfuSubscribe
-	// SfuToBizOnStreamRemove Sfu->Biz Sfu流被移除
+	// SfuToBizOnStreamRemove Sfu->Biz Sfu通知biz流被移除
 	SfuToBizOnStreamRemove = "sfu-stream-remove"
 
+	/*
+		biz与islb服务器通信
+	*/
+
 	// BizToIslbOnJoin biz->islb 有人加入房间
-	BizToIslbOnJoin = BizToClientOnJoin
-	// IslbToBizOnJoin islb->biz 有人加入房间
-	IslbToBizOnJoin = BizToClientOnJoin
+	BizToIslbOnJoin = "peer-join"
 	// BizToIslbOnLeave biz->islb 有人离开房间
-	BizToIslbOnLeave = BizToClientOnLeave
-	// IslbToBizOnLeave islb->biz 有人离开房间
-	IslbToBizOnLeave = BizToClientOnLeave
+	BizToIslbOnLeave = "peer-leave"
 	// BizToIslbOnStreamAdd biz->islb 有人发布流
-	BizToIslbOnStreamAdd = BizToClientOnStreamAdd
-	// IslbToBizOnStreamAdd islb->biz 有人发布流
-	IslbToBizOnStreamAdd = BizToClientOnStreamAdd
+	BizToIslbOnStreamAdd = "stream-add"
 	// BizToIslbOnStreamRemove biz->islb 有人取消发布流
-	BizToIslbOnStreamRemove = BizToClientOnStreamRemove
-	// IslbToBizOnStreamRemove islb->biz 有人取消发布流
-	IslbToBizOnStreamRemove = BizToClientOnStreamRemove
+	BizToIslbOnStreamRemove = "stream-remove"
+
+	// BizToIslbPeerLive biz->islb 获取Peer是否在线
+	BizToIslbPeerLive = "getPeerLive"
 	// BizToIslbKeepLive biz->islb 保活
-	BizToIslbKeepLive = ClientToBizKeepAlive
+	BizToIslbKeepLive = "keepalive"
+	// BizToIslbBroadcast biz->islb 发送广播
+	BizToIslbBroadcast = "broadcast"
+	// BizToIslbGetBizInfo biz->islb 根据uid查询对应的biz
+	BizToIslbGetBizInfo = "getBizInfo"
 	// BizToIslbGetSfuInfo biz->islb 根据mid查询对应的sfu
 	BizToIslbGetSfuInfo = "getSfuInfo"
-	//BizToIslbListusers biz->islb 列出其他所有用户信息
-	BizToIslbListusers = ClientToBizListusers
-	// IslbToBizGetSfuInfo islb->biz 返回mid对应的sfu
-	IslbToBizGetSfuInfo = BizToIslbGetSfuInfo
-	// BizToIslbGetMediaPubs biz->islb 获取房间内所有的发布流
+	// BizToIslbGetRoomUsers biz->islb 获取所有用户信息
+	BizToIslbGetRoomUsers = "getRoomUsers"
+	// BizToIslbGetMediaPubs biz->islb 获取所有的发布流信息
 	BizToIslbGetMediaPubs = "getMediaPubs"
-	// IslbToBizGetMediaPubs islb->biz 返回房间内的发布流信息
-	IslbToBizGetMediaPubs = BizToIslbGetMediaPubs
-	// BizToIslbPeerLive biz->islb 获取Peer是否还存活
-	BizToIslbPeerLive = "getPeerLive"
-	// IslbToBizPeerLive islb->biz islb返回peer存活状态
-	IslbToBizPeerLive = BizToIslbPeerLive
-	// BizToIslbBroadcast biz->islb 有人发送广播
-	BizToIslbBroadcast = ClientToBizBroadcast
+
+	// IslbToBizOnJoin islb->biz 有人加入房间
+	IslbToBizOnJoin = BizToClientOnJoin
+	// IslbToBizOnLeave islb->biz 有人离开房间
+	IslbToBizOnLeave = BizToClientOnLeave
+	// IslbToBizOnStreamAdd islb->biz 有人发布流
+	IslbToBizOnStreamAdd = BizToClientOnStreamAdd
+	// IslbToBizOnStreamRemove islb->biz 有人取消发布流
+	IslbToBizOnStreamRemove = BizToClientOnStreamRemove
 	// IslbToBizBroadcast islb->biz 有人发送广播
 	IslbToBizBroadcast = ClientToBizBroadcast
-	//日志输出
-	ToLogsvr = "toLogsvr"
 )
 
 // GetUIDFromMID 从mid中获取uid
@@ -113,6 +117,11 @@ func GetUIDFromMID(mid string) string {
 // GetUserInfoKey 获取用户的信息
 func GetUserInfoKey(rid, uid string) string {
 	return "/user/rid/" + rid + "/uid/" + uid
+}
+
+// GetUserNodeKey 获取用户的服务器信息
+func GetUserNodeKey(rid, uid string) string {
+	return "/node/rid/" + rid + "/uid/" + uid
 }
 
 // GetMediaInfoKey 获取用户发布的流信息

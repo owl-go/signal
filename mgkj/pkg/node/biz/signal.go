@@ -45,8 +45,8 @@ func checkRoom() {
 		roomLock.Lock()
 		for rid, node := range rooms {
 			for uid := range node.room.GetPeers() {
-				bLive := FindPeerIsLive(rid, uid)
-				if !bLive {
+				biz := FindBizNodeByUid(rid, uid)
+				if biz == nil {
 					// 查询islb节点
 					islb := FindIslbNode()
 					if islb == nil {

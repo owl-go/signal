@@ -30,7 +30,7 @@ func Entry(method string, peer *ws.Peer, msg map[string]interface{}, accept ws.A
 		trickle(peer, msg, accept, reject)
 	case proto.ClientToBizBroadcast:
 		broadcast(peer, msg, accept, reject)
-	case proto.ClientToBizListusers:
+	case proto.ClientToBizGetRoomUsers:
 		listusers(peer, msg, accept, reject)
 	default:
 		ws.DefaultReject(codeUnknownErr, codeStr(codeUnknownErr))
@@ -73,7 +73,6 @@ func join(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 		return
 	}
 
-	// 删除以前加入过的房间数据
 	rpc, find := rpcs[islb.Nid]
 	if !find {
 		logger.Errorf("biz.join islb rpc not found", "uid", uid, "rid", rid)
@@ -81,28 +80,36 @@ func join(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 		return
 	}
 
-	for _, room := range GetRoomsByPeer(uid) {
-		ridTmp := room.GetID()
-		rpc.SyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", ridTmp, "uid", uid, "mid", ""))
-		rpc.SyncRequest(proto.BizToIslbOnLeave, util.Map("rid", ridTmp, "uid", uid))
-		DelPeer(ridTmp, uid)
+	// 查询uid是否在房间中
+	resp, err := rpc.SyncRequest(proto.BizToIslbGetBizInfo, util.Map("rid", rid, "uid", uid))
+	if err == nil {
+		// uid已经存在，先删除
+		nid := resp["nid"].(string)
+		if nid != node.NodeInfo().Nid {
+			// 不在当前节点
+			rpcBiz := rpcs[nid]
+			if rpcBiz != nil {
+				rpcBiz.SyncRequest(proto.BizToBizOnKick, util.Map("rid", rid, "uid", uid))
+			}
+		} else {
+			// 在当前节点
+			rpc.SyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", ""))
+			rpc.SyncRequest(proto.BizToIslbOnLeave, util.Map("rid", rid, "uid", uid))
+			DelPeer(rid, uid)
+		}
 	}
 
 	// 重新加入房间
 	AddPeer(rid, peer)
 	// 通知房间其他人
 	rpc.SyncRequest(proto.BizToIslbOnJoin, util.Map("rid", rid, "uid", uid, "info", info))
-	// 查询房间存在的发布流
-	FindMediaPubs(peer, rid)
 
-	resp, err := rpc.SyncRequest(proto.BizToIslbListusers, util.Map("rid", rid, "uid", uid))
-	if err != nil {
-		logger.Errorf(fmt.Sprintf("biz.listusers request islb err=%s", err.Reason), "rid", rid, "uid", uid)
-		reject(err.Code, err.Reason)
-	}
+	// 查询房间所有用户
+	_, users := FindRoomUsers(uid, rid)
+	// 查询房间所有用户发布流
+	_, pubs := FindMediaPubs(uid, rid)
 
-	result := util.Map("users", resp["users"])
-
+	result := util.Map("users", users, "pubs", pubs)
 	// resp
 	accept(result)
 }
@@ -640,35 +647,20 @@ func broadcast(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	accept(emptyMap)
 }
 
+// 查询房间所有数据
 func listusers(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
-
 	logger.Infof(fmt.Sprintf("biz.listusers uid=%s,msg=%v", peer.ID(), msg), "uid", peer.ID())
-
 	if invalid(msg, "rid", reject) {
 		return
 	}
+
 	uid := peer.ID()
 	rid := util.Val(msg, "rid")
+	// 查询房间所有用户
+	_, users := FindRoomUsers(uid, rid)
+	// 查询房间所有用户发布流
+	_, pubs := FindMediaPubs(uid, rid)
 
-	// 查询islb节点
-	islb := FindIslbNode()
-	if islb == nil {
-		logger.Errorf("biz.broadcast islb node not found", "uid", uid, "rid", rid)
-		reject(codeIslbErr, codeStr(codeIslbErr))
-		return
-	}
-
-	rpcIslb, find := rpcs[islb.Nid]
-	if !find {
-		logger.Errorf("biz.broadcast islb rpc not found", "uid", uid, "rid", rid)
-		reject(codeIslbRpcErr, codeStr(codeIslbRpcErr))
-		return
-	}
-	resp, err := rpcIslb.SyncRequest(proto.BizToIslbListusers, util.Map("rid", rid, "uid", uid))
-	if err != nil {
-		logger.Errorf(fmt.Sprintf("biz.listusers request islb err=%s", err.Reason), "rid", rid, "uid", uid)
-		reject(err.Code, err.Reason)
-	}
-	result := util.Map("users", resp["users"])
+	result := util.Map("users", users, "pubs", pubs)
 	accept(result)
 }

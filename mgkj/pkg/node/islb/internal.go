@@ -11,99 +11,128 @@ import (
 	"mgkj/util"
 )
 
-// handleRPCRequest 接收消息处理
+// 接收biz消息处理
 func handleRPCRequest(rpcID string) {
-
 	logger.Infof(fmt.Sprintf("islb.handleRequest: rpcID=%s", rpcID), "rpcid", rpcID)
+	nats.OnRequest(rpcID, handleRpcMsg)
+}
 
-	protoo.OnRequest(rpcID, func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
-		//go func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
-		func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
-			defer util.Recover("islb.handleRPCRequest")
+// 处理rpc请求
+func handleRpcMsg(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
+	defer util.Recover("islb.handleRPCRequest")
+	logger.Infof(fmt.Sprintf("islb.handleRPCRequest recv request=%v", request))
 
-			//log.Infof("islb.handleRPCRequest recv request=%v", request)
-			logger.Infof(fmt.Sprintf("islb.handleRPCRequest recv request=%s", request), "rpcid", rpcID)
-			method := request["method"].(string)
-			data := request["data"].(map[string]interface{})
-			//log.Infof("method = %s, data = %v", method, data)
+	method := request["method"].(string)
+	data := request["data"].(map[string]interface{})
+	var result map[string]interface{}
+	err := &nprotoo.Error{Code: 400, Reason: fmt.Sprintf("Unkown method [%s]", method)}
 
-			var result map[string]interface{}
-			err := &nprotoo.Error{Code: 400, Reason: fmt.Sprintf("Unkown method [%s]", method)}
-
-			switch method {
-			/* 处理和biz服务器通信 */
-			case proto.BizToIslbOnJoin:
-				result, err = clientJoin(data)
-			case proto.BizToIslbOnLeave:
-				result, err = clientLeave(data)
-			case proto.BizToIslbOnStreamAdd:
-				result, err = streamAdd(data)
-			case proto.BizToIslbOnStreamRemove:
-				result, err = streamRemove(data)
-			case proto.BizToIslbKeepLive:
-				result, err = keeplive(data)
-			case proto.BizToIslbBroadcast:
-				result, err = broadcast(data)
-			case proto.BizToIslbGetSfuInfo:
-				result, err = getSfuByMid(data)
-			case proto.BizToIslbGetMediaPubs:
-				result, err = getMediaPubs(data)
-			case proto.BizToIslbPeerLive:
-				result, err = getPeerLive(data)
-			case proto.IssrToIslbReportStreamState:
-				result, err = reportStreamState(data)
-			case proto.BizToIslbListusers:
-				result, err = listusers(data)
-			}
-			if err != nil {
-				reject(err.Code, err.Reason)
-			} else {
-				accept(result)
-			}
-		}(request, accept, reject)
-	})
+	switch method {
+	/* 处理和biz服务器通信 */
+	case proto.BizToIslbOnJoin:
+		result, err = clientJoin(data)
+	case proto.BizToIslbOnLeave:
+		result, err = clientLeave(data)
+	case proto.BizToIslbKeepLive:
+		result, err = keeplive(data)
+	case proto.BizToIslbOnStreamAdd:
+		result, err = streamAdd(data)
+	case proto.BizToIslbOnStreamRemove:
+		result, err = streamRemove(data)
+	case proto.BizToIslbBroadcast:
+		result, err = broadcast(data)
+	case proto.BizToIslbGetBizInfo:
+		result, err = getBizByUid(data)
+	case proto.BizToIslbGetSfuInfo:
+		result, err = getSfuByMid(data)
+	case proto.BizToIslbGetRoomUsers:
+		result, err = getRoomUsers(data)
+	case proto.BizToIslbGetMediaPubs:
+		result, err = getMediaPubs(data)
+	case proto.IssrToIslbReportStreamState:
+		result, err = reportStreamState(data)
+	}
+	if err != nil {
+		reject(err.Code, err.Reason)
+	} else {
+		accept(result)
+	}
 }
 
 /*
-	"method", proto.BizToIslbOnJoin, "rid", rid, "uid", uid, "info", info
+	"method", proto.BizToIslbOnJoin, "rid", rid, "uid", uid, "info", info, "nid", nid
 */
-// clientJoin 有人加入房间
+// 有人加入房间
 func clientJoin(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
+	nid := util.Val(data, "nid")
 	info := util.Val(data, "info")
-	// 获取用户的信息
-	uKey := proto.GetUserInfoKey(rid, uid)
-	// 写入key值
-	err := redis.Set(uKey, info, redisShort)
+	// 获取用户的服务器信息
+	uKey := proto.GetUserNodeKey(rid, uid)
+	err := redis.Set(uKey, nid, redisShort)
 	if err != nil {
-		//log.Errorf("redis.Set clientJoin err = %v", err)
+		logger.Errorf(fmt.Sprintf("islb.clientJoin redis.Set err=%v", err), "rid", rid, "uid", uid)
+	}
+	// 获取用户的信息
+	uKey = proto.GetUserInfoKey(rid, uid)
+	err = redis.Set(uKey, info, redisShort)
+	if err != nil {
 		logger.Errorf(fmt.Sprintf("islb.clientJoin redis.Set err=%v", err), "rid", rid, "uid", uid)
 	}
 	// 生成resp对象
-	broadcaster.Say(proto.IslbToBizOnJoin, util.Map("rid", rid, "uid", uid, "info", data["info"]))
+	broadcaster.Say(proto.IslbToBizOnJoin, util.Map("rid", rid, "uid", uid, "nid", nid, "info", data["info"]))
 	return util.Map(), nil
 }
 
 /*
 	"method", proto.BizToIslbOnLeave, "rid", rid, "uid", uid
 */
-// clientLeave 有人退出房间
+// 有人退出房间
 func clientLeave(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
-	// 获取用户的信息
-	uKey := proto.GetUserInfoKey(rid, uid)
+	// 获取用户的服务器信息
+	uKey := proto.GetUserNodeKey(rid, uid)
 	ukeys := redis.Keys(uKey)
-	for _, key := range ukeys {
-		// 删除key值
-		err := redis.Del(key)
+	if len(ukeys) > 0 {
+		err := redis.Del(uKey)
 		if err != nil {
-			//log.Errorf("redis.Del clientLeave err = %v", err)
+			logger.Errorf(fmt.Sprintf("islb.clientLeave redis.Del err=%v", err), "rid", rid, "uid", uid)
+		}
+	}
+	// 获取用户的信息
+	uKey = proto.GetUserInfoKey(rid, uid)
+	ukeys = redis.Keys(uKey)
+	if len(ukeys) > 0 {
+		err := redis.Del(uKey)
+		if err != nil {
 			logger.Errorf(fmt.Sprintf("islb.clientLeave redis.Del err=%v", err), "rid", rid, "uid", uid)
 		} else {
 			broadcaster.Say(proto.IslbToBizOnLeave, util.Map("rid", rid, "uid", uid))
 		}
+	}
+	return util.Map(), nil
+}
+
+/*
+	"method", proto.BizToIslbKeepLive, "rid", rid, "uid", uid
+*/
+// 保活处理
+func keeplive(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
+	rid := util.Val(data, "rid")
+	uid := util.Val(data, "uid")
+	// 获取用户的服务器信息
+	uKey := proto.GetUserNodeKey(rid, uid)
+	err := redis.Expire(uKey, redisShort)
+	if err != nil {
+		logger.Errorf(fmt.Sprintf("islb.keeplive redis.Set err=%v", err), "rid", rid, "uid", uid)
+	}
+	// 获取用户的信息
+	uKey = proto.GetUserInfoKey(rid, uid)
+	err = redis.Expire(uKey, redisShort)
+	if err != nil {
+		logger.Errorf(fmt.Sprintf("islb.keeplive redis.Set err=%v", err), "rid", rid, "uid", uid)
 	}
 	return util.Map(), nil
 }
@@ -118,22 +147,16 @@ func streamAdd(data map[string]interface{}) (map[string]interface{}, *nprotoo.Er
 	mid := util.Val(data, "mid")
 	nid := util.Val(data, "nid")
 	minfo := util.Val(data, "minfo")
-
 	// 获取用户发布的流信息
 	ukey := proto.GetMediaInfoKey(rid, uid, mid)
-	// 写入key值
 	err := redis.Set(ukey, minfo, redisKeyTTL)
 	if err != nil {
-		//log.Errorf("redis.Set streamAdd err = %v", err)
 		logger.Errorf(fmt.Sprintf("islb.streamAdd redis.Set err=%v", err), "rid", rid, "uid", uid, "mid", mid)
 	}
-
 	// 获取用户发布流对应的sfu信息
 	ukey = proto.GetMediaPubKey(rid, uid, mid)
-	// 写入key值
 	err = redis.Set(ukey, nid, redisKeyTTL)
 	if err != nil {
-		//log.Errorf("islb.redis.Set streamAdd err = %v", err)
 		logger.Errorf(fmt.Sprintf("islb.streamAdd redis.Set err=%v", err), "rid", rid, "uid", uid, "mid", mid)
 	}
 	// 生成resp对象
@@ -159,7 +182,6 @@ func streamRemove(data map[string]interface{}) (map[string]interface{}, *nprotoo
 			// 删除key值
 			err := redis.Del(ukey)
 			if err != nil {
-				//log.Errorf("islb.redis.Del streamRemove err = %v", err)
 				logger.Errorf(fmt.Sprintf("islb.streamRemove media redis.Del err=%v", err), "rid", rid, "uid", uid)
 			}
 		}
@@ -167,11 +189,11 @@ func streamRemove(data map[string]interface{}) (map[string]interface{}, *nprotoo
 		ukeys = redis.Keys(ukey)
 		for _, key := range ukeys {
 			ukey = key
-			mid, _, _ := parseMediaKey(ukey)
+			arr := strings.Split(key, "/")
+			mid := arr[7]
 			// 删除key值
 			err := redis.Del(ukey)
 			if err != nil {
-				//log.Errorf("redis.Del streamRemove err = %v", err)
 				logger.Errorf(fmt.Sprintf("islb.streamRemove pub redis.Del err=%v", err), "rid", rid, "uid", uid)
 			} else {
 				// 生成resp对象
@@ -187,7 +209,6 @@ func streamRemove(data map[string]interface{}) (map[string]interface{}, *nprotoo
 			// 删除key值
 			err := redis.Del(ukey)
 			if err != nil {
-				//log.Errorf("redis.Del media streamRemove err = %v", err)
 				logger.Errorf(fmt.Sprintf("islb.streamRemove media redis.Del err=%v", err), "rid", rid, "uid", uid, "mid", mid)
 			}
 		}
@@ -196,11 +217,11 @@ func streamRemove(data map[string]interface{}) (map[string]interface{}, *nprotoo
 		ukeys = redis.Keys(ukey)
 		for _, key := range ukeys {
 			ukey = key
-			mid, _, _ := parseMediaKey(ukey)
+			arr := strings.Split(key, "/")
+			mid := arr[7]
 			// 删除key值
 			err := redis.Del(ukey)
 			if err != nil {
-				//log.Errorf("redis.Del streamRemove err = %v", err)
 				logger.Errorf(fmt.Sprintf("islb.streamRemove pub redis.Del err=%v", err), "rid", rid, "uid", uid, "mid", mid)
 			} else {
 				// 生成resp对象
@@ -212,33 +233,32 @@ func streamRemove(data map[string]interface{}) (map[string]interface{}, *nprotoo
 }
 
 /*
-	"method", proto.BizToIslbKeepLive, "rid", rid, "uid", uid, "info", info
-*/
-// keeplive 保活
-func keeplive(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
-	rid := util.Val(data, "rid")
-	uid := util.Val(data, "uid")
-	info := util.Val(data, "info")
-	// 获取用户的信息
-	uKey := proto.GetUserInfoKey(rid, uid)
-	// 写入key值
-	err := redis.Set(uKey, info, redisShort)
-	if err != nil {
-		//log.Errorf("redis.Set keeplive err = %v", err)
-		logger.Errorf(fmt.Sprintf("islb.keeplive redis.Set err=%v", err), "rid", rid, "uid", uid)
-	}
-	return util.Map(), nil
-}
-
-/*
 	"method", proto.BizToIslbBroadcast, "rid", rid, "uid", uid, "data", data
 */
-// broadcast 发送广播
+// 发送广播
 func broadcast(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
 	broadcaster.Say(proto.IslbToBizBroadcast, util.Map("rid", rid, "uid", uid, "data", data["data"]))
 	return util.Map(), nil
+}
+
+/*
+	"method", proto.BizToIslbGetBizInfo, "rid", rid, "uid", uid
+*/
+// 获取uid指定的biz节点信息
+func getBizByUid(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
+	rid := util.Val(data, "rid")
+	uid := util.Val(data, "uid")
+	// 获取用户的服务器信息
+	uKey := proto.GetUserNodeKey(rid, uid)
+	ukeys := redis.Keys(uKey)
+	if len(ukeys) > 0 {
+		nid := redis.Get(uKey)
+		return util.Map("rid", rid, "nid", nid), nil
+	} else {
+		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("can't find peer info by key:%s", uKey)}
+	}
 }
 
 /*
@@ -251,33 +271,61 @@ func getSfuByMid(data map[string]interface{}) (map[string]interface{}, *nprotoo.
 	uid := proto.GetUIDFromMID(mid)
 	// 获取用户发布流对应的sfu信息
 	uKey := proto.GetMediaPubKey(rid, uid, mid)
-	nid := redis.Get(uKey)
-	logger.Infof(fmt.Sprintf("islb.getSfuByMid nid=%s", nid), "rid", rid, "uid", uid, "mid", mid)
-	//resp := make(map[string]interface{})
-	if nid != "" {
-		resp := util.Map("rid", rid, "mid", mid, "nid", nid)
-		return resp, nil
+	ukeys := redis.Keys(uKey)
+	if len(ukeys) > 0 {
+		nid := redis.Get(uKey)
+		return util.Map("rid", rid, "nid", nid), nil
 	} else {
-		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("can't find sfu node by mid:%s", mid)}
+		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("can't find sfu node by mid:%s", uKey)}
 	}
+}
+
+/*
+	"method", proto.BizToIslbGetRoomUsers, "rid", rid, "uid", uid
+*/
+// 获取房间里所有人
+func getRoomUsers(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
+	rid := util.Val(data, "rid")
+	uid := util.Val(data, "uid")
+	// 获取用户的信息
+	users := make([]map[string]interface{}, 0)
+	uKey := "/user/rid/" + rid + "/uid/*"
+	ukeys := redis.Keys(uKey)
+	for _, key := range ukeys {
+		// 去掉指定的uid
+		id := strings.Split(key, "/")[5]
+		if id == uid {
+			continue
+		}
+		info := redis.Get(key)
+		uKey := proto.GetUserNodeKey(rid, uid)
+		nid := redis.Get(uKey)
+
+		user := util.Map("uid", id, "nid", nid, "info", util.Unmarshal(info))
+		users = append(users, user)
+	}
+	// 返回
+	resp := util.Map("rid", rid, "users", users)
+	logger.Infof(fmt.Sprintf("islb.getRoomUsers resp=%v ", resp), "rid", rid)
+	return resp, nil
 }
 
 /*
 	"method", proto.BizToIslbGetMediaPubs, "rid", rid, "uid", uid
 */
-// getMediaPubs 获取房间所有人的发布流
+// 获取房间所有人的发布流
 func getMediaPubs(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
-	uidTmp := util.Val(data, "uid")
+	id := util.Val(data, "uid")
 	// 找到保存用户流信息的key
-	var pubs []map[string]interface{}
-	for _, key := range redis.Keys("/media/rid/" + rid + "/uid/*") {
-		mid, uid, err := parseMediaKey(key)
-		if err != nil {
-			return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("can't parse media key:%s", key)}
-		}
-
-		if uidTmp == uid {
+	pubs := make([]map[string]interface{}, 0)
+	uKey := "/media/rid/" + rid + "/uid/*"
+	ukeys := redis.Keys(uKey)
+	for _, key := range ukeys {
+		arr := strings.Split(key, "/")
+		uid := arr[5]
+		mid := arr[7]
+		if uid == id {
 			continue
 		}
 
@@ -285,45 +333,16 @@ func getMediaPubs(data map[string]interface{}) (map[string]interface{}, *nprotoo
 		uKey := proto.GetMediaPubKey(rid, uid, mid)
 		nid := redis.Get(uKey)
 
-		pub := util.Map("rid", rid, "uid", uid, "mid", mid, "nid", nid, "minfo", util.Unmarshal(minfo))
+		pub := util.Map("uid", uid, "mid", mid, "nid", nid, "minfo", util.Unmarshal(minfo))
 		pubs = append(pubs, pub)
 	}
-
+	// 返回
 	resp := util.Map("rid", rid, "pubs", pubs)
 	logger.Infof(fmt.Sprintf("islb.getMediaPubs resp=%v ", resp), "rid", rid)
 	return resp, nil
 }
 
-// parseMediaKey 分析key "/media/rid/" + rid + "/uid/" + uid + "/mid/" + mid
-func parseMediaKey(key string) (string, string, error) {
-	arr := strings.Split(key, "/")
-	if len(arr) < 7 {
-		return "", "", fmt.Errorf("can‘t parse mediainfo; [%s]", key)
-	}
-
-	mid := arr[7]
-	uid := arr[5]
-	return mid, uid, nil
-}
-
-/*
-	"method", proto.BizToIslbPeerLive, "rid", rid, "uid", uid
-*/
-// getPeerLive 获取peer存活状态
-func getPeerLive(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
-	rid := util.Val(data, "rid")
-	uid := util.Val(data, "uid")
-	// 获取用户的信息
-	uKey := proto.GetUserInfoKey(rid, uid)
-	info := redis.Get(uKey)
-	//resp := make(map[string]interface{})
-	if info != "" {
-		return util.Map(), nil
-	} else {
-		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("can't find peer info by key:%s", uKey)}
-	}
-}
-
+// 返回流的状态
 func reportStreamState(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
@@ -346,30 +365,4 @@ func reportStreamState(data map[string]interface{}) (map[string]interface{}, *np
 	} else {
 		return util.Map(), nil
 	}
-}
-
-func listusers(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
-	rid := util.Val(data, "rid")
-	uid := util.Val(data, "uid")
-	if rid == "" {
-		return nil, &nprotoo.Error{Code: -1, Reason: "rid can't be empty"}
-	}
-	if uid == "" {
-		return nil, &nprotoo.Error{Code: -1, Reason: "uid can't be empty"}
-	}
-
-	users := make([]map[string]interface{}, 0)
-
-	uKey := "/user/rid/" + rid + "/uid/*"
-	allkeys := redis.Keys(uKey)
-	for _, key := range allkeys {
-		id := strings.Split(key, "/")[5]
-		if id == uid {
-			continue
-		}
-		userinfo := redis.Get(key)
-		user := util.Map("uid", id, "info", userinfo)
-		users = append(users, user)
-	}
-	return util.Map("users", users), nil
 }
