@@ -95,6 +95,15 @@ func join(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 			// 在当前节点
 			rpc.SyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", ""))
 			rpc.SyncRequest(proto.BizToIslbOnLeave, util.Map("rid", rid, "uid", uid))
+			// 获取老的peer数据
+			room := GetRoom(rid)
+			if room != nil {
+				peer := room.room.GetPeer(uid)
+				if peer != nil {
+					peer.Notify(proto.BizToBizOnKick, util.Map("rid", rid, "uid", uid))
+					peer.Close()
+				}
+			}
 			DelPeer(rid, uid)
 		}
 	}
@@ -102,7 +111,7 @@ func join(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 	// 重新加入房间
 	AddPeer(rid, peer)
 	// 通知房间其他人
-	rpc.SyncRequest(proto.BizToIslbOnJoin, util.Map("rid", rid, "uid", uid, "info", info))
+	rpc.SyncRequest(proto.BizToIslbOnJoin, util.Map("rid", rid, "uid", uid, "nid", node.NodeInfo().Nid, "info", info))
 
 	// 查询房间所有用户
 	_, users := FindRoomUsers(uid, rid)

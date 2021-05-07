@@ -60,17 +60,16 @@ func peerKick(data map[string]interface{}) (map[string]interface{}, *nprotoo.Err
 
 	room := GetRoom(rid)
 	if room != nil {
-		// 通知该peer被踢出
-		for _, peer := range room.room.GetPeers() {
-			if peer != nil && peer.ID() == uid {
-				peer.Notify(proto.BizToBizOnKick, data)
-			}
+		peer := room.room.GetPeer(uid)
+		if peer != nil {
+			peer.Notify(proto.BizToBizOnKick, util.Map("rid", rid, "uid", uid))
+			peer.Close()
 		}
-
-		rpc.SyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", ""))
-		rpc.SyncRequest(proto.BizToIslbOnLeave, util.Map("rid", rid, "uid", uid))
-		DelPeer(rid, uid)
 	}
+
+	rpc.SyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", ""))
+	rpc.SyncRequest(proto.BizToIslbOnLeave, util.Map("rid", rid, "uid", uid))
+	DelPeer(rid, uid)
 	return util.Map(), nil
 }
 
