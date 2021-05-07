@@ -288,6 +288,7 @@ func getRoomUsers(data map[string]interface{}) (map[string]interface{}, *nprotoo
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
 	// 获取用户的信息
+	pubs := getUserMedias(rid, uid)
 	users := make([]map[string]interface{}, 0)
 	uKey := "/user/rid/" + rid + "/uid/*"
 	ukeys := redis.Keys(uKey)
@@ -297,11 +298,21 @@ func getRoomUsers(data map[string]interface{}) (map[string]interface{}, *nprotoo
 		if id == uid {
 			continue
 		}
+
 		info := redis.Get(key)
 		uKey := proto.GetUserNodeKey(rid, uid)
 		nid := redis.Get(uKey)
 
-		user := util.Map("uid", id, "nid", nid, "info", util.Unmarshal(info))
+		streams := make([]map[string]interface{}, 0)
+		for _, pub := range pubs {
+			if id == pub["uid"].(string) {
+				delete(pub, "uid")
+				if pub["mid"].(string) != "" {
+					streams = append(streams, pub)
+				}
+			}
+		}
+		user := util.Map("uid", id, "nid", nid, "info", util.Unmarshal(info), "media", streams)
 		users = append(users, user)
 	}
 	// 返回
@@ -365,4 +376,29 @@ func reportStreamState(data map[string]interface{}) (map[string]interface{}, *np
 	} else {
 		return util.Map(), nil
 	}
+}
+
+func getUserMedias(rid, uid string) []map[string]interface{} {
+	// 找到所有用户流信息的key
+	var pubs []map[string]interface{}
+	uKey := "/media/rid/" + rid + "/uid/*"
+	ukeys := redis.Keys(uKey)
+	for _, key := range ukeys {
+		arr := strings.Split(key, "/")
+		id := arr[5]
+		mid := arr[7]
+		if uid == id {
+			continue
+		}
+
+		minfo := redis.Get(key)
+		uKey := proto.GetMediaPubKey(rid, id, mid)
+		nid := redis.Get(uKey)
+
+		pub := util.Map("uid", id, "mid", mid, "nid", nid, "minfo", util.Unmarshal(minfo))
+		pubs = append(pubs, pub)
+	}
+	// 返回
+	logger.Infof(fmt.Sprintf("islb.getUserMedias resp=%v ", pubs), "rid", rid)
+	return pubs
 }
