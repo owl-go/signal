@@ -62,7 +62,7 @@ func peerKick(data map[string]interface{}) (map[string]interface{}, *nprotoo.Err
 	if room != nil {
 		peer := room.room.GetPeer(uid)
 		if peer != nil {
-			peer.Notify(proto.BizToBizOnKick, util.Map("rid", rid, "uid", uid))
+			peer.Notify(proto.BizToClientOnKick, util.Map("rid", rid, "uid", uid))
 			peer.Close()
 		}
 	}

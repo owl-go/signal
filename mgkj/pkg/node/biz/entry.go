@@ -100,7 +100,7 @@ func join(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 			if room != nil {
 				peer := room.room.GetPeer(uid)
 				if peer != nil {
-					peer.Notify(proto.BizToBizOnKick, util.Map("rid", rid, "uid", uid))
+					peer.Notify(proto.BizToClientOnKick, util.Map("rid", rid, "uid", uid))
 					peer.Close()
 				}
 			}
