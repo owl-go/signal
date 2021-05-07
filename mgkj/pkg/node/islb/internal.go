@@ -303,17 +303,24 @@ func getRoomUsers(data map[string]interface{}) (map[string]interface{}, *nprotoo
 		uKey := proto.GetUserNodeKey(rid, uid)
 		nid := redis.Get(uKey)
 
-		streams := make([]map[string]interface{}, 0)
+		media := make([]map[string]interface{}, 0)
 		for _, pub := range pubs {
 			if id == pub["uid"].(string) {
-				delete(pub, "uid")
 				if pub["mid"].(string) != "" {
-					streams = append(streams, pub)
+					media = append(media, pub)
 				}
 			}
 		}
-		user := util.Map("uid", id, "nid", nid, "info", util.Unmarshal(info), "media", streams)
-		users = append(users, user)
+
+		if len(media) > 0 {
+			for _, stream := range media {
+				user := util.Map("uid", id, "nid", nid, "info", util.Unmarshal(info), "media", stream)
+				users = append(users, user)
+			}
+		} else {
+			user := util.Map("uid", id, "nid", nid, "info", util.Unmarshal(info), "media", util.Map())
+			users = append(users, user)
+		}
 	}
 	// 返回
 	resp := util.Map("rid", rid, "users", users)
