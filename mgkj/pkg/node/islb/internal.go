@@ -261,7 +261,7 @@ func streamRemove(data map[string]interface{}) (map[string]interface{}, *nprotoo
 /*
 	"method", proto.BizToIslbGetSfuInfo, "rid", rid, "mid", mid
 */
-// getSfuByMid 获取指定mid对应的sfu节点
+// 获取mid指定对应的sfu节点
 func getSfuByMid(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	mid := util.Val(data, "mid")
@@ -273,7 +273,7 @@ func getSfuByMid(data map[string]interface{}) (map[string]interface{}, *nprotoo.
 		nid := redis.Get(uKey)
 		return util.Map("rid", rid, "nid", nid), nil
 	} else {
-		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("can't find sfu node by mid:%s", uKey)}
+		return nil, &nprotoo.Error{Code: 401, Reason: fmt.Sprintf("can't find sfu node by mid:%s", uKey)}
 	}
 }
 
@@ -294,16 +294,16 @@ func broadcast(data map[string]interface{}) (map[string]interface{}, *nprotoo.Er
 // 获取房间里所有人
 func getRoomUsers(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
-	uid := util.Val(data, "uid")
+	id := util.Val(data, "uid")
 	// 获取用户的信息
-	pubs := getUserMedias(rid, uid)
+	pubs := getUserMedias(rid, id)
 	users := make([]map[string]interface{}, 0)
 	uKey := "/user/rid/" + rid + "/uid/*"
 	ukeys := redis.Keys(uKey)
 	for _, key := range ukeys {
 		// 去掉指定的uid
-		id := strings.Split(key, "/")[5]
-		if id == uid {
+		uid := strings.Split(key, "/")[5]
+		if uid == id {
 			continue
 		}
 
@@ -313,7 +313,7 @@ func getRoomUsers(data map[string]interface{}) (map[string]interface{}, *nprotoo
 
 		media := make([]map[string]interface{}, 0)
 		for _, pub := range pubs {
-			if id == pub["uid"].(string) {
+			if uid == pub["uid"].(string) {
 				if pub["mid"].(string) != "" {
 					media = append(media, pub)
 				}
@@ -322,11 +322,11 @@ func getRoomUsers(data map[string]interface{}) (map[string]interface{}, *nprotoo
 
 		if len(media) > 0 {
 			for _, stream := range media {
-				user := util.Map("uid", id, "nid", nid, "info", util.Unmarshal(info), "media", stream)
+				user := util.Map("uid", uid, "nid", nid, "info", util.Unmarshal(info), "media", stream)
 				users = append(users, user)
 			}
 		} else {
-			user := util.Map("uid", id, "nid", nid, "info", util.Unmarshal(info), "media", util.Map())
+			user := util.Map("uid", uid, "nid", nid, "info", util.Unmarshal(info), "media", util.Map())
 			users = append(users, user)
 		}
 	}
@@ -334,6 +334,32 @@ func getRoomUsers(data map[string]interface{}) (map[string]interface{}, *nprotoo
 	resp := util.Map("rid", rid, "users", users)
 	logger.Infof(fmt.Sprintf("islb.getRoomUsers resp=%v ", resp), "rid", rid)
 	return resp, nil
+}
+
+// 获取房间所有人的发布流
+func getUserMedias(rid, id string) []map[string]interface{} {
+	// 找到所有用户流信息的key
+	var pubs []map[string]interface{}
+	uKey := "/media/rid/" + rid + "/uid/*"
+	ukeys := redis.Keys(uKey)
+	for _, key := range ukeys {
+		arr := strings.Split(key, "/")
+		uid := arr[5]
+		mid := arr[7]
+		if uid == id {
+			continue
+		}
+
+		minfo := redis.Get(key)
+		uKey := proto.GetMediaPubKey(rid, uid, mid)
+		nid := redis.Get(uKey)
+
+		pub := util.Map("uid", uid, "mid", mid, "nid", nid, "minfo", util.Unmarshal(minfo))
+		pubs = append(pubs, pub)
+	}
+	// 返回
+	logger.Infof(fmt.Sprintf("islb.getUserMedias resp=%v ", pubs), "rid", rid)
+	return pubs
 }
 
 /*
@@ -406,31 +432,6 @@ func popFailedStreamState(data map[string]interface{}) (map[string]interface{}, 
 		}
 	}
 	return util.Map("failures", failures), nil
-}
-
-func getUserMedias(rid, uid string) []map[string]interface{} {
-	// 找到所有用户流信息的key
-	var pubs []map[string]interface{}
-	uKey := "/media/rid/" + rid + "/uid/*"
-	ukeys := redis.Keys(uKey)
-	for _, key := range ukeys {
-		arr := strings.Split(key, "/")
-		id := arr[5]
-		mid := arr[7]
-		if uid == id {
-			continue
-		}
-
-		minfo := redis.Get(key)
-		uKey := proto.GetMediaPubKey(rid, id, mid)
-		nid := redis.Get(uKey)
-
-		pub := util.Map("uid", id, "mid", mid, "nid", nid, "minfo", util.Unmarshal(minfo))
-		pubs = append(pubs, pub)
-	}
-	// 返回
-	logger.Infof(fmt.Sprintf("islb.getUserMedias resp=%v ", pubs), "rid", rid)
-	return pubs
 }
 
 func getMcuInfo(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
