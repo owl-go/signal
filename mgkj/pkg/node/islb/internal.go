@@ -27,24 +27,26 @@ func handleRpcMsg(request map[string]interface{}, accept nprotoo.AcceptFunc, rej
 	var result map[string]interface{}
 	err := &nprotoo.Error{Code: 400, Reason: fmt.Sprintf("Unkown method [%s]", method)}
 
-	switch method {
 	/* 处理和biz服务器通信 */
+	switch method {
 	case proto.BizToIslbOnJoin:
 		result, err = clientJoin(data)
 	case proto.BizToIslbOnLeave:
 		result, err = clientLeave(data)
 	case proto.BizToIslbKeepLive:
 		result, err = keeplive(data)
+	case proto.BizToIslbGetBizInfo:
+		result, err = getBizByUid(data)
+
 	case proto.BizToIslbOnStreamAdd:
 		result, err = streamAdd(data)
 	case proto.BizToIslbOnStreamRemove:
 		result, err = streamRemove(data)
-	case proto.BizToIslbBroadcast:
-		result, err = broadcast(data)
-	case proto.BizToIslbGetBizInfo:
-		result, err = getBizByUid(data)
 	case proto.BizToIslbGetSfuInfo:
 		result, err = getSfuByMid(data)
+
+	case proto.BizToIslbBroadcast:
+		result, err = broadcast(data)
 	case proto.BizToIslbGetRoomUsers:
 		result, err = getRoomUsers(data)
 	case proto.BizToIslbGetMediaPubs:
@@ -66,7 +68,7 @@ func handleRpcMsg(request map[string]interface{}, accept nprotoo.AcceptFunc, rej
 }
 
 /*
-	"method", proto.BizToIslbOnJoin, "rid", rid, "uid", uid, "info", info, "nid", nid
+	"method", proto.BizToIslbOnJoin, "rid", rid, "uid", uid, "nid", nid, "info", info
 */
 // 有人加入房间
 func clientJoin(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
@@ -144,9 +146,27 @@ func keeplive(data map[string]interface{}) (map[string]interface{}, *nprotoo.Err
 }
 
 /*
+	"method", proto.BizToIslbGetBizInfo, "rid", rid, "uid", uid
+*/
+// 获取uid指定的biz节点信息
+func getBizByUid(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
+	rid := util.Val(data, "rid")
+	uid := util.Val(data, "uid")
+	// 获取用户的服务器信息
+	uKey := proto.GetUserNodeKey(rid, uid)
+	ukeys := redis.Keys(uKey)
+	if len(ukeys) > 0 {
+		nid := redis.Get(uKey)
+		return util.Map("rid", rid, "nid", nid), nil
+	} else {
+		return nil, &nprotoo.Error{Code: 401, Reason: fmt.Sprintf("can't find peer info by key:%s", uKey)}
+	}
+}
+
+/*
 	"method", proto.BizToIslbOnStreamAdd, "rid", rid, "uid", uid, "mid", mid, "nid", nid, "minfo", minfo
 */
-// streamAdd 有人发布流
+// 有人发布流
 func streamAdd(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
@@ -173,7 +193,7 @@ func streamAdd(data map[string]interface{}) (map[string]interface{}, *nprotoo.Er
 /*
 	"method", proto.BizToIslbOnStreamRemove, "rid", rid, "uid", uid, "mid", ""
 */
-// streamRemove 有人取消发布流
+// 有人取消发布流
 func streamRemove(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
@@ -239,35 +259,6 @@ func streamRemove(data map[string]interface{}) (map[string]interface{}, *nprotoo
 }
 
 /*
-	"method", proto.BizToIslbBroadcast, "rid", rid, "uid", uid, "data", data
-*/
-// 发送广播
-func broadcast(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
-	rid := util.Val(data, "rid")
-	uid := util.Val(data, "uid")
-	broadcaster.Say(proto.IslbToBizBroadcast, util.Map("rid", rid, "uid", uid, "data", data["data"]))
-	return util.Map(), nil
-}
-
-/*
-	"method", proto.BizToIslbGetBizInfo, "rid", rid, "uid", uid
-*/
-// 获取uid指定的biz节点信息
-func getBizByUid(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
-	rid := util.Val(data, "rid")
-	uid := util.Val(data, "uid")
-	// 获取用户的服务器信息
-	uKey := proto.GetUserNodeKey(rid, uid)
-	ukeys := redis.Keys(uKey)
-	if len(ukeys) > 0 {
-		nid := redis.Get(uKey)
-		return util.Map("rid", rid, "nid", nid), nil
-	} else {
-		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("can't find peer info by key:%s", uKey)}
-	}
-}
-
-/*
 	"method", proto.BizToIslbGetSfuInfo, "rid", rid, "mid", mid
 */
 // getSfuByMid 获取指定mid对应的sfu节点
@@ -284,6 +275,17 @@ func getSfuByMid(data map[string]interface{}) (map[string]interface{}, *nprotoo.
 	} else {
 		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("can't find sfu node by mid:%s", uKey)}
 	}
+}
+
+/*
+	"method", proto.BizToIslbBroadcast, "rid", rid, "uid", uid, "data", data
+*/
+// 发送广播
+func broadcast(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
+	rid := util.Val(data, "rid")
+	uid := util.Val(data, "uid")
+	broadcaster.Say(proto.IslbToBizBroadcast, util.Map("rid", rid, "uid", uid, "data", data["data"]))
+	return util.Map(), nil
 }
 
 /*
