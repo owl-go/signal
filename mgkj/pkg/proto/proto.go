@@ -160,6 +160,11 @@ func GetMcuInfoKey(rid string) string {
 	return "/mcu/rid/" + rid
 }
 
+// GetUserLockKey 获取UserLock key
+func GetUserLockKey(rid, uid string) string {
+	return "/lock/" + rid + "/" + uid
+}
+
 // TrackInfo track信息
 type TrackInfo struct {
 	ID      string `json:"id"`

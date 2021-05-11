@@ -104,6 +104,14 @@ func (r *Redis) Get(k string) string {
 	return r.single.Get(k).Val()
 }
 
+// SetNx 不存在则写入
+func (r *Redis) SetNx(k, v string, t time.Duration) bool {
+	if r.clusterMode {
+		return r.cluster.SetNX(k, v, t).Val()
+	}
+	return r.single.SetNX(k, v, t).Val()
+}
+
 // HSet redis以hash散列表方式存储key的field字段的值
 func (r *Redis) HSet(k, field string, value interface{}) error {
 	if r.clusterMode {

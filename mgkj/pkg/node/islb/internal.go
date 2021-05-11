@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	nprotoo "github.com/gearghost/nats-protoo"
 
@@ -74,6 +75,13 @@ func clientJoin(data map[string]interface{}) (map[string]interface{}, *nprotoo.E
 	uid := util.Val(data, "uid")
 	nid := util.Val(data, "nid")
 	info := util.Val(data, "info")
+	//get user distribute lock key
+	dkey := proto.GetUserLockKey(rid, uid)
+	ok := redis.SetNx(dkey, "", 1000*time.Millisecond)
+	if !ok {
+		return nil, &nprotoo.Error{Code: -1, Reason: "can't get lock"}
+	}
+	defer redis.Del(dkey)
 	// 获取用户的服务器信息
 	uKey := proto.GetUserNodeKey(rid, uid)
 	err := redis.Set(uKey, nid, redisShort)
