@@ -17,24 +17,26 @@ func handleRPCRequest(rpcID string) {
 
 // 处理biz的rpc请求
 func handleRpcMsg(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
-	defer util.Recover("biz.handleRPCRequest")
-	logger.Infof(fmt.Sprintf("biz.handleRPCRequest recv request=%v", request))
+	go func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
+		defer util.Recover("biz.handleRPCRequest")
+		logger.Infof(fmt.Sprintf("biz.handleRPCRequest recv request=%v", request))
 
-	method := request["method"].(string)
-	data := request["data"].(map[string]interface{})
-	var result map[string]interface{}
-	err := &nprotoo.Error{Code: 400, Reason: fmt.Sprintf("Unkown method [%s]", method)}
+		method := request["method"].(string)
+		data := request["data"].(map[string]interface{})
+		var result map[string]interface{}
+		err := &nprotoo.Error{Code: 400, Reason: fmt.Sprintf("Unkown method [%s]", method)}
 
-	switch method {
-	/* 处理和biz服务器通信 */
-	case proto.BizToBizOnKick:
-		result, err = peerKick(data)
-	}
-	if err != nil {
-		reject(err.Code, err.Reason)
-	} else {
-		accept(result)
-	}
+		switch method {
+		/* 处理和biz服务器通信 */
+		case proto.BizToBizOnKick:
+			result, err = peerKick(data)
+		}
+		if err != nil {
+			reject(err.Code, err.Reason)
+		} else {
+			accept(result)
+		}
+	}(request, accept, reject)
 }
 
 /*

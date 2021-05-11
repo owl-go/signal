@@ -19,48 +19,50 @@ func handleRPCRequest(rpcID string) {
 
 // 处理rpc请求
 func handleRpcMsg(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
-	defer util.Recover("islb.handleRPCRequest")
-	logger.Infof(fmt.Sprintf("islb.handleRPCRequest recv request=%v", request))
+	go func(rerequest map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
+		defer util.Recover("islb.handleRPCRequest")
+		logger.Infof(fmt.Sprintf("islb.handleRPCRequest recv request=%v", request))
 
-	method := request["method"].(string)
-	data := request["data"].(map[string]interface{})
-	var result map[string]interface{}
-	err := &nprotoo.Error{Code: 400, Reason: fmt.Sprintf("Unkown method [%s]", method)}
+		method := request["method"].(string)
+		data := request["data"].(map[string]interface{})
+		var result map[string]interface{}
+		err := &nprotoo.Error{Code: 400, Reason: fmt.Sprintf("Unkown method [%s]", method)}
 
-	switch method {
-	/* 处理和biz服务器通信 */
-	case proto.BizToIslbOnJoin:
-		result, err = clientJoin(data)
-	case proto.BizToIslbOnLeave:
-		result, err = clientLeave(data)
-	case proto.BizToIslbKeepLive:
-		result, err = keeplive(data)
-	case proto.BizToIslbOnStreamAdd:
-		result, err = streamAdd(data)
-	case proto.BizToIslbOnStreamRemove:
-		result, err = streamRemove(data)
-	case proto.BizToIslbBroadcast:
-		result, err = broadcast(data)
-	case proto.BizToIslbGetBizInfo:
-		result, err = getBizByUid(data)
-	case proto.BizToIslbGetSfuInfo:
-		result, err = getSfuByMid(data)
-	case proto.BizToIslbGetRoomUsers:
-		result, err = getRoomUsers(data)
-	case proto.BizToIslbGetMediaPubs:
-		result, err = getMediaPubs(data)
-	case proto.IssrToIslbReportStreamState:
-		result, err = reportStreamState(data)
-	case proto.BizToIslbGetMcuInfo:
-		result, err = getMcuInfo(data)
-	case proto.BizToIslbSetMcuInfo:
-		result, err = setMcuInfo(data)
-	}
-	if err != nil {
-		reject(err.Code, err.Reason)
-	} else {
-		accept(result)
-	}
+		switch method {
+		/* 处理和biz服务器通信 */
+		case proto.BizToIslbOnJoin:
+			result, err = clientJoin(data)
+		case proto.BizToIslbOnLeave:
+			result, err = clientLeave(data)
+		case proto.BizToIslbKeepLive:
+			result, err = keeplive(data)
+		case proto.BizToIslbOnStreamAdd:
+			result, err = streamAdd(data)
+		case proto.BizToIslbOnStreamRemove:
+			result, err = streamRemove(data)
+		case proto.BizToIslbBroadcast:
+			result, err = broadcast(data)
+		case proto.BizToIslbGetBizInfo:
+			result, err = getBizByUid(data)
+		case proto.BizToIslbGetSfuInfo:
+			result, err = getSfuByMid(data)
+		case proto.BizToIslbGetRoomUsers:
+			result, err = getRoomUsers(data)
+		case proto.BizToIslbGetMediaPubs:
+			result, err = getMediaPubs(data)
+		case proto.IssrToIslbReportStreamState:
+			result, err = reportStreamState(data)
+		case proto.BizToIslbGetMcuInfo:
+			result, err = getMcuInfo(data)
+		case proto.BizToIslbSetMcuInfo:
+			result, err = setMcuInfo(data)
+		}
+		if err != nil {
+			reject(err.Code, err.Reason)
+		} else {
+			accept(result)
+		}
+	}(request, accept, reject)
 }
 
 /*
