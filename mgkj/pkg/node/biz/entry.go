@@ -32,6 +32,10 @@ func Entry(method string, peer *ws.Peer, msg map[string]interface{}, accept ws.A
 		broadcast(peer, msg, accept, reject)
 	case proto.ClientToBizGetRoomUsers:
 		listusers(peer, msg, accept, reject)
+	case proto.ClientToBizStartLivestream:
+		startlivestream(peer, msg, accept, reject)
+	case proto.ClientToBizStopLivestream:
+		stoplivestream(peer, msg, accept, reject)
 	default:
 		ws.DefaultReject(codeUnknownErr, codeStr(codeUnknownErr))
 	}
@@ -670,4 +674,131 @@ func listusers(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 
 	result := util.Map("users", users, "pubs", pubs)
 	accept(result)
+}
+
+func startlivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
+	logger.Infof(fmt.Sprintf("biz.startlivestream uid=%s,msg=%v", peer.ID(), msg), "uid", peer.ID())
+	if invalid(msg, "rid", reject) {
+		return
+	}
+
+	uid := peer.ID()
+	rid := util.Val(msg, "rid")
+	mid := util.Val(msg, "mid")
+
+	var sfu *dis.Node
+	nid := util.Val(msg, "nid")
+	if nid != "" {
+		sfu = FindSfuNodeByID(nid)
+	} else {
+		sfu = FindSfuNodeByMid(rid, mid)
+	}
+
+	if sfu == nil {
+		logger.Errorf("biz.startlivestream sfu not found", "uid", uid, "rid", rid, "mid", mid)
+		reject(codeSfuErr, codeStr(codeSfuErr))
+		return
+	}
+
+	rpcSfu, find := rpcs[sfu.Nid]
+	if !find {
+		logger.Errorf("biz.startlivestream sfu rpc not found", "uid", uid, "rid", rid, "mid", mid)
+		reject(codeSfuRpcErr, codeStr(codeSfuRpcErr))
+		return
+	}
+
+	var mcu *dis.Node
+	mcu = FindMcuNodeByRid(rid)
+	if mcu == nil {
+		mcu = FindMcuNodeByPayload()
+		err := SetMcuNodeByRid(rid, mcu.Nid)
+		if err != nil {
+			reject(-1, err.Error())
+			return
+		}
+	}
+
+	rpcMcu, find := rpcs[mcu.Nid]
+	if !find {
+		logger.Errorf("biz.startlivestream mcu rpc not found", "uid", uid, "rid", rid, "mid", mid)
+		reject(codeMcuRpcErr, codeStr(codeMcuRpcErr))
+		return
+	}
+
+	// 获取sfu节点的resp
+	sfuresp, err := rpcSfu.SyncRequest(proto.BizToSfuSubscribeRTP, util.Map("rid", rid, "uid", mcu.Nid, "mid", mid))
+	if err != nil {
+		logger.Errorf(fmt.Sprintf("biz.startlivestream request sfu offer err=%v", err.Reason), "uid", uid, "rid", rid, "mid", mid)
+		reject(err.Code, err.Reason)
+		return
+	}
+
+	logger.Infof(fmt.Sprintf("biz.startlivestream request sfu offer resp=%v", sfuresp), "uid", uid, "rid", rid, "mid", mid)
+
+	mcuresp, err := rpcMcu.SyncRequest(proto.BizToMcuPublishRTP, util.Map("rid", rid, "uid", sfu.Nid, "jsep", sfuresp["jsep"]))
+	if err != nil {
+		logger.Errorf(fmt.Sprintf("biz.startlivestream request mcu answer err=%v", err.Reason), "uid", uid, "rid", rid, "mid", mid)
+		reject(err.Code, err.Reason)
+		return
+	}
+
+	logger.Infof(fmt.Sprintf("biz.startlivestream request mcu answer resp=%v", mcuresp), "uid", uid, "rid", rid, "mid", mid)
+
+	resp, err := rpcSfu.SyncRequest(proto.BizToSfuSubscribeRTP, util.Map("sid", mid, "jsep", mcuresp["jsep"]))
+	if err != nil {
+		logger.Errorf(fmt.Sprintf("biz.startlivestream request sfu answer err=%v", err.Reason), "uid", uid, "rid", rid, "mid", mid)
+		reject(err.Code, err.Reason)
+		return
+	}
+
+	logger.Infof(fmt.Sprintf("biz.startlivestream request sfu answer resp=%v", resp), "uid", uid, "rid", rid, "mid", mid)
+
+	accept(emptyMap)
+}
+
+func stoplivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
+
+	logger.Infof(fmt.Sprintf("biz.stoplivestream uid=%s,msg=%v", peer.ID(), msg), "uid", peer.ID())
+
+	if invalid(msg, "rid", reject) || invalid(msg, "mid", reject) {
+		return
+	}
+
+	uid := peer.ID()
+	rid := util.Val(msg, "rid")
+	mid := util.Val(msg, "mid")
+
+	var sfu *dis.Node
+	nid := util.Val(msg, "nid")
+	if nid != "" {
+		sfu = FindSfuNodeByID(nid)
+	} else {
+		sfu = FindSfuNodeByMid(rid, mid)
+	}
+
+	if sfu == nil {
+		logger.Errorf("biz.stoplivestream sfu node not found", "uid", uid, "rid", rid, "sid", mid)
+		reject(codeSfuErr, codeStr(codeSfuErr))
+		return
+	}
+
+	rpcSfu, find := rpcs[sfu.Nid]
+	if !find {
+		logger.Errorf("biz.stoplivestream sfu rpc not found", "uid", uid, "rid", rid, "sid", mid)
+		reject(codeSfuRpcErr, codeStr(codeSfuRpcErr))
+		return
+	}
+
+	var mcu *dis.Node
+	mcu = FindMcuNodeByRid(rid)
+	if mcu == nil {
+		reject(-1, fmt.Sprintf("can't find mcu node by rid:%s", rid))
+		return
+	}
+
+	mid = mcu.Nid + "#" + mid
+	rpcSfu.AsyncRequest(proto.BizToSfuUnSubscribe, util.Map("rid", rid, "uid", mcu.Nid, "mid", mid))
+
+	// resp
+	accept(emptyMap)
 }

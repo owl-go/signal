@@ -51,6 +51,10 @@ func handleRpcMsg(request map[string]interface{}, accept nprotoo.AcceptFunc, rej
 		result, err = getMediaPubs(data)
 	case proto.IssrToIslbReportStreamState:
 		result, err = reportStreamState(data)
+	case proto.BizToIslbGetMcuInfo:
+		result, err = getMcuInfo(data)
+	case proto.BizToIslbSetMcuInfo:
+		result, err = setMcuInfo(data)
 	}
 	if err != nil {
 		reject(err.Code, err.Reason)
@@ -408,4 +412,26 @@ func getUserMedias(rid, uid string) []map[string]interface{} {
 	// 返回
 	logger.Infof(fmt.Sprintf("islb.getUserMedias resp=%v ", pubs), "rid", rid)
 	return pubs
+}
+
+func getMcuInfo(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
+	rid := util.Val(data, "rid")
+	key := proto.GetMcuInfoKey(rid)
+	// 获取房间对应的mcu信息
+	nid := redis.Get(key)
+	if nid == "" {
+		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("can't get mcu info by rid:%s", rid)}
+	}
+	return util.Map("rid", rid, "nid", nid), nil
+}
+
+func setMcuInfo(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
+	rid := util.Val(data, "rid")
+	nid := util.Val(data, "nid")
+	key := proto.GetMcuInfoKey(rid)
+	err := redis.Set(key, nid, redisKeyTTL)
+	if err != nil {
+		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("redis.Set err:%v", err)}
+	}
+	return util.Map(), nil
 }

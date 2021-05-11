@@ -37,6 +37,10 @@ const (
 	ClientToBizBroadcast = "broadcast"
 	// ClientToBizGetRoomUsers C->Biz 获取房间所有用户信息
 	ClientToBizGetRoomUsers = "listusers"
+	// ClientToBizStartLivestream C->Biz 发布直播
+	ClientToBizStartLivestream = "startlivestream"
+	// ClientToBizStopLivestream C->Biz 取消直播
+	ClientToBizStopLivestream = "stoplivestream"
 
 	// BizToClientOnJoin biz->C 有人加入房间
 	BizToClientOnJoin = "peer-join"
@@ -68,6 +72,15 @@ const (
 	BizToSfuTrickleICE = "trickle"
 	// SfuToBizOnStreamRemove Sfu->Biz Sfu通知biz流被移除
 	SfuToBizOnStreamRemove = "sfu-stream-remove"
+	//BizToSfuSubscribeRTP Biz->Sfu 请求sfu创建offer
+	BizToSfuSubscribeRTP = "subscribertp"
+
+	/*
+		biz与mcu服务器通信
+	*/
+
+	//BizToMcuPublishRTP Biz->Mcu 转发sfu offer到Mcu
+	BizToMcuPublishRTP = "publishrtp"
 
 	/*
 		biz与islb服务器通信
@@ -96,7 +109,10 @@ const (
 	BizToIslbGetRoomUsers = "getRoomUsers"
 	// BizToIslbGetMediaPubs biz->islb 获取所有的发布流信息
 	BizToIslbGetMediaPubs = "getMediaPubs"
-
+	//BizToIslbGetMcuInfo biz->islb 根据rid查询对应mcu
+	BizToIslbGetMcuInfo = "getMcuInfo"
+	//BizToIslbSetMcuInfo biz->islb 设置rid跟mcu绑定关系
+	BizToIslbSetMcuInfo = "setMcuInfo"
 	// IslbToBizOnJoin islb->biz 有人加入房间
 	IslbToBizOnJoin = BizToClientOnJoin
 	// IslbToBizOnLeave islb->biz 有人离开房间
@@ -137,6 +153,11 @@ func GetMediaPubKey(rid, uid, mid string) string {
 // GetStreamStateKey 获取拉流状态信息key
 func GetStreamStateKey(rid, uid, mid string) string {
 	return "/ss/rid/" + rid + "/uid/" + uid + "/mid/" + mid
+}
+
+// GetMcuInfoKey 获取MCU节点 key
+func GetMcuInfoKey(rid string) string {
+	return "/mcu/rid/" + rid
 }
 
 // TrackInfo track信息

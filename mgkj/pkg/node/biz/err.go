@@ -16,8 +16,10 @@ const (
 	codePubErr
 	codeSubErr
 	codeSfuErr
+	codeMcuErr
 	codeIslbErr
 	codeSfuRpcErr
+	codeMcuRpcErr
 	codeIslbRpcErr
 	codeUnknownErr
 )
@@ -33,8 +35,10 @@ var codeErr = map[int]string{
 	codePubErr:     "pub not found",
 	codeSubErr:     "sub not found",
 	codeSfuErr:     "sfu not found",
+	codeMcuErr:     "mcu not found",
 	codeIslbErr:    "islb not found",
 	codeSfuRpcErr:  "sfu rpc not found",
+	codeMcuRpcErr:  "mcu rpc not found",
 	codeIslbRpcErr: "islb rpc not found",
 	codeUnknownErr: "unknown error",
 }

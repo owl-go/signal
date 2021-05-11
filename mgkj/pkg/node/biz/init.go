@@ -165,6 +165,83 @@ func FindSfuNodeByMid(rid, mid string) *dis.Node {
 	return sfu
 }
 
+// FindMcuNodeByID 查询指定id的mcu节点
+func FindMcuNodeByID(nid string) *dis.Node {
+	mcu, find := watch.GetNodeByID(nid)
+	if find {
+		return mcu
+	}
+	return nil
+}
+
+// FindMcuNodeByPayload 查询指定区域下的可用的mcu节点
+func FindMcuNodeByPayload() *dis.Node {
+	mcu, find := watch.GetNodeByPayload(node.NodeInfo().Ndc, "mcu")
+	if find {
+		return mcu
+	}
+	return nil
+}
+
+// SetMcuNodeByRid 设置rid跟mcu绑定关系
+func SetMcuNodeByRid(rid, nid string) error {
+	islb := FindIslbNode()
+	if islb == nil {
+		log.Errorf("FindMcuNodeByMid islb not found")
+		return errors.New("FindMcuNodeByMid islb not found")
+	}
+
+	find := false
+	rpc, find := rpcs[islb.Nid]
+	if !find {
+		log.Errorf("FindMcuNodeByMid islb rpc not found")
+		return errors.New("FindMcuNodeByMid islb rpc not found")
+	}
+
+	resp, err := rpc.SyncRequest(proto.BizToIslbSetMcuInfo, util.Map("rid", rid, "nid", nid))
+	if err != nil {
+		log.Errorf(err.Reason)
+		return errors.New(err.Reason)
+	}
+
+	log.Infof("FindMcuNodeByMid resp ==> %v", resp)
+
+	return nil
+
+}
+
+// FindMcuNodeByRid 根据rid查询指定的mcu节点
+func FindMcuNodeByRid(rid string) *dis.Node {
+	islb := FindIslbNode()
+	if islb == nil {
+		log.Errorf("FindMcuNodeByMid islb not found")
+		return nil
+	}
+
+	find := false
+	rpc, find := rpcs[islb.Nid]
+	if !find {
+		log.Errorf("FindMcuNodeByMid islb rpc not found")
+		return nil
+	}
+
+	resp, err := rpc.SyncRequest(proto.BizToIslbGetMcuInfo, util.Map("rid", rid))
+	if err != nil {
+		log.Errorf(err.Reason)
+		return nil
+	}
+
+	log.Infof("FindMcuNodeByMid resp ==> %v", resp)
+
+	var mcu *dis.Node
+	nid := util.Val(resp, "nid")
+	if nid != "" {
+		mcu = FindMcuNodeByID(nid)
+	}
+
+	return mcu
+}
+
 // FindRoomUsers 查询房间所有人信息
 func FindRoomUsers(uid, rid string) (bool, []interface{}) {
 	islb := FindIslbNode()
