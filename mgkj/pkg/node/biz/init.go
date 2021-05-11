@@ -335,7 +335,7 @@ func findIssrNode() *dis.Node {
 func getIssrRequestor() *nprotoo.Requestor {
 	issr := findIssrNode()
 	if issr == nil {
-		log.Errorf("find issr node not found")
+		log.Errorf("issr node not found")
 		return nil
 	}
 
@@ -348,15 +348,31 @@ func getIssrRequestor() *nprotoo.Requestor {
 	return rpc
 }
 
+// getIslbRequestor 查询islb服务的节点ID
+func getIslbRequestor() *nprotoo.Requestor {
+	islb := FindIslbNode()
+	if islb == nil {
+		log.Errorf("islb node not found")
+		return nil
+	}
+	find := false
+	rpc, find := rpcs[islb.Nid]
+	if !find {
+		log.Errorf("islb rpc not found")
+		return nil
+	}
+	return rpc
+}
+
 func reportStreamTiming(timer *timing.StreamTimer, isVideo, isInterval bool) error {
 	log.Infof("reportStreamTiming:uid:%s,count:%d,lastmode:%s,mode:%s,lastres:%s,res:%s", timer.UID, timer.GetStreamsCount(), timer.GetLastMode(), timer.GetCurrentMode(),
 		timer.GetLastResolution(), timer.GetCurrentResolution())
 
-	rpc := getIssrRequestor()
-
-	if rpc == nil {
+	issrRpc := getIssrRequestor()
+	if issrRpc == nil {
 		return errors.New("can't found issr node")
 	}
+
 	var resolution string
 	var mode string
 	if isVideo {
@@ -374,14 +390,14 @@ func reportStreamTiming(timer *timing.StreamTimer, isVideo, isInterval bool) err
 
 	if seconds != 0 {
 		if mode == "audio" {
-			_, err := rpc.SyncRequest(proto.BizToIssrReportStreamState, util.Map("appid", timer.AppID, "rid", timer.RID, "uid", timer.UID,
+			_, err := issrRpc.SyncRequest(proto.BizToIssrReportStreamState, util.Map("appid", timer.AppID, "rid", timer.RID, "uid", timer.UID,
 				"mediatype", mode, "seconds", seconds))
 			if err != nil {
 				return errors.New(err.Reason)
 			}
 		} else {
 			if resolution != "" {
-				_, err := rpc.SyncRequest(proto.BizToIssrReportStreamState, util.Map("appid", timer.AppID, "rid", timer.RID, "uid", timer.UID,
+				_, err := issrRpc.SyncRequest(proto.BizToIssrReportStreamState, util.Map("appid", timer.AppID, "rid", timer.RID, "uid", timer.UID,
 					"mediatype", mode, "resolution", resolution, "seconds", seconds))
 				if err != nil {
 					return errors.New(err.Reason)

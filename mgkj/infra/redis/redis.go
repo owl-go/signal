@@ -112,6 +112,30 @@ func (r *Redis) SetNx(k, v string, t time.Duration) bool {
 	return r.single.SetNX(k, v, t).Val()
 }
 
+// LPop
+func (r *Redis) LPop(k string) string {
+	if r.clusterMode {
+		return r.cluster.LPop(k).Val()
+	}
+	return r.single.LPop(k).Val()
+}
+
+// RPush
+func (r *Redis) RPush(k string, v ...interface{}) error {
+	if r.clusterMode {
+		return r.cluster.RPush(k, v).Err()
+	}
+	return r.single.RPush(k, v).Err()
+}
+
+// LLen
+func (r *Redis) LLen(k string) int64 {
+	if r.clusterMode {
+		return r.cluster.LLen(k).Val()
+	}
+	return r.single.LLen(k).Val()
+}
+
 // HSet redis以hash散列表方式存储key的field字段的值
 func (r *Redis) HSet(k, field string, value interface{}) error {
 	if r.clusterMode {

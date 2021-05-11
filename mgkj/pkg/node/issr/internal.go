@@ -51,16 +51,11 @@ func report(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error)
 	if msg["appid"] == nil {
 		return nil, &nprotoo.Error{Code: -1, Reason: "can't find appid"}
 	}
+
 	islb := getIslbRequestor()
 	if islb == nil {
 		logger.Errorf("issr.report can't find islb requestor")
 		return nil, &nprotoo.Error{Code: -1, Reason: "can't find islb node"}
-	}
-
-	_, nerr := islb.SyncRequest(proto.IssrToIslbReportStreamState, msg)
-	if nerr != nil {
-		logger.Errorf(fmt.Sprintf("issr.report islb rpc err=%v", nerr))
-		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("request islb to record err:%v", nerr)}
 	}
 
 	/*seconds := int64(msg["seconds"].(float64))
@@ -84,6 +79,13 @@ func report(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error)
 	err = kafkaProducer.Produce("Livs-Usage-Event", string(str))
 	if err != nil {
 		logger.Errorf(fmt.Sprintf("issr.report kafka produce error=%v", err))
+
+		_, nerr := islb.SyncRequest(proto.IssrToIslbStoreFailedStreamState, msg)
+		if nerr != nil {
+			logger.Errorf(fmt.Sprintf("issr.report islb rpc err=%v", nerr))
+			return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("request islb to record err:%v", nerr)}
+		}
+
 		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("kafka produce err:%v", err)}
 	}
 	return util.Map(), nil

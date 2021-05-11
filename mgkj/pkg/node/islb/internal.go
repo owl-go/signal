@@ -51,8 +51,10 @@ func handleRpcMsg(request map[string]interface{}, accept nprotoo.AcceptFunc, rej
 			result, err = getRoomUsers(data)
 		case proto.BizToIslbGetMediaPubs:
 			result, err = getMediaPubs(data)
-		case proto.IssrToIslbReportStreamState:
-			result, err = reportStreamState(data)
+		case proto.IssrToIslbStoreFailedStreamState:
+			result, err = pushFailedStreamState(data)
+		case proto.IssrToIslbGetFailedStreamState:
+			result, err = popFailedStreamState(data)
 		case proto.BizToIslbGetMcuInfo:
 			result, err = getMcuInfo(data)
 		case proto.BizToIslbSetMcuInfo:
@@ -375,28 +377,43 @@ func getMediaPubs(data map[string]interface{}) (map[string]interface{}, *nprotoo
 }
 
 // 返回流的状态
-func reportStreamState(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
+func pushFailedStreamState(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
 	mid := util.Val(data, "mid")
 	//生成key
-	sKey := proto.GetStreamStateKey(rid, uid, mid)
+	sKey := proto.GetFailedStreamStateKey()
 	// 写入key值
 	state, err := json.Marshal(data)
 	if err != nil {
-		logger.Errorf(fmt.Sprintf("islb.reportStreamState json marshal err=%v", err), "rid", rid, "uid", uid, "mid", mid)
+		logger.Errorf(fmt.Sprintf("islb.pushFailedStreamState json marshal err=%v", err), "rid", rid, "uid", uid, "mid", mid)
 		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("json marshal err:%v", err)}
 	}
 
-	err = redis1.Set(sKey, string(state), 0)
+	err = redis1.RPush(sKey, string(state))
 
-	//resp := make(map[string]interface{})
 	if err != nil {
-		logger.Errorf(fmt.Sprintf("biz.reportStreamState redis.Set stream state err=%v", err), "rid", rid, "uid", uid, "mid", mid)
+		logger.Errorf(fmt.Sprintf("biz.pushFailedStreamState redis.Set stream state err=%v", err), "rid", rid, "uid", uid, "mid", mid)
 		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("redis.Set err=%v", err)}
 	} else {
 		return util.Map(), nil
 	}
+}
+
+func popFailedStreamState(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
+	sKey := proto.GetFailedStreamStateKey()
+	length := redis1.LLen(sKey)
+	if length > 20 {
+		length = 20
+	}
+	failures := make([]string, 0)
+	for i := int64(0); i < length; i++ {
+		failure := redis1.LPop(sKey)
+		if failure != "" {
+			failures = append(failures, failure)
+		}
+	}
+	return util.Map("failures", failures), nil
 }
 
 func getUserMedias(rid, uid string) []map[string]interface{} {
