@@ -50,7 +50,7 @@ func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, nats
 	handleRPCRequest(node.GetRPCChannel())
 	//监听islb节点
 	go watch.WatchServiceNode("", WatchServiceCallBack)
-	go checkFailure()
+	go checkFailures()
 }
 
 // WatchServiceCallBack 查看所有的Node节点
@@ -120,37 +120,38 @@ func Close() {
 	}
 }
 
-// checkFailure 检查失败并重传
-func checkFailure() {
+// checkFailures 检查失败并重传
+func checkFailures() {
 	t := time.NewTicker(statCycle)
 	defer t.Stop()
 	for range t.C {
 		islbRpc := getIslbRequestor()
 		if islbRpc == nil {
-			log.Errorf("can't get islb rpc")
+			log.Errorf("issr.checkFailures can't get islb rpc")
 		} else {
 			resp, nerr := islbRpc.SyncRequest(proto.IssrToIslbGetFailedStreamState, util.Map())
-			if nerr != nil {
-				logger.Errorf(nerr.Reason)
-			}
-			failures := resp["failures"].([]interface{})
-			for _, failure := range failures {
-				var msg map[string]interface{}
-				json.Unmarshal([]byte(failure.(string)), &msg)
-				str, err := json.Marshal(msg)
-				if err != nil {
-					logger.Errorf(fmt.Sprintf("issr.checkFailure json marshal failed=%v", err))
-				}
-				logger.Infof(fmt.Sprintf("issr.checkFailure msg: %s", string(str)))
-				err = kafkaProducer.Produce("Livs-Usage-Event", string(str))
-				if err != nil {
-					logger.Errorf(fmt.Sprintf("issr.checkFailure kafka produce error=%v", err))
-
-					_, nerr := islbRpc.SyncRequest(proto.IssrToIslbStoreFailedStreamState, msg)
-					if nerr != nil {
-						logger.Errorf(fmt.Sprintf("issr.checkFailure islb rpc err=%v", nerr))
+			if nerr == nil {
+				failures := resp["failures"].([]interface{})
+				for _, failure := range failures {
+					var msg map[string]interface{}
+					json.Unmarshal([]byte(failure.(string)), &msg)
+					str, err := json.Marshal(msg)
+					if err != nil {
+						logger.Errorf(fmt.Sprintf("issr.checkFailures json marshal failed=%v", err))
+					} else {
+						logger.Infof(fmt.Sprintf("issr.checkFailures msg: %s", string(str)))
+						err = kafkaProducer.Produce("Livs-Usage-Event", string(str))
+						if err != nil {
+							logger.Errorf(fmt.Sprintf("issr.checkFailures kafka produce error=%v", err))
+							_, nerr := islbRpc.SyncRequest(proto.IssrToIslbStoreFailedStreamState, msg)
+							if nerr != nil {
+								logger.Errorf(fmt.Sprintf("issr.checkFailures request islb to store err=%v", nerr))
+							}
+						}
 					}
 				}
+			} else {
+				logger.Errorf(nerr.Reason)
 			}
 		}
 	}
