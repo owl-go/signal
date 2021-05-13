@@ -524,8 +524,6 @@ func unsubscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc
 	nid := util.Val(msg, "nid")
 	if nid != "" {
 		sfu = FindSfuNodeByID(nid)
-	} else {
-		sfu = FindSfuNodeByMid(rid, mid)
 	}
 
 	if sfu == nil {
