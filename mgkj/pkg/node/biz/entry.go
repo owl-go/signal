@@ -786,8 +786,8 @@ func stoplivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptF
 		return
 	}
 
-	var mcu *dis.Node
-	mcu = FindMcuNodeByRid(rid)
+	//var mcu *dis.Node
+	mcu := FindMcuNodeByRid(rid)
 	if mcu == nil {
 		reject(-1, fmt.Sprintf("can't find mcu node by rid:%s", rid))
 		return
