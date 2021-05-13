@@ -23,10 +23,10 @@ var (
 
 // Init 初始化服务
 func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL string, log *logger2.Logger) {
+	logger = log
 	node = serviceNode
 	watch = ServiceWatcher
 	nats = nprotoo.NewNatsProtoo(util.GenerateNatsUrlString(natsURL))
-	logger = log
 	handleRPCRequest(node.GetRPCChannel())
 	go watch.WatchServiceNode("", WatchServiceCallBack)
 }
@@ -112,7 +112,6 @@ func FindBizNodeByUid(rid, uid string) *dis.Node {
 	if nid != "" {
 		biz = FindBizNodeByID(nid)
 	}
-
 	return biz
 }
 
@@ -162,7 +161,6 @@ func FindSfuNodeByMid(rid, mid string) *dis.Node {
 	if nid != "" {
 		sfu = FindSfuNodeByID(nid)
 	}
-
 	return sfu
 }
 
@@ -206,9 +204,7 @@ func SetMcuNodeByRid(rid, nid string) error {
 	}
 
 	log.Infof("FindMcuNodeByMid resp ==> %v", resp)
-
 	return nil
-
 }
 
 // FindMcuNodeByRid 根据rid查询指定的mcu节点
@@ -239,7 +235,6 @@ func FindMcuNodeByRid(rid string) *dis.Node {
 	if nid != "" {
 		mcu = FindMcuNodeByID(nid)
 	}
-
 	return mcu
 }
 
@@ -267,7 +262,7 @@ func FindRoomUsers(uid, rid string) (bool, []interface{}) {
 	log.Infof("FindRoomUsers resp ==> %v", resp)
 
 	if resp["users"] == nil {
-		log.Errorf("FindRoomUsers pubs is nil")
+		log.Errorf("FindRoomUsers users is nil")
 		return false, nil
 	}
 
@@ -305,20 +300,6 @@ func FindMediaPubs(uid, rid string) (bool, []interface{}) {
 
 	pubs := resp["pubs"].([]interface{})
 	return true, pubs
-
-	/*
-		roomid := resp["rid"].(string)
-		pubs := resp["pubs"].([]interface{})
-		for _, pub := range pubs {
-			uid := pub.(map[string]interface{})["uid"].(string)
-			mid := pub.(map[string]interface{})["mid"].(string)
-			nid := pub.(map[string]interface{})["nid"].(string)
-			minfo := pub.(map[string]interface{})["minfo"].(map[string]interface{})
-			if mid != "" {
-				peer.Notify(proto.BizToClientOnStreamAdd, util.Map("rid", roomid, "uid", uid, "mid", mid, "nid", nid, "minfo", minfo))
-			}
-		}
-		return true*/
 }
 
 // findIssrNode 查询全局的可用的Issr节点
@@ -425,7 +406,8 @@ func storeFailure(data map[string]interface{}) error {
 	_, nerr := islb.SyncRequest(proto.IssrToIslbStoreFailedStreamState, data)
 	if nerr != nil {
 		logger.Errorf(fmt.Sprintf("biz.storeFailure islb rpc err=%v", nerr))
-		return errors.New(fmt.Sprintf("biz.storeFailure islb rpc err=%v", nerr))
+		//return errors.New(fmt.Sprintf("biz.storeFailure islb rpc err=%v", nerr))
+		return fmt.Errorf("biz.storeFailure islb rpc err=%v", nerr)
 	}
 	return nil
 }

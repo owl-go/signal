@@ -302,7 +302,8 @@ func getRoomUsers(data map[string]interface{}) (map[string]interface{}, *nprotoo
 	ukeys := redis.Keys(uKey)
 	for _, key := range ukeys {
 		// 去掉指定的uid
-		uid := strings.Split(key, "/")[5]
+		arr := strings.Split(key, "/")
+		uid := arr[5]
 		if uid == id {
 			continue
 		}
@@ -394,7 +395,7 @@ func getMediaPubs(data map[string]interface{}) (map[string]interface{}, *nprotoo
 	return resp, nil
 }
 
-// 返回流的状态
+// 存储失败拉流数据
 func pushFailedStreamState(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
@@ -409,7 +410,6 @@ func pushFailedStreamState(data map[string]interface{}) (map[string]interface{},
 	}
 
 	err = redis1.RPush(sKey, string(state))
-
 	if err != nil {
 		logger.Errorf(fmt.Sprintf("biz.pushFailedStreamState redis.Set stream state err=%v", err), "rid", rid, "uid", uid, "mid", mid)
 		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("redis.Set err=%v", err)}
@@ -418,6 +418,7 @@ func pushFailedStreamState(data map[string]interface{}) (map[string]interface{},
 	}
 }
 
+// 获取失败拉流记录
 func popFailedStreamState(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	sKey := proto.GetFailedStreamStateKey()
 	length := redis1.LLen(sKey)
@@ -434,6 +435,7 @@ func popFailedStreamState(data map[string]interface{}) (map[string]interface{}, 
 	return util.Map("failures", failures), nil
 }
 
+// 根据rid查询对应mcu
 func getMcuInfo(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	key := proto.GetMcuInfoKey(rid)
@@ -445,6 +447,7 @@ func getMcuInfo(data map[string]interface{}) (map[string]interface{}, *nprotoo.E
 	return util.Map("rid", rid, "nid", nid), nil
 }
 
+// 设置rid跟mcu绑定关系
 func setMcuInfo(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	nid := util.Val(data, "nid")
