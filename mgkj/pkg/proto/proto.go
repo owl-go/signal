@@ -39,7 +39,7 @@ const (
 	ClientToBizBroadcast = "broadcast"
 	// ClientToBizGetRoomUsers C->Biz 获取房间所有用户信息
 	ClientToBizGetRoomUsers = "listusers"
-	// ClientToBizStartLivestream C->Biz 发布直播
+	// ClientToBizStartLivestream C->Biz 开始直播
 	ClientToBizStartLivestream = "startlivestream"
 	// ClientToBizStopLivestream C->Biz 取消直播
 	ClientToBizStopLivestream = "stoplivestream"
