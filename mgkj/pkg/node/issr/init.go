@@ -139,7 +139,7 @@ func checkFailures() {
 					if err != nil {
 						logger.Errorf(fmt.Sprintf("issr.checkFailures json marshal failed=%v", err))
 					} else {
-						logger.Infof(fmt.Sprintf("issr.checkFailures msg: %s", string(str)))
+						//logger.Infof(fmt.Sprintf("issr.checkFailures msg: %s", string(str)))
 						err = kafkaProducer.Produce("Livs-Usage-Event", string(str))
 						if err != nil {
 							logger.Errorf(fmt.Sprintf("issr.checkFailures kafka produce error=%v", err))
