@@ -8,7 +8,7 @@ const (
 
 	//IssrToIslbStoreFailedStreamState Issr -> Islb 存储失败拉流数据
 	IssrToIslbStoreFailedStreamState = "storefailedstreamstate"
-	//IssrToIslbGetFailedStreamState Issr -> Islb 获取失败记录
+	//IssrToIslbGetFailedStreamState Issr -> Islb 获取失败拉流记录
 	IssrToIslbGetFailedStreamState = "getfailedstreamstate"
 	//BizToIssrReportStreamState Biz -> Issr 发送拉流信息到Issr
 	BizToIssrReportStreamState = "reportstreamstate"
@@ -115,6 +115,7 @@ const (
 	BizToIslbGetMcuInfo = "getMcuInfo"
 	//BizToIslbSetMcuInfo biz->islb 设置rid跟mcu绑定关系
 	BizToIslbSetMcuInfo = "setMcuInfo"
+
 	// IslbToBizOnJoin islb->biz 有人加入房间
 	IslbToBizOnJoin = BizToClientOnJoin
 	// IslbToBizOnLeave islb->biz 有人离开房间

@@ -119,7 +119,6 @@ func join(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 
 	// 查询房间所有用户
 	_, users := FindRoomUsers(uid, rid)
-
 	result := util.Map("users", users)
 	// resp
 	accept(result)
@@ -135,16 +134,14 @@ func join(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 */
 // leave 离开房间
 func leave(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
-
 	logger.Infof(fmt.Sprintf("biz.leave uid=%s,msg=%v", peer.ID(), msg), "uid", peer.ID())
-
 	if invalid(msg, "rid", reject) {
 		return
 	}
 
 	// 获取参数
 	uid := peer.ID()
-	//rid := util.Val(msg, "rid")
+	rid := util.Val(msg, "rid")
 
 	// 查询islb节点
 	islb := FindIslbNode()
@@ -162,12 +159,17 @@ func leave(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reje
 	}
 
 	// 删除加入的房间和流
-	for _, room := range GetRoomsByPeer(uid) {
-		ridTmp := room.GetID()
-		rpc.SyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", ridTmp, "uid", uid, "mid", ""))
-		rpc.SyncRequest(proto.BizToIslbOnLeave, util.Map("rid", ridTmp, "uid", uid))
-		DelPeer(ridTmp, uid)
-	}
+	rpc.SyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", ""))
+	rpc.SyncRequest(proto.BizToIslbOnLeave, util.Map("rid", rid, "uid", uid))
+	DelPeer(rid, uid)
+
+	/*
+		for _, room := range GetRoomsByPeer(uid) {
+			ridTmp := room.GetID()
+			rpc.SyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", ridTmp, "uid", uid, "mid", ""))
+			rpc.SyncRequest(proto.BizToIslbOnLeave, util.Map("rid", ridTmp, "uid", uid))
+			DelPeer(ridTmp, uid)
+		}*/
 	//stop timer if didn't stop then report
 	timer := peer.GetStreamTimer()
 	if !timer.IsStopped() {
@@ -198,6 +200,13 @@ func keepalive(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	uid := peer.ID()
 	rid := util.Val(msg, "rid")
 	info := util.Val(msg, "info")
+
+	room := GetRoom(rid)
+	if room == nil {
+		logger.Errorf("biz.keepalive room doesn't exist", "uid", uid, "rid", rid)
+		reject(codeRIDErr, codeStr(codeRIDErr))
+		return
+	}
 
 	// 查询islb节点
 	islb := FindIslbNode()
@@ -232,9 +241,7 @@ func keepalive(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 */
 // publish 发布流
 func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
-
 	logger.Infof(fmt.Sprintf("biz.publish uid=%s,msg=%v", peer.ID(), msg), "uid", peer.ID())
-
 	if invalid(msg, "rid", reject) || invalid(msg, "jsep", reject) {
 		return
 	}
@@ -308,7 +315,7 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 		return
 	}
 	// 通知islb
-	rpcIslb.AsyncRequest(proto.BizToIslbOnStreamAdd, util.Map("rid", rid, "uid", uid, "mid", mid, "nid", nid, "minfo", minfo))
+	rpcIslb.SyncRequest(proto.BizToIslbOnStreamAdd, util.Map("rid", rid, "uid", uid, "mid", mid, "nid", nid, "minfo", minfo))
 	// resp
 	rsp["nid"] = nid
 	rsp["minfo"] = minfo
@@ -321,15 +328,13 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
   "method":"unpublish"
   "data":{
       "rid": "room1",
-    "nid":"shenzhen-sfu-1",
+      "nid":"shenzhen-sfu-1",
       "mid": "64236c21-21e8-4a3d-9f80-c767d1e1d67f#ABCDEF"
   }
 */
 // unpublish 取消发布流
 func unpublish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
-
 	logger.Infof(fmt.Sprintf("biz.unpublish uid=%s,msg=%v", peer.ID(), msg), "uid", peer.ID())
-
 	if invalid(msg, "rid", reject) || invalid(msg, "mid", reject) {
 		return
 	}
@@ -359,7 +364,7 @@ func unpublish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 		return
 	}
 
-	rpcSfu.AsyncRequest(proto.BizToSfuUnPublish, util.Map("rid", rid, "uid", uid, "mid", mid))
+	rpcSfu.SyncRequest(proto.BizToSfuUnPublish, util.Map("rid", rid, "uid", uid, "mid", mid))
 
 	// 查询islb节点
 	islb := FindIslbNode()
@@ -376,7 +381,7 @@ func unpublish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 		return
 	}
 
-	rpcIslb.AsyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", mid))
+	rpcIslb.SyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", mid))
 	// resp
 	accept(emptyMap)
 }
@@ -395,9 +400,7 @@ func unpublish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 */
 // subscribe 订阅流
 func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
-
 	logger.Infof(fmt.Sprintf("biz.subscribe uid=%s,msg=%v", peer.ID(), msg), "uid", peer.ID())
-
 	if invalid(msg, "rid", reject) || invalid(msg, "mid", reject) || invalid(msg, "jsep", reject) {
 		return
 	}
@@ -508,9 +511,7 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 */
 // unsubscribe 取消订阅流
 func unsubscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
-
 	logger.Infof(fmt.Sprintf("biz.unsubscribe uid=%s,msg=%v", peer.ID(), msg), "uid", peer.ID())
-
 	if invalid(msg, "rid", reject) || invalid(msg, "mid", reject) {
 		return
 	}
@@ -523,8 +524,6 @@ func unsubscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc
 	nid := util.Val(msg, "nid")
 	if nid != "" {
 		sfu = FindSfuNodeByID(nid)
-	} else {
-		sfu = FindSfuNodeByMid(rid, mid)
 	}
 
 	if sfu == nil {
@@ -540,7 +539,7 @@ func unsubscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc
 		return
 	}
 
-	rpcSfu.AsyncRequest(proto.BizToSfuUnSubscribe, util.Map("rid", rid, "uid", uid, "mid", mid))
+	rpcSfu.SyncRequest(proto.BizToSfuUnSubscribe, util.Map("rid", rid, "uid", uid, "mid", mid))
 
 	//remove stream from timer then according to the state,decide what to do
 	timer := peer.GetStreamTimer()
@@ -628,9 +627,7 @@ func trickle(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 */
 // broadcast 客户端发送广播给对方
 func broadcast(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
-
 	logger.Infof(fmt.Sprintf("biz.broadcast uid=%s,msg=%v", peer.ID(), msg), "uid", peer.ID())
-
 	if invalid(msg, "rid", reject) {
 		return
 	}
@@ -787,8 +784,8 @@ func stoplivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptF
 		return
 	}
 
-	var mcu *dis.Node
-	mcu = FindMcuNodeByRid(rid)
+	//var mcu *dis.Node
+	mcu := FindMcuNodeByRid(rid)
 	if mcu == nil {
 		reject(-1, fmt.Sprintf("can't find mcu node by rid:%s", rid))
 		return
