@@ -159,7 +159,7 @@ func getBizByUid(data map[string]interface{}) (map[string]interface{}, *nprotoo.
 		nid := redis.Get(uKey)
 		return util.Map("rid", rid, "nid", nid), nil
 	} else {
-		return nil, &nprotoo.Error{Code: 401, Reason: fmt.Sprintf("can't find peer info by key:%s", uKey)}
+		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("can't find peer info by key:%s", uKey)}
 	}
 }
 
@@ -273,7 +273,7 @@ func getSfuByMid(data map[string]interface{}) (map[string]interface{}, *nprotoo.
 		nid := redis.Get(uKey)
 		return util.Map("rid", rid, "nid", nid), nil
 	} else {
-		return nil, &nprotoo.Error{Code: 401, Reason: fmt.Sprintf("can't find sfu node by mid:%s", uKey)}
+		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("can't find sfu node by mid:%s", uKey)}
 	}
 }
 
