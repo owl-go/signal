@@ -706,9 +706,9 @@ func startlivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.Accept
 	mcu = FindMcuNodeByRid(rid)
 	if mcu == nil {
 		mcu = FindMcuNodeByPayload()
-		err := SetMcuNodeByRid(rid, mcu.Nid)
-		if err != nil {
-			reject(-1, err.Error())
+		mcu = SetMcuNodeByRid(rid, mcu.Nid)
+		if mcu == nil {
+			reject(-1, "mcu binding fail")
 			return
 		}
 	}

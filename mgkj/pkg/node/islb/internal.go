@@ -452,9 +452,13 @@ func setMcuInfo(data map[string]interface{}) (map[string]interface{}, *nprotoo.E
 	rid := util.Val(data, "rid")
 	nid := util.Val(data, "nid")
 	key := proto.GetMcuInfoKey(rid)
+	mcu := redis.Get(key)
+	if mcu != "" {
+		return util.Map("nid", mcu), nil
+	}
 	err := redis.Set(key, nid, redisKeyTTL)
 	if err != nil {
 		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("redis.Set err:%v", err)}
 	}
-	return util.Map(), nil
+	return util.Map("nid", nid), nil
 }

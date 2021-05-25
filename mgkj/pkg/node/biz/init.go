@@ -183,28 +183,35 @@ func FindMcuNodeByPayload() *dis.Node {
 }
 
 // SetMcuNodeByRid 设置rid跟mcu绑定关系
-func SetMcuNodeByRid(rid, nid string) error {
+func SetMcuNodeByRid(rid, nid string) *dis.Node {
 	islb := FindIslbNode()
 	if islb == nil {
-		log.Errorf("FindMcuNodeByMid islb not found")
-		return errors.New("FindMcuNodeByMid islb not found")
+		log.Errorf("SetMcuNodeByMid islb not found")
+		return nil
 	}
 
 	find := false
 	rpc, find := rpcs[islb.Nid]
 	if !find {
-		log.Errorf("FindMcuNodeByMid islb rpc not found")
-		return errors.New("FindMcuNodeByMid islb rpc not found")
+		log.Errorf("SetMcuNodeByMid islb rpc not found")
+		return nil
 	}
 
 	resp, err := rpc.SyncRequest(proto.BizToIslbSetMcuInfo, util.Map("rid", rid, "nid", nid))
 	if err != nil {
 		log.Errorf(err.Reason)
-		return errors.New(err.Reason)
+		return nil
 	}
 
-	log.Infof("FindMcuNodeByMid resp ==> %v", resp)
-	return nil
+	log.Infof("SetMcuNodeByMid resp ==> %v", resp)
+
+	var mcu *dis.Node
+	id := util.Val(resp, "nid")
+	if id != "" {
+		mcu = FindMcuNodeByID(id)
+	}
+	return mcu
+
 }
 
 // FindMcuNodeByRid 根据rid查询指定的mcu节点
