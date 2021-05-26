@@ -69,6 +69,7 @@ func checkRoom() {
 				}
 			}
 			if len(node.room.GetPeers()) == 0 {
+				logger.Infof(fmt.Sprintf("no peer in room:%s now", rid), "rid", rid)
 				node.room.Close()
 				delete(rooms, rid)
 			}
