@@ -110,6 +110,10 @@ func FindBizNodeByUid(rid, uid string) *dis.Node {
 	var biz *dis.Node
 	nid := util.Val(resp, "nid")
 	if nid != "" {
+		if nid == node.NodeInfo().Nid {
+			tmpNode := node.NodeInfo()
+			return &tmpNode
+		}
 		biz = FindBizNodeByID(nid)
 	}
 	return biz
