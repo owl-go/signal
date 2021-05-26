@@ -102,10 +102,10 @@ func join(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 			// 获取老的peer数据
 			room := GetRoom(rid)
 			if room != nil {
-				peer := room.room.GetPeer(uid)
-				if peer != nil {
-					peer.Notify(proto.BizToClientOnKick, util.Map("rid", rid, "uid", uid))
-					peer.Close()
+				tmpPeer := room.room.GetPeer(uid)
+				if tmpPeer != nil {
+					tmpPeer.Notify(proto.BizToClientOnKick, util.Map("rid", rid, "uid", uid))
+					tmpPeer.Close()
 				}
 			}
 			DelPeer(rid, uid)
