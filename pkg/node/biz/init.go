@@ -397,8 +397,7 @@ func reportStreamTiming(timer *timing.StreamTimer, isVideo, isInterval bool) err
 			log.Errorf("can't found issr node")
 			return errors.New("can't found issr node")
 		}
-		_, err := issrRpc.SyncRequest(proto.BizToIssrReportStreamState, util.Map("appid", timer.AppID, "rid", timer.RID, "uid", timer.UID,
-			"mediatype", mode, "resolution", resolution, "seconds", seconds))
+		_, err := issrRpc.SyncRequest(proto.BizToIssrReportStreamState, msg)
 		if err != nil {
 			storeFailure(msg)
 			log.Errorf(err.Reason)

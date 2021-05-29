@@ -99,8 +99,8 @@ const (
 
 	// BizToIslbPeerLive biz->islb 获取Peer是否在线
 	BizToIslbPeerLive = "getPeerLive"
-	// BizToIslbKeepLive biz->islb 保活
-	BizToIslbKeepLive = "keepalive"
+	// BizToIslbKeepAlive biz->islb 保活
+	BizToIslbKeepAlive = "keepalive"
 	// BizToIslbBroadcast biz->islb 发送广播
 	BizToIslbBroadcast = "broadcast"
 	// BizToIslbGetBizInfo biz->islb 根据uid查询对应的biz

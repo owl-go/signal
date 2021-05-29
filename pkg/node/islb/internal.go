@@ -33,8 +33,8 @@ func handleRpcMsg(request map[string]interface{}, accept nprotoo.AcceptFunc, rej
 		result, err = clientJoin(data)
 	case proto.BizToIslbOnLeave:
 		result, err = clientLeave(data)
-	case proto.BizToIslbKeepLive:
-		result, err = keeplive(data)
+	case proto.BizToIslbKeepAlive:
+		result, err = keepalive(data)
 	case proto.BizToIslbGetBizInfo:
 		result, err = getBizByUid(data)
 
@@ -81,12 +81,14 @@ func clientJoin(data map[string]interface{}) (map[string]interface{}, *nprotoo.E
 	err := redis.Set(uKey, nid, redisShort)
 	if err != nil {
 		logger.Errorf(fmt.Sprintf("islb.clientJoin redis.Set err=%v", err), "rid", rid, "uid", uid)
+		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("join err=%v", err)}
 	}
 	// 获取用户的信息
 	uKey = proto.GetUserInfoKey(rid, uid)
 	err = redis.Set(uKey, info, redisShort)
 	if err != nil {
 		logger.Errorf(fmt.Sprintf("islb.clientJoin redis.Set err=%v", err), "rid", rid, "uid", uid)
+		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("join err=%v", err)}
 	}
 	// 生成resp对象
 	broadcaster.Say(proto.IslbToBizOnJoin, util.Map("rid", rid, "uid", uid, "nid", nid, "info", data["info"]))
@@ -124,23 +126,25 @@ func clientLeave(data map[string]interface{}) (map[string]interface{}, *nprotoo.
 }
 
 /*
-	"method", proto.BizToIslbKeepLive, "rid", rid, "uid", uid
+	"method", proto.BizToIslbKeepAlive, "rid", rid, "uid", uid
 */
 // 保活处理
-func keeplive(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
+func keepalive(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
 	// 获取用户的服务器信息
 	uKey := proto.GetUserNodeKey(rid, uid)
 	err := redis.Expire(uKey, redisShort)
 	if err != nil {
-		logger.Errorf(fmt.Sprintf("islb.keeplive redis.Set err=%v", err), "rid", rid, "uid", uid)
+		logger.Errorf(fmt.Sprintf("islb.keepalive redis.Set err=%v", err), "rid", rid, "uid", uid)
+		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("keepalive err=%v", err)}
 	}
 	// 获取用户的信息
 	uKey = proto.GetUserInfoKey(rid, uid)
 	err = redis.Expire(uKey, redisShort)
 	if err != nil {
-		logger.Errorf(fmt.Sprintf("islb.keeplive redis.Set err=%v", err), "rid", rid, "uid", uid)
+		logger.Errorf(fmt.Sprintf("islb.keepalive redis.Set err=%v", err), "rid", rid, "uid", uid)
+		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("keepalive err=%v", err)}
 	}
 	return util.Map(), nil
 }
@@ -178,12 +182,14 @@ func streamAdd(data map[string]interface{}) (map[string]interface{}, *nprotoo.Er
 	err := redis.Set(ukey, minfo, redisKeyTTL)
 	if err != nil {
 		logger.Errorf(fmt.Sprintf("islb.streamAdd redis.Set err=%v", err), "rid", rid, "uid", uid, "mid", mid)
+		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("streamAdd err=%v", err)}
 	}
 	// 获取用户发布流对应的sfu信息
 	ukey = proto.GetMediaPubKey(rid, uid, mid)
 	err = redis.Set(ukey, nid, redisKeyTTL)
 	if err != nil {
 		logger.Errorf(fmt.Sprintf("islb.streamAdd redis.Set err=%v", err), "rid", rid, "uid", uid, "mid", mid)
+		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("streamAdd err=%v", err)}
 	}
 	// 生成resp对象
 	broadcaster.Say(proto.IslbToBizOnStreamAdd, util.Map("rid", rid, "uid", uid, "mid", mid, "nid", nid, "minfo", data["minfo"]))
@@ -399,19 +405,18 @@ func getMediaPubs(data map[string]interface{}) (map[string]interface{}, *nprotoo
 func pushFailedStreamState(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
-	mid := util.Val(data, "mid")
 	//生成key
 	sKey := proto.GetFailedStreamStateKey()
 	// 写入key值
 	state, err := json.Marshal(data)
 	if err != nil {
-		logger.Errorf(fmt.Sprintf("islb.pushFailedStreamState json marshal err=%v", err), "rid", rid, "uid", uid, "mid", mid)
+		logger.Errorf(fmt.Sprintf("islb.pushFailedStreamState json marshal err=%v", err), "rid", rid, "uid", uid)
 		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("json marshal err:%v", err)}
 	}
 
 	err = redis1.RPush(sKey, string(state))
 	if err != nil {
-		logger.Errorf(fmt.Sprintf("biz.pushFailedStreamState redis.Set stream state err=%v", err), "rid", rid, "uid", uid, "mid", mid)
+		logger.Errorf(fmt.Sprintf("biz.pushFailedStreamState redis.Set stream state err=%v", err), "rid", rid, "uid", uid)
 		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("redis.Set err=%v", err)}
 	} else {
 		return util.Map(), nil

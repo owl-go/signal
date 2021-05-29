@@ -224,7 +224,7 @@ func keepalive(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	}
 
 	// 通知islb
-	rpc.AsyncRequest(proto.BizToIslbKeepLive, util.Map("rid", rid, "uid", uid, "info", info))
+	rpc.AsyncRequest(proto.BizToIslbKeepAlive, util.Map("rid", rid, "uid", uid, "info", info))
 	// resp
 	accept(emptyMap)
 }
