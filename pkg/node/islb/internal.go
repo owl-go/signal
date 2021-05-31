@@ -91,7 +91,7 @@ func clientJoin(data map[string]interface{}) (map[string]interface{}, *nprotoo.E
 		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("join err=%v", err)}
 	}
 	// 生成resp对象
-	broadcaster.Say(proto.IslbToBizOnJoin, util.Map("rid", rid, "uid", uid, "nid", nid, "info", data["info"]))
+	broadcaster.Say(proto.IslbToBizOnJoin, util.Map("rid", rid, "uid", uid, "nid", nid, "info", util.Unmarshal(data["info"].(string))))
 	return util.Map(), nil
 }
 
