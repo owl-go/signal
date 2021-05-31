@@ -743,7 +743,8 @@ func startlivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.Accept
 
 	logger.Infof(fmt.Sprintf("biz.startlivestream request mcu answer resp=%v", mcuresp), "uid", uid, "rid", rid, "mid", mid)
 
-	resp, err := rpcSfu.SyncRequest(proto.BizToSfuSubscribeRTP, util.Map("mid", mid, "rid", rid, "jsep", mcuresp["jsep"]))
+	resp, err := rpcSfu.SyncRequest(proto.BizToSfuSubscribeRTP, util.Map("mid", sfuresp["mid"], "rid", rid, "jsep", mcuresp["jsep"]))
+
 	if err != nil {
 		logger.Errorf(fmt.Sprintf("biz.startlivestream request sfu answer err=%v", err.Reason), "uid", uid, "rid", rid, "mid", mid)
 		reject(err.Code, err.Reason)
