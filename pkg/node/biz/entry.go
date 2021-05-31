@@ -753,7 +753,7 @@ func startlivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.Accept
 
 	logger.Infof(fmt.Sprintf("biz.startlivestream request sfu answer resp=%v", resp), "uid", uid, "rid", rid, "mid", mid)
 
-	accept(emptyMap)
+	accept(util.Map("mid", sfuresp["mid"]))
 }
 
 func stoplivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
