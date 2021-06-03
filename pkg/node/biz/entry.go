@@ -756,7 +756,7 @@ func startlivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.Accept
 
 	logger.Infof(fmt.Sprintf("biz.startlivestream request sfu answer resp=%v", resp), "uid", uid, "rid", rid, "mid", mid)
 
-	accept(util.Map("mid", sfuresp["mid"]))
+	accept(util.Map("mcu", mcu.Nid, "mid", mcuresp["mid"]))
 }
 
 func stoplivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
@@ -771,36 +771,40 @@ func stoplivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptF
 	rid := util.Val(msg, "rid")
 	mid := util.Val(msg, "mid")
 
-	var sfu *dis.Node
 	nid := util.Val(msg, "nid")
-	if nid != "" {
-		sfu = FindSfuNodeByID(nid)
+	if nid == "" {
+		reject(-1, fmt.Sprintf("sfu nid can't be empty"))
+		return
 	} else {
-		sfu = FindSfuNodeByMid(rid, mid)
+		sfu := FindSfuNodeByID(nid)
+		if sfu == nil {
+			reject(-1, fmt.Sprintf("can't find sfu node by nid:%s", nid))
+			return
+		}
 	}
 
-	if sfu == nil {
-		logger.Errorf("biz.stoplivestream sfu node not found", "uid", uid, "rid", rid, "sid", mid)
-		reject(codeSfuErr, codeStr(codeSfuErr))
-		return
+	var mcu *dis.Node
+	mcuid := util.Val(msg, "mcu")
+	if nid != "" {
+		mcu = FindMcuNodeByID(mcuid)
+	} else {
+		mcu = FindMcuNodeByRid(rid)
 	}
 
-	rpcSfu, find := rpcs[sfu.Nid]
-	if !find {
-		logger.Errorf("biz.stoplivestream sfu rpc not found", "uid", uid, "rid", rid, "sid", mid)
-		reject(codeSfuRpcErr, codeStr(codeSfuRpcErr))
-		return
-	}
-
-	//var mcu *dis.Node
-	mcu := FindMcuNodeByRid(rid)
 	if mcu == nil {
-		reject(-1, fmt.Sprintf("can't find mcu node by rid:%s", rid))
+		logger.Errorf("biz.stoplivestream mcu node not found", "uid", uid, "rid", rid, "sid", mid)
+		reject(-1, fmt.Sprintf("can't find mcu node by nid :%s or rid:%s", mcuid, rid))
 		return
 	}
 
-	mid = mcu.Nid + "#" + mid
-	rpcSfu.AsyncRequest(proto.BizToSfuUnSubscribe, util.Map("rid", rid, "uid", mcu.Nid, "mid", mid))
+	rpcMcu, find := rpcs[mcu.Nid]
+	if !find {
+		logger.Errorf("biz.stoplivestream mcu rpc not found", "uid", uid, "rid", rid, "sid", mid)
+		reject(codeMcuRpcErr, codeStr(codeMcuRpcErr))
+		return
+	}
+
+	rpcMcu.AsyncRequest(proto.BizToMcuUnpublish, util.Map("rid", rid, "uid", nid, "mid", mid))
 
 	// resp
 	accept(emptyMap)

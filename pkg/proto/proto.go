@@ -83,6 +83,8 @@ const (
 
 	//BizToMcuPublishRTP Biz->Mcu 转发sfu offer到Mcu
 	BizToMcuPublishRTP = "publishrtp"
+	//BizToMcuUnpublish Biz->Mcu 停止mcu推流
+	BizToMcuUnpublish = "unpublish"
 
 	/*
 		biz与islb服务器通信
