@@ -11,10 +11,10 @@ require (
 	github.com/gearghost/go-protoo v0.1.4
 	github.com/gearghost/nats-protoo v0.1.0
 	github.com/gearghost/sdp v0.1.0
-	github.com/gin-gonic/gin v1.6.3
 	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gorilla/websocket v1.4.2
+	github.com/json-iterator/go v1.1.9 // indirect
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/olivere/elastic/v7 v7.0.24
 	github.com/pion/ion-log v1.0.0
