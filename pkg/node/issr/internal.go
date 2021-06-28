@@ -69,11 +69,11 @@ func report(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error)
 		logger.Errorf(fmt.Sprintf("issr.report json marshal failed=%v", err))
 		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("json marshal err:%v", err)}
 	}
-	logger.Infof(fmt.Sprintf("issr.report msg: %s", string(str)))
 	err = kafkaProducer.Produce("Livs-Usage-Event", string(str))
 	if err != nil {
 		logger.Errorf(fmt.Sprintf("issr.report kafka produce error=%v", err))
 		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("kafka produce err:%v", err)}
 	}
+	logger.Infof(fmt.Sprintf("issr.report msg: %s", string(str)))
 	return util.Map(), nil
 }
