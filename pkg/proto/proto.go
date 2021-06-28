@@ -117,6 +117,8 @@ const (
 	BizToIslbGetMcuInfo = "getMcuInfo"
 	//BizToIslbSetMcuInfo biz->islb 设置rid跟mcu绑定关系
 	BizToIslbSetMcuInfo = "setMcuInfo"
+	//BizToIslbGetMediaInfo biz->islb 根据rid,uid,mid获取media info
+	BizToIslbGetMediaInfo = "getMediaInfo"
 
 	// IslbToBizOnJoin islb->biz 有人加入房间
 	IslbToBizOnJoin = BizToClientOnJoin

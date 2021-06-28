@@ -59,6 +59,8 @@ func handleRpcMsg(request map[string]interface{}, accept nprotoo.AcceptFunc, rej
 		result, err = getMcuInfo(data)
 	case proto.BizToIslbSetMcuInfo:
 		result, err = setMcuInfo(data)
+	case proto.BizToIslbGetMediaInfo:
+		result, err = getMediaInfo(data)
 	}
 	if err != nil {
 		reject(err.Code, err.Reason)
@@ -466,4 +468,16 @@ func setMcuInfo(data map[string]interface{}) (map[string]interface{}, *nprotoo.E
 		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("redis.Set err:%v", err)}
 	}
 	return util.Map("nid", nid), nil
+}
+
+func getMediaInfo(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
+	rid := util.Val(data, "rid")
+	uid := util.Val(data, "uid")
+	mid := util.Val(data, "mid")
+	ukey := proto.GetMediaInfoKey(rid, uid, mid)
+	minfo := redis.Get(ukey)
+	if minfo == "" {
+		return util.Map(), &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("minfo doesn't exist:%s", ukey)}
+	}
+	return util.Map("minfo", util.Unmarshal(minfo)), nil
 }

@@ -726,6 +726,31 @@ func startlivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.Accept
 		return
 	}
 
+	// 查询islb节点
+	islb := FindIslbNode()
+	if islb == nil {
+		logger.Errorf("biz.startlivestream islb node not found", "uid", uid, "rid", rid)
+		reject(codeIslbErr, codeStr(codeIslbErr))
+		return
+	}
+
+	rpcIslb, find := rpcs[islb.Nid]
+	if !find {
+		logger.Errorf("biz.startlivestream islb rpc not found", "uid", uid, "rid", rid)
+		reject(codeIslbRpcErr, codeStr(codeIslbRpcErr))
+		return
+	}
+
+	//获取该流minfo
+	islbresp, err := rpcIslb.SyncRequest(proto.BizToIslbGetMediaInfo, util.Map("rid", rid, "uid", uid, "mid", mid))
+	if err != nil {
+		logger.Errorf(fmt.Sprintf("biz.startlivestream request islb err =%v", err.Reason), "uid", uid, "rid", rid, "mid", mid)
+		reject(err.Code, err.Reason)
+		return
+	}
+
+	logger.Infof(fmt.Sprintf("biz.startlivestream request islb resp=%v", islbresp), "uid", uid, "rid", rid, "mid", mid)
+
 	// 获取sfu节点的resp
 	sfuresp, err := rpcSfu.SyncRequest(proto.BizToSfuSubscribeRTP, util.Map("rid", rid, "uid", mcu.Nid, "mid", mid))
 	if err != nil {
@@ -737,7 +762,7 @@ func startlivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.Accept
 	logger.Infof(fmt.Sprintf("biz.startlivestream request sfu offer resp=%v", sfuresp), "uid", uid, "rid", rid, "mid", mid)
 
 	mcuresp, err := rpcMcu.SyncRequest(proto.BizToMcuPublishRTP, util.Map("appid", peer.GetAppID(), "rid", rid,
-		"record", enableRecording, "uid", sfu.Nid, "jsep", sfuresp["jsep"]))
+		"record", enableRecording, "uid", sfu.Nid, "jsep", sfuresp["jsep"], "minfo", islbresp["minfo"]))
 	if err != nil {
 		logger.Errorf(fmt.Sprintf("biz.startlivestream request mcu answer err=%v", err.Reason), "uid", uid, "rid", rid, "mid", mid)
 		reject(err.Code, err.Reason)
