@@ -135,6 +135,8 @@ func checkFailures() {
 				for _, failure := range failures {
 					var msg map[string]interface{}
 					json.Unmarshal([]byte(failure.(string)), &msg)
+					timestamp := time.Now().UnixNano() / 1000
+					msg["timestamp"] = timestamp
 					str, err := json.Marshal(msg)
 					if err != nil {
 						logger.Errorf(fmt.Sprintf("issr.checkFailures json marshal failed=%v", err))

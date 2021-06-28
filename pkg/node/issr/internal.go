@@ -72,6 +72,13 @@ func report(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error)
 	err = kafkaProducer.Produce("Livs-Usage-Event", string(str))
 	if err != nil {
 		logger.Errorf(fmt.Sprintf("issr.report kafka produce error=%v", err))
+		islbRpc := getIslbRequestor()
+		if islbRpc != nil {
+			_, nerr := islbRpc.SyncRequest(proto.IssrToIslbStoreFailedStreamState, msg)
+			if nerr != nil {
+				logger.Errorf(fmt.Sprintf("issr.report request islb to store err=%v", nerr))
+			}
+		}
 		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("kafka produce err:%v", err)}
 	}
 	logger.Infof(fmt.Sprintf("issr.report msg: %s", string(str)))
