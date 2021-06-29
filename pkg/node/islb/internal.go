@@ -120,10 +120,9 @@ func clientLeave(data map[string]interface{}) (map[string]interface{}, *nprotoo.
 		err := redis.Del(uKey)
 		if err != nil {
 			logger.Errorf(fmt.Sprintf("islb.clientLeave redis.Del err=%v", err), "rid", rid, "uid", uid)
-		} else {
-			broadcaster.Say(proto.IslbToBizOnLeave, util.Map("rid", rid, "uid", uid))
 		}
 	}
+	broadcaster.Say(proto.IslbToBizOnLeave, util.Map("rid", rid, "uid", uid))
 	return util.Map(), nil
 }
 
@@ -229,10 +228,8 @@ func streamRemove(data map[string]interface{}) (map[string]interface{}, *nprotoo
 			err := redis.Del(ukey)
 			if err != nil {
 				logger.Errorf(fmt.Sprintf("islb.streamRemove pub redis.Del err=%v", err), "rid", rid, "uid", uid)
-			} else {
-				// 生成resp对象
-				broadcaster.Say(proto.IslbToBizOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", mid))
 			}
+			broadcaster.Say(proto.IslbToBizOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", mid))
 		}
 	} else {
 		// 获取用户发布的流信息
@@ -257,10 +254,8 @@ func streamRemove(data map[string]interface{}) (map[string]interface{}, *nprotoo
 			err := redis.Del(ukey)
 			if err != nil {
 				logger.Errorf(fmt.Sprintf("islb.streamRemove pub redis.Del err=%v", err), "rid", rid, "uid", uid, "mid", mid)
-			} else {
-				// 生成resp对象
-				broadcaster.Say(proto.IslbToBizOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", mid))
 			}
+			broadcaster.Say(proto.IslbToBizOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", mid))
 		}
 	}
 	return util.Map(), nil

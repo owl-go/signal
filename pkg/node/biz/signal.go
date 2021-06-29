@@ -61,8 +61,8 @@ func checkRoom() {
 						continue
 					}
 
-					rpc.AsyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", ""))
-					rpc.AsyncRequest(proto.BizToIslbOnLeave, util.Map("rid", rid, "uid", uid))
+					rpc.SyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", ""))
+					rpc.SyncRequest(proto.BizToIslbOnLeave, util.Map("rid", rid, "uid", uid))
 					//stop this user's timer when disconnect
 					stopStreamTimer(node, uid)
 					node.room.RemovePeer(uid)
