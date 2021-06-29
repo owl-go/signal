@@ -72,13 +72,13 @@ func (serviceWatcher *ServiceWatcher) GetNodeByID(nid string) (*Node, bool) {
 func (serviceWatcher *ServiceWatcher) GetNodeByPayload(dc, name string) (*Node, bool) {
 	var tempObj Node
 	var nodeObj *Node = nil
-	var payload int = 0
+	var payload int = 65535
 	serviceWatcher.nodeLook.Lock()
 	defer serviceWatcher.nodeLook.Unlock()
 	for _, node := range serviceWatcher.nodes {
 		if node.Ndc == dc && node.Name == name {
 			pay, _ := strconv.Atoi(node.Npayload)
-			if pay >= payload {
+			if pay <= payload {
 				tempObj = node
 				nodeObj = &tempObj
 				payload = pay

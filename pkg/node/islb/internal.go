@@ -123,8 +123,6 @@ func clientLeave(data map[string]interface{}) (map[string]interface{}, *nprotoo.
 		} else {
 			broadcaster.Say(proto.IslbToBizOnLeave, util.Map("rid", rid, "uid", uid))
 		}
-	} else {
-		broadcaster.Say(proto.IslbToBizOnLeave, util.Map("rid", rid, "uid", uid))
 	}
 	return util.Map(), nil
 }
