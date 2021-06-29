@@ -73,6 +73,7 @@ fi
 if [ "$OS_TYPE" == "Linux" ] || [ "$OS_TYPE" == "linux" ];then
     echo "GO Target Arch: " $OS_TYPE
     export CGO_ENABLED=0
+    export GOARCH=amd64
     export GOOS=linux
 fi
 
