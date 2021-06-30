@@ -213,6 +213,7 @@ func SetMcuNodeByRid(rid, nid string) *dis.Node {
 	id := util.Val(resp, "nid")
 	if id != "" {
 		mcu = FindMcuNodeByID(id)
+		log.Infof("SetMcuNodeByRid nid %s, mcu:%v", id, mcu)
 	}
 	return mcu
 }
