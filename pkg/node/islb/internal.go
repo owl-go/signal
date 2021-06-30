@@ -480,6 +480,7 @@ func getMediaInfo(data map[string]interface{}) (map[string]interface{}, *nprotoo
 }
 
 func clearMcuBinding(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
+	logger.Infof("clearMcuBinding in")
 	rid := util.Val(data, "rid")
 	key := proto.GetMcuInfoKey(rid)
 	err := redis.Del(key)
@@ -487,5 +488,6 @@ func clearMcuBinding(data map[string]interface{}) (map[string]interface{}, *npro
 		logger.Errorf(fmt.Sprintf("islb.clearMcuBinding redis.Del err=%v", err), "rid", rid)
 		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("redis.Del err:%v", err)}
 	}
+	logger.Infof("clearMcuBinding ok", "rid", rid)
 	return util.Map(), nil
 }

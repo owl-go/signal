@@ -178,6 +178,7 @@ func updateSubTimersByMID(rid, mid string) {
 }
 
 func removeMcuBinding(rid string) {
+	logger.Infof("biz.removeMcuBinding in", "rid", rid)
 	islb := FindIslbNode()
 	if islb == nil {
 		logger.Errorf("biz.removeMcuBinding islb node not found", "rid", rid)
@@ -193,5 +194,7 @@ func removeMcuBinding(rid string) {
 	_, err := rpc.SyncRequest(proto.BizToIslbClearMcuBinding, util.Map("rid", rid))
 	if err != nil {
 		logger.Errorf("biz.removeMcuBinding islb request err:%s", err.Reason)
+	} else {
+		logger.Infof("biz.removeMcuBinding ok", "rid", rid)
 	}
 }
