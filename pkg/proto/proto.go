@@ -57,6 +57,8 @@ const (
 	// BizToBizOnKick biz->biz 有人被服务器踢下线
 	BizToBizOnKick    = "peer-kick"
 	BizToClientOnKick = "peer-kick"
+	//BizToIslbClearMcuBinding biz->islb 清理mcu binding
+	BizToIslbClearMcuBinding = "clearmcubinding"
 
 	/*
 		biz与sfu服务器通信
@@ -130,6 +132,8 @@ const (
 	IslbToBizOnStreamRemove = BizToClientOnStreamRemove
 	// IslbToBizBroadcast islb->biz 有人发送广播
 	IslbToBizBroadcast = ClientToBizBroadcast
+	//McuToBizOnRoomRemove mcu->biz mcu房间移除通知
+	McuToBizOnRoomRemove = "mcu-room-remove"
 )
 
 // GetUIDFromMID 从mid中获取uid

@@ -48,7 +48,7 @@ func Close() {
 func WatchServiceCallBack(state dis.NodeStateType, node dis.Node) {
 	if state == dis.ServerUp {
 		// 判断是否广播节点
-		if node.Name == "islb" || node.Name == "sfu" {
+		if node.Name == "islb" || node.Name == "sfu" || node.Name == "mcu" {
 			eventID := dis.GetEventChannel(node)
 			nats.OnBroadcast(eventID, handleBroadcast)
 		}
@@ -190,14 +190,14 @@ func FindMcuNodeByPayload() *dis.Node {
 func SetMcuNodeByRid(rid, nid string) *dis.Node {
 	islb := FindIslbNode()
 	if islb == nil {
-		log.Errorf("SetMcuNodeByMid islb not found")
+		log.Errorf("SetMcuNodeByRid islb not found")
 		return nil
 	}
 
 	find := false
 	rpc, find := rpcs[islb.Nid]
 	if !find {
-		log.Errorf("SetMcuNodeByMid islb rpc not found")
+		log.Errorf("SetMcuNodeByRid islb rpc not found")
 		return nil
 	}
 
@@ -207,7 +207,7 @@ func SetMcuNodeByRid(rid, nid string) *dis.Node {
 		return nil
 	}
 
-	log.Infof("SetMcuNodeByMid resp ==> %v", resp)
+	log.Infof("SetMcuNodeByRid resp ==> %v", resp)
 
 	var mcu *dis.Node
 	id := util.Val(resp, "nid")
@@ -215,21 +215,20 @@ func SetMcuNodeByRid(rid, nid string) *dis.Node {
 		mcu = FindMcuNodeByID(id)
 	}
 	return mcu
-
 }
 
 // FindMcuNodeByRid 根据rid查询指定的mcu节点
 func FindMcuNodeByRid(rid string) *dis.Node {
 	islb := FindIslbNode()
 	if islb == nil {
-		log.Errorf("FindMcuNodeByMid islb not found")
+		log.Errorf("FindMcuNodeByRid islb not found")
 		return nil
 	}
 
 	find := false
 	rpc, find := rpcs[islb.Nid]
 	if !find {
-		log.Errorf("FindMcuNodeByMid islb rpc not found")
+		log.Errorf("FindMcuNodeByRid islb rpc not found")
 		return nil
 	}
 
@@ -239,11 +238,12 @@ func FindMcuNodeByRid(rid string) *dis.Node {
 		return nil
 	}
 
-	log.Infof("FindMcuNodeByMid resp ==> %v", resp)
+	log.Infof("FindMcuNodeByRid resp ==> %v", resp)
 
 	var mcu *dis.Node
 	nid := util.Val(resp, "nid")
 	if nid != "" {
+		log.Infof("FindMcuNodeByRid found node:%s", nid)
 		mcu = FindMcuNodeByID(nid)
 	}
 	return mcu

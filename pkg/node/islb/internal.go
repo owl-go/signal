@@ -61,6 +61,8 @@ func handleRpcMsg(request map[string]interface{}, accept nprotoo.AcceptFunc, rej
 		result, err = setMcuInfo(data)
 	case proto.BizToIslbGetMediaInfo:
 		result, err = getMediaInfo(data)
+	case proto.BizToIslbClearMcuBinding:
+		result, err = clearMcuBinding(data)
 	}
 	if err != nil {
 		reject(err.Code, err.Reason)
@@ -472,7 +474,18 @@ func getMediaInfo(data map[string]interface{}) (map[string]interface{}, *nprotoo
 	ukey := proto.GetMediaInfoKey(rid, uid, mid)
 	minfo := redis.Get(ukey)
 	if minfo == "" {
-		return util.Map(), &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("minfo doesn't exist:%s", ukey)}
+		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("minfo doesn't exist:%s", ukey)}
 	}
 	return util.Map("minfo", util.Unmarshal(minfo)), nil
+}
+
+func clearMcuBinding(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
+	rid := util.Val(data, "rid")
+	key := proto.GetMcuInfoKey(rid)
+	err := redis.Del(key)
+	if err != nil {
+		logger.Errorf(fmt.Sprintf("islb.clearMcuBinding redis.Del err=%v", err), "rid", rid)
+		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("redis.Del err:%v", err)}
+	}
+	return util.Map(), nil
 }
