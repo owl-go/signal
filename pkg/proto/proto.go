@@ -59,6 +59,10 @@ const (
 	BizToClientOnKick = "peer-kick"
 	//BizToIslbClearMcuBinding biz->islb 清理mcu binding
 	BizToIslbClearMcuBinding = "clearmcubinding"
+	//BizToClientOnLiveStreamAdd biz->C 有人开始直播
+	BizToClientOnLiveStreamAdd = "live-stream-add"
+	//BizToClientOnLiveStreamRemove biz->C 有人取消直播
+	BizToClientOnLiveStreamRemove = "live-stream-remove"
 
 	/*
 		biz与sfu服务器通信

@@ -110,6 +110,10 @@ func handleBroadcast(msg map[string]interface{}, subj string) {
 	case proto.McuToBizOnRoomRemove:
 		rid := util.Val(data, "rid")
 		removeMcuBinding(rid)
+	case proto.IslbToBizOnLiveAdd:
+		NotifyAllWithoutID(rid, uid, proto.BizToClientOnLiveStreamAdd, data)
+	case proto.IslbToBizOnLiveRemove:
+		NotifyAllWithoutID(rid, uid, proto.BizToClientOnLiveStreamRemove, data)
 	}
 }
 

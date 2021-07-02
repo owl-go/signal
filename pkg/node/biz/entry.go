@@ -781,6 +781,14 @@ func startlivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.Accept
 
 	logger.Infof(fmt.Sprintf("biz.startlivestream request sfu answer resp=%v", resp), "uid", uid, "rid", rid, "mid", mid)
 
+	_, err = rpcIslb.SyncRequest(proto.BizToIslbOnLiveAdd, util.Map("rid", rid, "uid", uid, "mid", mcuresp["mid"]))
+
+	if err != nil {
+		logger.Errorf(fmt.Sprintf("biz.startlivestream request islb for liveStreamAdd err=%v", err.Reason), "uid", uid, "rid", rid)
+		reject(err.Code, err.Reason)
+		return
+	}
+
 	accept(util.Map("mcu", mcu.Nid, "mid", mcuresp["mid"]))
 }
 
@@ -816,6 +824,21 @@ func stoplivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptF
 		mcu = FindMcuNodeByRid(rid)
 	}
 
+	// 查询islb节点
+	islb := FindIslbNode()
+	if islb == nil {
+		logger.Errorf("biz.stoplivestream islb node not found", "uid", uid, "rid", rid)
+		reject(codeIslbErr, codeStr(codeIslbErr))
+		return
+	}
+
+	rpcIslb, find := rpcs[islb.Nid]
+	if !find {
+		logger.Errorf("biz.stoplivestream islb rpc not found", "uid", uid, "rid", rid)
+		reject(codeIslbRpcErr, codeStr(codeIslbRpcErr))
+		return
+	}
+
 	if mcu == nil {
 		logger.Errorf("biz.stoplivestream mcu node not found", "uid", uid, "rid", rid, "sid", mid)
 		reject(-1, fmt.Sprintf("can't find mcu node by nid :%s or rid:%s", mcuid, rid))
@@ -830,6 +853,14 @@ func stoplivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptF
 	}
 
 	rpcMcu.AsyncRequest(proto.BizToMcuUnpublish, util.Map("rid", rid, "uid", nid, "mid", mid))
+
+	_, err := rpcIslb.SyncRequest(proto.BizToIslbOnLiveRemove, util.Map("rid", rid, "uid", uid, "mid", mid))
+
+	if err != nil {
+		logger.Errorf(fmt.Sprintf("biz.stoplivestream request islb for liveStreamRemove err=%v", err.Reason), "uid", uid, "rid", rid)
+		reject(err.Code, err.Reason)
+		return
+	}
 
 	// resp
 	accept(emptyMap)
