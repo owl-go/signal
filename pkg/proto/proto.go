@@ -74,8 +74,6 @@ const (
 	BizToSfuUnSubscribe = "unsubscribe"
 	// BizToSfuTrickleICE Biz->Sfu 发送ice数据
 	BizToSfuTrickleICE = "trickle"
-	// SfuToBizOnStreamRemove Sfu->Biz Sfu通知biz流被移除
-	SfuToBizOnStreamRemove = "sfu-stream-remove"
 	//BizToSfuSubscribeRTP Biz->Sfu 请求sfu创建offer
 	BizToSfuSubscribeRTP = "subscribertp"
 
@@ -100,9 +98,11 @@ const (
 	BizToIslbOnStreamAdd = "stream-add"
 	// BizToIslbOnStreamRemove biz->islb 有人取消发布流
 	BizToIslbOnStreamRemove = "stream-remove"
+	// BizToIslbOnLiveAdd biz->islb 有人发起直播
+	BizToIslbOnLiveAdd = "live-add"
+	// BizToIslbOnLiveRemove biz->islb 有人取消直播
+	BizToIslbOnLiveRemove = "live-remove"
 
-	// BizToIslbPeerLive biz->islb 获取Peer是否在线
-	BizToIslbPeerLive = "getPeerLive"
 	// BizToIslbKeepAlive biz->islb 保活
 	BizToIslbKeepAlive = "keepalive"
 	// BizToIslbBroadcast biz->islb 发送广播
@@ -130,8 +130,19 @@ const (
 	IslbToBizOnStreamAdd = BizToClientOnStreamAdd
 	// IslbToBizOnStreamRemove islb->biz 有人取消发布流
 	IslbToBizOnStreamRemove = BizToClientOnStreamRemove
+	// IslbToBizOnLiveAdd biz->islb 有人发起直播
+	IslbToBizOnLiveAdd = BizToIslbOnLiveAdd
+	// IslbToBizOnLiveRemove biz->islb 有人取消直播
+	IslbToBizOnLiveRemove = BizToIslbOnLiveRemove
 	// IslbToBizBroadcast islb->biz 有人发送广播
 	IslbToBizBroadcast = ClientToBizBroadcast
+
+	/*
+		sfu,mcu的广播
+	*/
+
+	// SfuToBizOnStreamRemove Sfu->Biz Sfu通知biz流被移除
+	SfuToBizOnStreamRemove = "sfu-stream-remove"
 	//McuToBizOnRoomRemove mcu->biz mcu房间移除通知
 	McuToBizOnRoomRemove = "mcu-room-remove"
 )

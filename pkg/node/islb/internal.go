@@ -45,6 +45,11 @@ func handleRpcMsg(request map[string]interface{}, accept nprotoo.AcceptFunc, rej
 	case proto.BizToIslbGetSfuInfo:
 		result, err = getSfuByMid(data)
 
+	case proto.BizToIslbOnLiveAdd:
+		result, err = streamAdd(data)
+	case proto.BizToIslbOnLiveRemove:
+		result, err = streamRemove(data)
+
 	case proto.BizToIslbBroadcast:
 		result, err = broadcast(data)
 	case proto.BizToIslbGetRoomUsers:
