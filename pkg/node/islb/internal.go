@@ -17,6 +17,11 @@ func handleRPCRequest(rpcID string) {
 	nats.OnRequest(rpcID, handleRpcMsg)
 }
 
+// handleBroadCastMsgs 处理广播消息
+func handleBroadcast(msg map[string]interface{}, subj string) {
+
+}
+
 // 处理rpc请求
 func handleRpcMsg(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
 	defer util.Recover("islb.handleRPCRequest")
@@ -46,9 +51,9 @@ func handleRpcMsg(request map[string]interface{}, accept nprotoo.AcceptFunc, rej
 		result, err = getSfuByMid(data)
 
 	case proto.BizToIslbOnLiveAdd:
-		result, err = streamAdd(data)
+		result, err = liveAdd(data)
 	case proto.BizToIslbOnLiveRemove:
-		result, err = streamRemove(data)
+		result, err = liveRemove(data)
 
 	case proto.BizToIslbBroadcast:
 		result, err = broadcast(data)
@@ -285,6 +290,99 @@ func getSfuByMid(data map[string]interface{}) (map[string]interface{}, *nprotoo.
 	} else {
 		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("can't find sfu node by mid:%s", uKey)}
 	}
+}
+
+/*
+	"method", proto.BizToIslbOnLiveAdd, "rid", rid, "uid", uid, "mid", mid, "nid", nid, "minfo", minfo
+*/
+// 有人发布流
+func liveAdd(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
+	rid := util.Val(data, "rid")
+	uid := util.Val(data, "uid")
+	mid := util.Val(data, "mid")
+	nid := util.Val(data, "nid")
+	minfo := util.Val(data, "minfo")
+	// 获取用户发布的直播流信息
+	ukey := proto.GetLiveInfoKey(rid, uid, mid)
+	err := redis.Set(ukey, minfo, redisKeyTTL)
+	if err != nil {
+		logger.Errorf(fmt.Sprintf("islb.liveAdd redis.Set err=%v", err), "rid", rid, "uid", uid, "mid", mid)
+		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("liveAdd err=%v", err)}
+	}
+	// 获取用户发布直播流对应的mcu节点
+	ukey = proto.GetLivePubKey(rid, uid, mid)
+	err = redis.Set(ukey, nid, redisKeyTTL)
+	if err != nil {
+		logger.Errorf(fmt.Sprintf("islb.liveAdd redis.Set err=%v", err), "rid", rid, "uid", uid, "mid", mid)
+		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("liveAdd err=%v", err)}
+	}
+	// 生成resp对象
+	broadcaster.Say(proto.IslbToBizOnLiveAdd, util.Map("rid", rid, "uid", uid, "mid", mid, "nid", nid, "minfo", data["minfo"]))
+	return util.Map(), nil
+}
+
+/*
+	"method", proto.BizToIslbOnLiveRemove, "rid", rid, "uid", uid, "mid", ""
+*/
+// 有人取消发布流
+func liveRemove(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
+	rid := util.Val(data, "rid")
+	uid := util.Val(data, "uid")
+	mid := util.Val(data, "mid")
+	// 判断mid是否为空
+	var ukey string
+	if mid == "" {
+		ukey = "/livemedia/rid/" + rid + "/uid/" + uid + "/mid/*"
+		ukeys := redis.Keys(ukey)
+		for _, key := range ukeys {
+			ukey = key
+			// 删除key值
+			err := redis.Del(ukey)
+			if err != nil {
+				logger.Errorf(fmt.Sprintf("islb.liveRemove media redis.Del err=%v", err), "rid", rid, "uid", uid)
+			}
+		}
+		ukey = "/livepub/rid/" + rid + "/uid/" + uid + "/mid/*"
+		ukeys = redis.Keys(ukey)
+		for _, key := range ukeys {
+			ukey = key
+			arr := strings.Split(key, "/")
+			mid := arr[7]
+			// 删除key值
+			err := redis.Del(ukey)
+			if err != nil {
+				logger.Errorf(fmt.Sprintf("islb.liveRemove pub redis.Del err=%v", err), "rid", rid, "uid", uid)
+			}
+			broadcaster.Say(proto.IslbToBizOnLiveRemove, util.Map("rid", rid, "uid", uid, "mid", mid))
+		}
+	} else {
+		// 获取用户发布的流信息
+		ukey = proto.GetLiveInfoKey(rid, uid, mid)
+		ukeys := redis.Keys(ukey)
+		for _, key := range ukeys {
+			ukey = key
+			// 删除key值
+			err := redis.Del(ukey)
+			if err != nil {
+				logger.Errorf(fmt.Sprintf("islb.liveRemove media redis.Del err=%v", err), "rid", rid, "uid", uid, "mid", mid)
+			}
+		}
+		// 获取用户发布流对应的sfu信息
+		ukey = proto.GetLivePubKey(rid, uid, mid)
+		ukeys = redis.Keys(ukey)
+		for _, key := range ukeys {
+			ukey = key
+			arr := strings.Split(key, "/")
+			mid := arr[7]
+			// 删除key值
+			err := redis.Del(ukey)
+			if err != nil {
+				logger.Errorf(fmt.Sprintf("islb.liveRemove pub redis.Del err=%v", err), "rid", rid, "uid", uid, "mid", mid)
+			}
+			broadcaster.Say(proto.IslbToBizOnLiveRemove, util.Map("rid", rid, "uid", uid, "mid", mid))
+		}
+	}
+	return util.Map(), nil
 }
 
 /*

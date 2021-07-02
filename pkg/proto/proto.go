@@ -176,6 +176,16 @@ func GetMediaPubKey(rid, uid, mid string) string {
 	return "/pub/rid/" + rid + "/uid/" + uid + "/mid/" + mid
 }
 
+// GetLiveInfoKey 获取用户发布的直播流信息
+func GetLiveInfoKey(rid, uid, mid string) string {
+	return "/livemedia/rid/" + rid + "/uid/" + uid + "/mid/" + mid
+}
+
+// GetLivePubKey 获取用户发布直播流对应的mcu节点
+func GetLivePubKey(rid, uid, mid string) string {
+	return "/livepub/rid/" + rid + "/uid/" + uid + "/mid/" + mid
+}
+
 // GetFailedStreamStateKey 获取报告失败拉流状态信息key
 func GetFailedStreamStateKey() string {
 	return "/zx/report/failure"

@@ -38,6 +38,7 @@ func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, nats
 	logger = log
 	// 启动
 	handleRPCRequest(node.GetRPCChannel())
+	go watch.WatchServiceNode("", WatchServiceCallBack)
 }
 
 // Close 关闭连接
@@ -50,5 +51,16 @@ func Close() {
 	}
 	if watch != nil {
 		watch.Close()
+	}
+}
+
+// WatchServiceCallBack 查看所有的Node节点
+func WatchServiceCallBack(state dis.NodeStateType, node dis.Node) {
+	if state == dis.ServerUp {
+		// 处理sfu和mcu发送的广播
+		if node.Name == "sfu" || node.Name == "mcu" {
+			eventID := dis.GetEventChannel(node)
+			nats.OnBroadcastWithGroup(eventID, "islb", handleBroadcast)
+		}
 	}
 }
