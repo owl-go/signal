@@ -9,7 +9,7 @@ require (
 	github.com/coreos/etcd v3.3.25+incompatible // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/gearghost/go-protoo v0.1.4
-	github.com/gearghost/nats-protoo v0.1.0
+	github.com/gearghost/nats-protoo v0.1.1
 	github.com/gearghost/sdp v0.1.0
 	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/go-sql-driver/mysql v1.6.0

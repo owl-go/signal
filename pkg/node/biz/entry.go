@@ -682,6 +682,7 @@ func startlivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.Accept
 	mid := util.Val(msg, "mid")
 
 	enableRecording := util.InterfaceToInt(msg["record"])
+	index := util.InterfaceToInt(msg["index"])
 
 	var sfu *dis.Node
 	nid := util.Val(msg, "nid")
@@ -761,8 +762,11 @@ func startlivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.Accept
 
 	logger.Infof(fmt.Sprintf("biz.startlivestream request sfu offer resp=%v", sfuresp), "uid", uid, "rid", rid, "mid", mid)
 
+	minfo := islbresp["minfo"].(map[string]interface{})
+	minfo["index"] = index
+
 	mcuresp, err := rpcMcu.SyncRequest(proto.BizToMcuPublishRTP, util.Map("appid", peer.GetAppID(), "rid", rid,
-		"record", enableRecording, "uid", sfu.Nid, "jsep", sfuresp["jsep"], "minfo", islbresp["minfo"]))
+		"record", enableRecording, "uid", sfu.Nid, "jsep", sfuresp["jsep"], "minfo", minfo))
 	if err != nil {
 		logger.Errorf(fmt.Sprintf("biz.startlivestream request mcu answer err=%v", err.Reason), "uid", uid, "rid", rid, "mid", mid)
 		reject(err.Code, err.Reason)

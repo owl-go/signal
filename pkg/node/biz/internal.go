@@ -107,9 +107,6 @@ func handleBroadcast(msg map[string]interface{}, subj string) {
 	case proto.SfuToBizOnStreamRemove:
 		mid := util.Val(data, "mid")
 		SfuRemoveStream(mid)
-	case proto.McuToBizOnRoomRemove:
-		rid := util.Val(data, "rid")
-		removeMcuBinding(rid)
 	case proto.IslbToBizOnLiveAdd:
 		NotifyAllWithoutID(rid, uid, proto.BizToClientOnLiveStreamAdd, data)
 	case proto.IslbToBizOnLiveRemove:
@@ -178,27 +175,5 @@ func updateSubTimersByMID(rid, mid string) {
 				}
 			}
 		}
-	}
-}
-
-func removeMcuBinding(rid string) {
-	logger.Infof("biz.removeMcuBinding in", "rid", rid)
-	islb := FindIslbNode()
-	if islb == nil {
-		logger.Errorf("biz.removeMcuBinding islb node not found", "rid", rid)
-		return
-	}
-
-	find := false
-	rpc, find := rpcs[islb.Nid]
-	if !find {
-		logger.Errorf("biz.removeMcuBinding islb rpc not found", "rid", rid)
-		return
-	}
-	_, err := rpc.SyncRequest(proto.BizToIslbClearMcuBinding, util.Map("rid", rid))
-	if err != nil {
-		logger.Errorf("biz.removeMcuBinding islb request err:%s", err.Reason)
-	} else {
-		logger.Infof("biz.removeMcuBinding ok", "rid", rid)
 	}
 }

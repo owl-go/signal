@@ -71,8 +71,6 @@ func handleRpcMsg(request map[string]interface{}, accept nprotoo.AcceptFunc, rej
 		result, err = setMcuInfo(data)
 	case proto.BizToIslbGetMediaInfo:
 		result, err = getMediaInfo(data)
-	case proto.BizToIslbClearMcuBinding:
-		result, err = clearMcuBinding(data)
 	}
 	if err != nil {
 		reject(err.Code, err.Reason)
