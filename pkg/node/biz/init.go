@@ -48,7 +48,7 @@ func Close() {
 func WatchServiceCallBack(state dis.NodeStateType, node dis.Node) {
 	if state == dis.ServerUp {
 		// 判断是否广播节点
-		if node.Name == "islb" || node.Name == "sfu" || node.Name == "mcu" {
+		if node.Name == "islb" || node.Name == "sfu" {
 			eventID := dis.GetEventChannel(node)
 			nats.OnBroadcast(eventID, handleBroadcast)
 		}

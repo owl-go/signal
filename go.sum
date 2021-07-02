@@ -74,8 +74,8 @@ github.com/gearghost/emission v0.0.0-20210406072116-f8bc9ee18dea h1:BHDgFs3e0WCl
 github.com/gearghost/emission v0.0.0-20210406072116-f8bc9ee18dea/go.mod h1:426CjPuGbYVp7KlAVP+TCma9NcYub6EYbZQbcPBQp8w=
 github.com/gearghost/go-protoo v0.1.4 h1:ZnfG682kWvGGdO3bmme7glZhuLIUkMt5PSvbNepvtBo=
 github.com/gearghost/go-protoo v0.1.4/go.mod h1:P6E6rYOiuNhRoXUJfh6lj7R0BMNa8yqFLG9OMrxpUuc=
-github.com/gearghost/nats-protoo v0.1.0 h1:trNBXMoqObu4pZEe3oMC7H6AmjDe9PajFhhw6USQKpQ=
-github.com/gearghost/nats-protoo v0.1.0/go.mod h1:sdbrb/x75UP/AGOLAdAd1/Nde7OV6gdSbtkYwyZ2ll4=
+github.com/gearghost/nats-protoo v0.1.1 h1:DCyL6rWSV87VHGZx2JjiyBOVE6NwiCBxuedPHcBZlj4=
+github.com/gearghost/nats-protoo v0.1.1/go.mod h1:sdbrb/x75UP/AGOLAdAd1/Nde7OV6gdSbtkYwyZ2ll4=
 github.com/gearghost/sdp v0.1.0 h1:M33jBjKWvQ49kXnM7gTGgfsJViTDgpfbD0YlajZKMBY=
 github.com/gearghost/sdp v0.1.0/go.mod h1:cUHSzs0vmFRftoFT52pbqY8Reb1CGqefIcV+bJojJFk=
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
