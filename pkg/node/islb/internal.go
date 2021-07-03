@@ -486,7 +486,7 @@ func getMediaInfo(data map[string]interface{}) (map[string]interface{}, *nprotoo
 	ukey := proto.GetMediaInfoKey(rid, uid, mid)
 	minfo := redis.Get(ukey)
 	if minfo == "" {
-		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("minfo doesn't exist:%s", ukey)}
+		return nil, &nprotoo.Error{Code: 408, Reason: fmt.Sprintf("minfo doesn't exist:%s", ukey)}
 	}
 	return util.Map("minfo", util.Unmarshal(minfo)), nil
 }
