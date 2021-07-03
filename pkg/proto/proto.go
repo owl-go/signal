@@ -32,17 +32,16 @@ const (
 	ClientToBizSubscribe = "subscribe"
 	// ClientToBizUnSubscribe C->Biz 取消订阅流
 	ClientToBizUnSubscribe = "unsubscribe"
-	// ClientToBizTrickleICE C->Biz 发送ice数据
-	ClientToBizTrickleICE = "trickle"
 
-	// ClientToBizBroadcast C->Biz 发送广播给房间里所有用户
-	ClientToBizBroadcast = "broadcast"
-	// ClientToBizGetRoomUsers C->Biz 获取房间所有用户信息
-	ClientToBizGetRoomUsers = "listusers"
 	// ClientToBizStartLivestream C->Biz 开始直播
 	ClientToBizStartLivestream = "startlivestream"
 	// ClientToBizStopLivestream C->Biz 取消直播
 	ClientToBizStopLivestream = "stoplivestream"
+
+	// ClientToBizBroadcast C->Biz 发送广播
+	ClientToBizBroadcast = "broadcast"
+	// ClientToBizGetRoomUsers C->Biz 获取房间所有用户信息
+	ClientToBizGetRoomUsers = "listusers"
 
 	// BizToClientOnJoin biz->C 有人加入房间
 	BizToClientOnJoin = "peer-join"
@@ -52,15 +51,16 @@ const (
 	BizToClientOnStreamAdd = "stream-add"
 	// BizToClientOnStreamRemove biz->C 有人取消发布流
 	BizToClientOnStreamRemove = "stream-remove"
+	//BizToClientOnLiveStreamAdd biz->C 有人开始直播
+	BizToClientOnLiveStreamAdd = "live-stream-add"
+	//BizToClientOnLiveStreamRemove biz->C 有人取消直播
+	BizToClientOnLiveStreamRemove = "live-stream-remove"
+
 	// BizToClientBroadcast biz->C 有人发送广播
 	BizToClientBroadcast = "broadcast"
 	// BizToBizOnKick biz->biz 有人被服务器踢下线
 	BizToBizOnKick    = "peer-kick"
 	BizToClientOnKick = "peer-kick"
-	//BizToClientOnLiveStreamAdd biz->C 有人开始直播
-	BizToClientOnLiveStreamAdd = "live-stream-add"
-	//BizToClientOnLiveStreamRemove biz->C 有人取消直播
-	BizToClientOnLiveStreamRemove = "live-stream-remove"
 
 	/*
 		biz与sfu服务器通信
@@ -74,8 +74,6 @@ const (
 	BizToSfuSubscribe = "subscribe"
 	// BizToSfuUnSubscribe Biz->Sfu 取消订阅流
 	BizToSfuUnSubscribe = "unsubscribe"
-	// BizToSfuTrickleICE Biz->Sfu 发送ice数据
-	BizToSfuTrickleICE = "trickle"
 	//BizToSfuSubscribeRTP Biz->Sfu 请求sfu创建offer
 	BizToSfuSubscribeRTP = "subscribertp"
 
@@ -109,6 +107,7 @@ const (
 	BizToIslbKeepAlive = "keepalive"
 	// BizToIslbBroadcast biz->islb 发送广播
 	BizToIslbBroadcast = "broadcast"
+
 	// BizToIslbGetBizInfo biz->islb 根据uid查询对应的biz
 	BizToIslbGetBizInfo = "getBizInfo"
 	// BizToIslbGetSfuInfo biz->islb 根据mid查询对应的sfu
@@ -143,10 +142,12 @@ const (
 		sfu,mcu的广播
 	*/
 
-	// SfuToBizOnStreamRemove Sfu->Biz Sfu通知biz流被移除
-	SfuToBizOnStreamRemove = "sfu-stream-remove"
-	//McuToBizOnRoomRemove mcu->biz mcu房间移除通知
-	McuToBizOnRoomRemove = "mcu-room-remove"
+	// SfuToIslbOnStreamRemove Sfu->Biz Sfu通知biz流被移除
+	SfuToIslbOnStreamRemove = "sfu-stream-remove"
+	// McuToIslbOnStreamRemove mcu->islb sfu通知islb流被移除
+	McuToIslbOnStreamRemove = "mcu-stream-remove"
+	//McuToIslbOnRoomRemove mcu->biz mcu房间移除通知
+	McuToIslbOnRoomRemove = "mcu-room-remove"
 )
 
 // GetUIDFromMID 从mid中获取uid
@@ -184,14 +185,14 @@ func GetLivePubKey(rid, uid, mid string) string {
 	return "/livepub/rid/" + rid + "/uid/" + uid + "/mid/" + mid
 }
 
-// GetFailedStreamStateKey 获取报告失败拉流状态信息key
-func GetFailedStreamStateKey() string {
-	return "/zx/report/failure"
-}
-
 // GetMcuInfoKey 获取MCU节点 key
 func GetMcuInfoKey(rid string) string {
 	return "/mcu/rid/" + rid
+}
+
+// GetFailedStreamStateKey 获取报告失败拉流状态信息key
+func GetFailedStreamStateKey() string {
+	return "/zx/report/failure"
 }
 
 // GetUserLockKey 获取UserLock key

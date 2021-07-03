@@ -26,8 +26,6 @@ func Entry(method string, peer *ws.Peer, msg map[string]interface{}, accept ws.A
 		subscribe(peer, msg, accept, reject)
 	case proto.ClientToBizUnSubscribe:
 		unsubscribe(peer, msg, accept, reject)
-	case proto.ClientToBizTrickleICE:
-		trickle(peer, msg, accept, reject)
 	case proto.ClientToBizBroadcast:
 		broadcast(peer, msg, accept, reject)
 	case proto.ClientToBizGetRoomUsers:
@@ -564,54 +562,6 @@ func unsubscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc
 			}
 		}
 	}
-	// resp
-	accept(emptyMap)
-}
-
-/*
-  "request":true
-  "id":3764139
-  "method":"trickle"
-  "data":{
-      "rid": "room1",
-      "nid":"shenzhen-sfu-1",
-      "mid": "64236c21-21e8-4a3d-9f80-c767d1e1d67f#ABCDEF"
-      "sid": "$sid"
-      "ice": "$icecandidate"
-      "ispub": "true"
-  }
-*/
-// trickle ice数据
-func trickle(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
-	if invalid(msg, "rid", reject) || invalid(msg, "mid", reject) {
-		return
-	}
-
-	/*
-		uid := peer.ID()
-		rid := util.Val(msg, "rid")
-		mid := util.Val(msg, "mid")
-		sid := util.Val(msg, "sid")
-		ice := util.Val(msg, "ice")
-		ispub := util.Val(msg, "ispub")
-		log.Infof("biz.trickle uid=%s msg=%v", uid, msg)
-
-		var sfu *dis.Node
-		nid := util.Val(msg, "nid")
-		if nid != "" {
-			sfu = FindSfuNodeByID(nid)
-		} else {
-			sfu = FindSfuNodeByMid(rid, mid)
-		}
-		if sfu == nil {
-			log.Errorf("sfu node is not find")
-			reject(codeSfuErr, codeStr(codeSfuErr))
-			return
-		}
-
-		rpc := protoo.NewRequestor(dis.GetRPCChannel(*sfu))
-		rpc.AsyncRequest(proto.BizToSfuTrickleICE, util.Map("rid", rid, "sid", sid, "mid", mid, "ice", ice, "ispub", ispub))
-	*/
 	// resp
 	accept(emptyMap)
 }

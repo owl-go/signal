@@ -35,8 +35,6 @@ func handleRPCRequest(rpcID string) {
 					result, err = subscribe(data)
 				case proto.BizToSfuUnSubscribe:
 					result, err = unsubscribe(data)
-				case proto.BizToSfuTrickleICE:
-					result, err = trickle(data)
 				default:
 					//log.Warnf("sfu.handleRPCRequest invalid protocol method=%s data=%v", method, data)
 					logger.Warnf(fmt.Sprintf("sfu.handleRPCRequest invalid protocol method=%s data=%v", method, data), "rpcid", rpcID)
@@ -164,34 +162,5 @@ func unsubscribe(msg map[string]interface{}) (map[string]interface{}, *nprotoo.E
 			}
 		}
 	})
-	return util.Map(), nil
-}
-
-/*
-	"method", proto.BizToSfuTrickleICE, "rid", rid, "mid", mid, "sid", sid, "ice", ice, "ispub", ispub
-*/
-// trickle 处理ice数据
-func trickle(msg map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
-	/*
-		rid := util.Val(msg, "rid")
-		mid := util.Val(msg, "mid")
-		sid := util.Val(msg, "sid")
-		uid := proto.GetUIDFromMID(mid)
-		key := proto.GetMediaPubKey(rid, uid, mid)
-		router := rtc.GetOrNewRouter(key)
-		cand := msg["ice"].(string)
-
-		if msg["ispub"].(bool) {
-			t := router.GetPub()
-			if t != nil {
-				t.(*transport.WebRTCTransport).AddCandidate(cand)
-			}
-		} else {
-			t := router.GetSub(sid)
-			if t != nil {
-				t.(*transport.WebRTCTransport).AddCandidate(cand)
-			}
-		}
-	*/
 	return util.Map(), nil
 }

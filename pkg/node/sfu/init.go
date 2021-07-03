@@ -57,7 +57,7 @@ func Close() {
 // checkRTC 通知信令流被移除
 func checkRTC() {
 	for mid := range rtc.CleanPub {
-		broadcaster.Say(proto.SfuToBizOnStreamRemove, util.Map("mid", mid))
+		broadcaster.Say(proto.SfuToIslbOnStreamRemove, util.Map("mid", mid))
 	}
 }
 

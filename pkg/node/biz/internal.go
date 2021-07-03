@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"signal/pkg/proto"
 	"signal/util"
-	"strings"
 
 	nprotoo "github.com/gearghost/nats-protoo"
 )
@@ -104,41 +103,11 @@ func handleBroadcast(msg map[string]interface{}, subj string) {
 	case proto.IslbToBizBroadcast:
 		/* "method", proto.IslbToBizBroadcast, "rid", rid, "uid", uid, "data", data */
 		NotifyAllWithoutID(rid, uid, proto.BizToClientBroadcast, data)
-	case proto.SfuToBizOnStreamRemove:
-		mid := util.Val(data, "mid")
-		SfuRemoveStream(mid)
 	case proto.IslbToBizOnLiveAdd:
 		NotifyAllWithoutID(rid, uid, proto.BizToClientOnLiveStreamAdd, data)
 	case proto.IslbToBizOnLiveRemove:
 		NotifyAllWithoutID(rid, uid, proto.BizToClientOnLiveStreamRemove, data)
 	}
-}
-
-// SfuRemoveStream 处理移除流
-func SfuRemoveStream(key string) {
-	islb := FindIslbNode()
-	if islb == nil {
-		logger.Errorf("biz.SfuRemoveStream islb node not found", "mid", key)
-		return
-	}
-
-	find := false
-	rpc, find := rpcs[islb.Nid]
-	if !find {
-		logger.Errorf("biz.SfuRemoveStream islb rpc not found", "mid", key)
-		return
-	}
-
-	msid := strings.Split(key, "/")
-	if len(msid) < 6 {
-		logger.Errorf("biz.SfuRemoveStream key is err", "mid", key)
-		return
-	}
-
-	rid := msid[3]
-	uid := msid[5]
-	mid := msid[7]
-	rpc.AsyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", mid))
 }
 
 func updateSubTimersByMID(rid, mid string) {
