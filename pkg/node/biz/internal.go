@@ -68,6 +68,7 @@ func peerKick(data map[string]interface{}) (map[string]interface{}, *nprotoo.Err
 		}
 	}
 
+	rpc.SyncRequest(proto.BizToIslbOnLiveRemove, util.Map("rid", rid, "uid", uid, "mid", ""))
 	rpc.SyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", ""))
 	rpc.SyncRequest(proto.BizToIslbOnLeave, util.Map("rid", rid, "uid", uid))
 	DelPeer(rid, uid)
@@ -86,10 +87,10 @@ func handleBroadcast(msg map[string]interface{}, subj string) {
 	uid := util.Val(data, "uid")
 	switch method {
 	case proto.IslbToBizOnJoin:
-		/* "method", proto.IslbToBizOnJoin, "rid", rid, "uid", uid, "info", info */
+		/* "method", proto.IslbToBizOnJoin, "rid", rid, "uid", uid, "nid", nid, "info", info */
 		NotifyAllWithoutID(rid, uid, proto.BizToClientOnJoin, data)
 	case proto.IslbToBizOnLeave:
-		/* "method", proto.IslbToBizOnLeave, "rid", rid, "uid", uid, "info", info */
+		/* "method", proto.IslbToBizOnLeave, "rid", rid, "uid", uid */
 		NotifyAllWithoutID(rid, uid, proto.BizToClientOnLeave, data)
 	case proto.IslbToBizOnStreamAdd:
 		/* "method", proto.IslbToBizOnStreamAdd, "rid", rid, "uid", uid, "mid", mid, "nid", nid, "minfo", data["minfo"] */

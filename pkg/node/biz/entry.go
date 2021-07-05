@@ -26,14 +26,14 @@ func Entry(method string, peer *ws.Peer, msg map[string]interface{}, accept ws.A
 		subscribe(peer, msg, accept, reject)
 	case proto.ClientToBizUnSubscribe:
 		unsubscribe(peer, msg, accept, reject)
-	case proto.ClientToBizBroadcast:
-		broadcast(peer, msg, accept, reject)
-	case proto.ClientToBizGetRoomUsers:
-		listusers(peer, msg, accept, reject)
 	case proto.ClientToBizStartLivestream:
 		startlivestream(peer, msg, accept, reject)
 	case proto.ClientToBizStopLivestream:
 		stoplivestream(peer, msg, accept, reject)
+	case proto.ClientToBizBroadcast:
+		broadcast(peer, msg, accept, reject)
+	case proto.ClientToBizGetRoomUsers:
+		listusers(peer, msg, accept, reject)
 	default:
 		ws.DefaultReject(codeUnknownErr, codeStr(codeUnknownErr))
 	}
@@ -45,7 +45,7 @@ func Entry(method string, peer *ws.Peer, msg map[string]interface{}, accept ws.A
   "method":"join"
   "data":{
     "rid":"room1",
-    "info":{"name":"zhou","head":""}
+    "info":{}
   }
 */
 // join 加入房间
@@ -95,6 +95,7 @@ func join(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 			}
 		} else {
 			// 在当前节点
+			rpc.SyncRequest(proto.BizToIslbOnLiveRemove, util.Map("rid", rid, "uid", uid, "mid", ""))
 			rpc.SyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", ""))
 			rpc.SyncRequest(proto.BizToIslbOnLeave, util.Map("rid", rid, "uid", uid))
 			// 获取老的peer数据
@@ -157,17 +158,11 @@ func leave(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reje
 	}
 
 	// 删除加入的房间和流
+	rpc.SyncRequest(proto.BizToIslbOnLiveRemove, util.Map("rid", rid, "uid", uid, "mid", ""))
 	rpc.SyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", ""))
 	rpc.SyncRequest(proto.BizToIslbOnLeave, util.Map("rid", rid, "uid", uid))
 	DelPeer(rid, uid)
 
-	/*
-		for _, room := range GetRoomsByPeer(uid) {
-			ridTmp := room.GetID()
-			rpc.SyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", ridTmp, "uid", uid, "mid", ""))
-			rpc.SyncRequest(proto.BizToIslbOnLeave, util.Map("rid", ridTmp, "uid", uid))
-			DelPeer(ridTmp, uid)
-		}*/
 	//stop timer if didn't stop then report
 	timer := peer.GetStreamTimer()
 	if !timer.IsStopped() {
@@ -621,6 +616,7 @@ func listusers(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	accept(result)
 }
 
+// 启动直播
 func startlivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
 	logger.Infof(fmt.Sprintf("biz.startlivestream uid=%s,msg=%v", peer.ID(), msg), "uid", peer.ID())
 	if invalid(msg, "rid", reject) {
@@ -634,6 +630,7 @@ func startlivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.Accept
 	enableRecording := util.InterfaceToInt(msg["record"])
 	index := util.InterfaceToInt(msg["index"])
 
+	// 查找sfu
 	var sfu *dis.Node
 	nid := util.Val(msg, "nid")
 	if nid != "" {
@@ -655,6 +652,7 @@ func startlivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.Accept
 		return
 	}
 
+	// 查找mcu
 	var mcu *dis.Node
 	mcu = FindMcuNodeByRid(rid)
 	if mcu == nil {
@@ -692,7 +690,7 @@ func startlivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.Accept
 		return
 	}
 
-	//获取该流minfo
+	// 获取该流minfo
 	islbresp, err := rpcIslb.SyncRequest(proto.BizToIslbGetMediaInfo, util.Map("rid", rid, "uid", uid, "mid", mid))
 	if err != nil {
 		logger.Errorf(fmt.Sprintf("biz.startlivestream request islb err =%v", err.Reason), "uid", uid, "rid", rid, "mid", mid)
@@ -735,8 +733,7 @@ func startlivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.Accept
 
 	logger.Infof(fmt.Sprintf("biz.startlivestream request sfu answer resp=%v", resp), "uid", uid, "rid", rid, "mid", mid)
 
-	_, err = rpcIslb.SyncRequest(proto.BizToIslbOnLiveAdd, util.Map("rid", rid, "uid", uid, "mid", mcuresp["mid"]))
-
+	_, err = rpcIslb.SyncRequest(proto.BizToIslbOnLiveAdd, util.Map("rid", rid, "uid", uid, "mid", mcuresp["mid"], nid, mcu.Nid))
 	if err != nil {
 		logger.Errorf(fmt.Sprintf("biz.startlivestream request islb for liveStreamAdd err=%v", err.Reason), "uid", uid, "rid", rid)
 		reject(err.Code, err.Reason)
@@ -746,10 +743,9 @@ func startlivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.Accept
 	accept(util.Map("mcu", mcu.Nid, "mid", mcuresp["mid"]))
 }
 
+// 停止直播
 func stoplivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
-
 	logger.Infof(fmt.Sprintf("biz.stoplivestream uid=%s,msg=%v", peer.ID(), msg), "uid", peer.ID())
-
 	if invalid(msg, "rid", reject) || invalid(msg, "mid", reject) {
 		return
 	}
@@ -760,7 +756,7 @@ func stoplivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptF
 
 	nid := util.Val(msg, "nid")
 	if nid == "" {
-		reject(-1, fmt.Sprintf("sfu nid can't be empty"))
+		reject(-1, "sfu nid can't be empty")
 		return
 	} else {
 		sfu := FindSfuNodeByID(nid)
@@ -809,13 +805,11 @@ func stoplivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptF
 	rpcMcu.AsyncRequest(proto.BizToMcuUnpublish, util.Map("rid", rid, "uid", nid, "mid", mid))
 
 	_, err := rpcIslb.SyncRequest(proto.BizToIslbOnLiveRemove, util.Map("rid", rid, "uid", uid, "mid", mid))
-
 	if err != nil {
 		logger.Errorf(fmt.Sprintf("biz.stoplivestream request islb for liveStreamRemove err=%v", err.Reason), "uid", uid, "rid", rid)
 		reject(err.Code, err.Reason)
 		return
 	}
-
 	// resp
 	accept(emptyMap)
 }

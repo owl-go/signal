@@ -48,7 +48,7 @@ func Close() {
 func WatchServiceCallBack(state dis.NodeStateType, node dis.Node) {
 	if state == dis.ServerUp {
 		// 判断是否广播节点
-		if node.Name == "islb" || node.Name == "sfu" {
+		if node.Name == "islb" {
 			eventID := dis.GetEventChannel(node)
 			nats.OnBroadcast(eventID, handleBroadcast)
 		}
@@ -113,8 +113,9 @@ func FindBizNodeByUid(rid, uid string) *dis.Node {
 		if nid == node.NodeInfo().Nid {
 			tmpNode := node.NodeInfo()
 			return &tmpNode
+		} else {
+			biz = FindBizNodeByID(nid)
 		}
-		biz = FindBizNodeByID(nid)
 	}
 	return biz
 }
@@ -186,6 +187,37 @@ func FindMcuNodeByPayload() *dis.Node {
 	return nil
 }
 
+// FindMcuNodeByRid 根据rid查询指定的mcu节点
+func FindMcuNodeByRid(rid string) *dis.Node {
+	islb := FindIslbNode()
+	if islb == nil {
+		log.Errorf("FindMcuNodeByRid islb not found")
+		return nil
+	}
+
+	find := false
+	rpc, find := rpcs[islb.Nid]
+	if !find {
+		log.Errorf("FindMcuNodeByRid islb rpc not found")
+		return nil
+	}
+
+	resp, err := rpc.SyncRequest(proto.BizToIslbGetMcuInfo, util.Map("rid", rid))
+	if err != nil {
+		log.Errorf(err.Reason)
+		return nil
+	}
+
+	log.Infof("FindMcuNodeByRid resp ==> %v", resp)
+
+	var mcu *dis.Node
+	nid := util.Val(resp, "nid")
+	if nid != "" {
+		mcu = FindMcuNodeByID(nid)
+	}
+	return mcu
+}
+
 // SetMcuNodeByRid 设置rid跟mcu绑定关系
 func SetMcuNodeByRid(rid, nid string) *dis.Node {
 	islb := FindIslbNode()
@@ -213,39 +245,6 @@ func SetMcuNodeByRid(rid, nid string) *dis.Node {
 	id := util.Val(resp, "nid")
 	if id != "" {
 		mcu = FindMcuNodeByID(id)
-		log.Infof("SetMcuNodeByRid nid %s, mcu:%v", id, mcu)
-	}
-	return mcu
-}
-
-// FindMcuNodeByRid 根据rid查询指定的mcu节点
-func FindMcuNodeByRid(rid string) *dis.Node {
-	islb := FindIslbNode()
-	if islb == nil {
-		log.Errorf("FindMcuNodeByRid islb not found")
-		return nil
-	}
-
-	find := false
-	rpc, find := rpcs[islb.Nid]
-	if !find {
-		log.Errorf("FindMcuNodeByRid islb rpc not found")
-		return nil
-	}
-
-	resp, err := rpc.SyncRequest(proto.BizToIslbGetMcuInfo, util.Map("rid", rid))
-	if err != nil {
-		log.Errorf(err.Reason)
-		return nil
-	}
-
-	log.Infof("FindMcuNodeByRid resp ==> %v", resp)
-
-	var mcu *dis.Node
-	nid := util.Val(resp, "nid")
-	if nid != "" {
-		log.Infof("FindMcuNodeByRid found node:%s", nid)
-		mcu = FindMcuNodeByID(nid)
 	}
 	return mcu
 }
@@ -282,7 +281,7 @@ func FindRoomUsers(uid, rid string) (bool, []interface{}) {
 	return true, users
 }
 
-// FindMediaPubs 查询房间所有的其他人的发布流
+// FindMediaPubs 查询房间所有人的发布流
 func FindMediaPubs(uid, rid string) (bool, []interface{}) {
 	islb := FindIslbNode()
 	if islb == nil {
