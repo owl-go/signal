@@ -590,11 +590,11 @@ func getRoomLives(data map[string]interface{}) (map[string]interface{}, *nprotoo
 			continue
 		}
 
-		mcu := redis.Get(key)
+		nid := redis.Get(key)
 		uKey := proto.GetLiveInfoKey(rid, uid, mid)
 		minfo := redis.Get(uKey)
 
-		live := util.Map("rid", rid, "uid", uid, "mid", mid, "mcu", mcu, "minfo", util.Unmarshal(minfo))
+		live := util.Map("rid", rid, "uid", uid, "mid", mid, "nid", nid, "minfo", util.Unmarshal(minfo))
 		lives = append(lives, live)
 	}
 	// 返回
