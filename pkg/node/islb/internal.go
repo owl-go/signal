@@ -477,7 +477,7 @@ func getMcuInfo(data map[string]interface{}) (map[string]interface{}, *nprotoo.E
 	return util.Map("rid", rid, "nid", nid), nil
 }
 
-// 获取流对应的minfo信息
+// 获取实时流对应的minfo信息
 func getMediaInfo(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	logger.Infof(fmt.Sprintf("islb.getMediaInfo data=%v", data))
 	rid := util.Val(data, "rid")
@@ -511,7 +511,7 @@ func getRoomUsers(data map[string]interface{}) (map[string]interface{}, *nprotoo
 	rid := util.Val(data, "rid")
 	id := util.Val(data, "uid")
 	// 获取实时流数据
-	var pubs []map[string]interface{}
+	pubs := make([]map[string]interface{}, 0)
 	uKey := "/pub/rid/" + rid + "/uid/*"
 	ukeys := redis.Keys(uKey)
 	for _, key := range ukeys {
@@ -526,7 +526,7 @@ func getRoomUsers(data map[string]interface{}) (map[string]interface{}, *nprotoo
 		uKey := proto.GetMediaInfoKey(rid, uid, mid)
 		minfo := redis.Get(uKey)
 
-		pub := util.Map("uid", uid, "mid", mid, "nid", nid, "minfo", util.Unmarshal(minfo))
+		pub := util.Map("rid", rid, "uid", uid, "mid", mid, "nid", nid, "minfo", util.Unmarshal(minfo))
 		pubs = append(pubs, pub)
 	}
 	// 获取用户信息数据
@@ -565,7 +565,7 @@ func getRoomUsers(data map[string]interface{}) (map[string]interface{}, *nprotoo
 		}
 	}
 	// 返回
-	resp := util.Map("rid", rid, "users", users)
+	resp := util.Map("users", users)
 	logger.Infof(fmt.Sprintf("islb.getRoomUsers resp=%v ", resp), "rid", rid)
 	return resp, nil
 }
@@ -577,7 +577,7 @@ func getRoomUsers(data map[string]interface{}) (map[string]interface{}, *nprotoo
 func getRoomLives(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	id := util.Val(data, "uid")
-
+	// 获取直播流数据
 	lives := make([]map[string]interface{}, 0)
 	uKey := "/livepub/rid/" + rid + "/uid/*"
 	ukeys := redis.Keys(uKey)
@@ -598,7 +598,7 @@ func getRoomLives(data map[string]interface{}) (map[string]interface{}, *nprotoo
 		lives = append(lives, live)
 	}
 	// 返回
-	resp := util.Map("rid", rid, "lives", lives)
+	resp := util.Map("lives", lives)
 	logger.Infof(fmt.Sprintf("islb.getRoomLives resp=%v ", resp), "rid", rid)
 	return resp, nil
 }

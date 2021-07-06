@@ -120,7 +120,8 @@ func join(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 
 	// 查询房间所有用户
 	_, users := FindRoomUsers(uid, rid)
-	result := util.Map("users", users)
+	_, lives := FindRoomLives(uid, rid)
+	result := util.Map("users", users, "lives", lives)
 	// resp
 	accept(result)
 }
