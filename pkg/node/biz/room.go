@@ -25,7 +25,7 @@ func NewRoom(rid string) *RoomNode {
 	return node
 }
 
-// GetRoom 根据rid获取指定房间
+// GetRoom 获取指定房间
 func GetRoom(rid string) *RoomNode {
 	roomLock.RLock()
 	node := rooms[rid]
@@ -43,30 +43,16 @@ func DelRoom(rid string) {
 	roomLock.Unlock()
 }
 
-// GetRoomsByPeer 根据peer查询房间信息
-func GetRoomsByPeer(id string) []*RoomNode {
-	var r []*RoomNode
-	roomLock.RLock()
-	defer roomLock.RUnlock()
-	for _, roomobj := range rooms {
-		if roomobj == nil {
-			continue
-		}
-		if peer := roomobj.room.GetPeer(id); peer != nil {
-			r = append(r, roomobj)
-		}
-	}
-	return r
-}
-
 // AddPeer 房间增加指定的人
 func AddPeer(rid string, peer *ws.Peer) {
+	uid := peer.ID()
 	node := GetRoom(rid)
+	// 房间空，创建一个
 	if node == nil {
 		node = NewRoom(rid)
 	}
-	if node.room.GetPeer(peer.ID()) != nil {
-		node.room.RemovePeer(peer.ID())
+	if node.room.GetPeer(uid) != nil {
+		node.room.RemovePeer(uid)
 	}
 	node.room.AddPeer(peer)
 }
@@ -76,31 +62,22 @@ func DelPeer(rid, uid string) {
 	node := GetRoom(rid)
 	if node != nil {
 		node.room.RemovePeer(uid)
-		// 判断房间里面剩余人个数
+		// 房间空，删除房间
 		peers := node.room.GetPeers()
 		nCount := len(peers)
 		if nCount == 0 {
-			DelRoom(node.room.ID())
+			DelRoom(rid)
 		}
 	}
 }
 
-// HasPeer 判断房间是否有指定的人
-func HasPeer(rid string, peer *ws.Peer) bool {
+// GetPeer 获取房间里面的人
+func GetPeer(rid, uid string) *ws.Peer {
 	node := GetRoom(rid)
-	if node == nil {
-		return false
+	if node != nil {
+		return node.room.GetPeer(uid)
 	}
-	return (node.room.GetPeer(peer.ID()) != nil)
-}
-
-// HasPeer2 判断房间是否有指定的人
-func HasPeer2(rid, uid string) bool {
-	node := GetRoom(rid)
-	if node == nil {
-		return false
-	}
-	return (node.room.GetPeer(uid) != nil)
+	return nil
 }
 
 // NotifyAll 通知房间所有人

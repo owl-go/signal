@@ -52,25 +52,21 @@ func peerKick(data map[string]interface{}) (map[string]interface{}, *nprotoo.Err
 		logger.Errorf("biz.peerKick islb node not found", "uid", uid, "rid", rid)
 		return nil, &nprotoo.Error{Code: -1, Reason: "islb node not found"}
 	}
-
 	rpc, find := rpcs[islb.Nid]
 	if !find {
 		logger.Errorf("biz.peerKick islb rpc not found", "uid", uid, "rid", rid)
 		return nil, &nprotoo.Error{Code: -1, Reason: "islb node not found"}
 	}
 
-	room := GetRoom(rid)
-	if room != nil {
-		peer := room.room.GetPeer(uid)
-		if peer != nil {
-			peer.Notify(proto.BizToClientOnKick, util.Map("rid", rid, "uid", uid))
-			peer.Close()
-		}
-	}
-
 	rpc.SyncRequest(proto.BizToIslbOnLiveRemove, util.Map("rid", rid, "uid", uid, "mid", ""))
 	rpc.SyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", ""))
 	rpc.SyncRequest(proto.BizToIslbOnLeave, util.Map("rid", rid, "uid", uid))
+
+	peer := GetPeer(rid, uid)
+	if peer != nil {
+		peer.Notify(proto.BizToClientOnKick, util.Map("rid", rid, "uid", uid))
+		peer.Close()
+	}
 	DelPeer(rid, uid)
 	return util.Map(), nil
 }
