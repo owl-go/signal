@@ -34,6 +34,8 @@ func Entry(method string, peer *ws.Peer, msg map[string]interface{}, accept ws.A
 		broadcast(peer, msg, accept, reject)
 	case proto.ClientToBizGetRoomUsers:
 		listusers(peer, msg, accept, reject)
+	case proto.ClientToBizGetRoomLives:
+		listlives(peer, msg, accept, reject)
 	default:
 		ws.DefaultReject(codeUnknownErr, codeStr(codeUnknownErr))
 	}
@@ -561,61 +563,6 @@ func unsubscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc
 	accept(emptyMap)
 }
 
-/*
-  "request":true
-  "id":3764139
-  "method":"broadcast"
-  "data":{
-    "rid": "room1",
-    "data": "$date"
-  }
-*/
-// broadcast 客户端发送广播给对方
-func broadcast(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
-	logger.Infof(fmt.Sprintf("biz.broadcast uid=%s,msg=%v", peer.ID(), msg), "uid", peer.ID())
-	if invalid(msg, "rid", reject) {
-		return
-	}
-
-	uid := peer.ID()
-	rid := util.Val(msg, "rid")
-
-	// 查询islb节点
-	islb := FindIslbNode()
-	if islb == nil {
-		logger.Errorf("biz.broadcast islb node not found", "uid", uid, "rid", rid)
-		reject(codeIslbErr, codeStr(codeIslbErr))
-		return
-	}
-
-	rpcIslb, find := rpcs[islb.Nid]
-	if !find {
-		logger.Errorf("biz.broadcast islb rpc not found", "uid", uid, "rid", rid)
-		reject(codeIslbRpcErr, codeStr(codeIslbRpcErr))
-		return
-	}
-
-	rpcIslb.AsyncRequest(proto.BizToIslbBroadcast, util.Map("rid", rid, "uid", uid, "data", msg["data"]))
-	// resp
-	accept(emptyMap)
-}
-
-// 查询房间所有数据
-func listusers(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
-	logger.Infof(fmt.Sprintf("biz.listusers uid=%s,msg=%v", peer.ID(), msg), "uid", peer.ID())
-	if invalid(msg, "rid", reject) {
-		return
-	}
-
-	uid := peer.ID()
-	rid := util.Val(msg, "rid")
-	// 查询房间所有用户
-	_, users := FindRoomUsers(uid, rid)
-
-	result := util.Map("users", users)
-	accept(result)
-}
-
 // 启动直播
 func startlivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
 	logger.Infof(fmt.Sprintf("biz.startlivestream uid=%s,msg=%v", peer.ID(), msg), "uid", peer.ID())
@@ -733,7 +680,7 @@ func startlivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.Accept
 
 	logger.Infof(fmt.Sprintf("biz.startlivestream request sfu answer resp=%v", resp), "uid", uid, "rid", rid, "mid", mid)
 
-	_, err = rpcIslb.SyncRequest(proto.BizToIslbOnLiveAdd, util.Map("rid", rid, "uid", uid, "mid", mcuresp["mid"], nid, mcu.Nid))
+	_, err = rpcIslb.SyncRequest(proto.BizToIslbOnLiveAdd, util.Map("rid", rid, "uid", uid, "mid", mcuresp["mid"], "nid", mcu.Nid, "minfo", minfo))
 	if err != nil {
 		logger.Errorf(fmt.Sprintf("biz.startlivestream request islb for liveStreamAdd err=%v", err.Reason), "uid", uid, "rid", rid)
 		reject(err.Code, err.Reason)
@@ -753,7 +700,6 @@ func stoplivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptF
 	uid := peer.ID()
 	rid := util.Val(msg, "rid")
 	mid := util.Val(msg, "mid")
-
 	nid := util.Val(msg, "nid")
 	if nid == "" {
 		reject(-1, "sfu nid can't be empty")
@@ -812,4 +758,73 @@ func stoplivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptF
 	}
 	// resp
 	accept(emptyMap)
+}
+
+/*
+  "request":true
+  "id":3764139
+  "method":"broadcast"
+  "data":{
+    "rid": "room1",
+    "data": "$date"
+  }
+*/
+// broadcast 客户端发送广播给对方
+func broadcast(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
+	logger.Infof(fmt.Sprintf("biz.broadcast uid=%s,msg=%v", peer.ID(), msg), "uid", peer.ID())
+	if invalid(msg, "rid", reject) {
+		return
+	}
+
+	uid := peer.ID()
+	rid := util.Val(msg, "rid")
+
+	// 查询islb节点
+	islb := FindIslbNode()
+	if islb == nil {
+		logger.Errorf("biz.broadcast islb node not found", "uid", uid, "rid", rid)
+		reject(codeIslbErr, codeStr(codeIslbErr))
+		return
+	}
+
+	rpcIslb, find := rpcs[islb.Nid]
+	if !find {
+		logger.Errorf("biz.broadcast islb rpc not found", "uid", uid, "rid", rid)
+		reject(codeIslbRpcErr, codeStr(codeIslbRpcErr))
+		return
+	}
+
+	rpcIslb.AsyncRequest(proto.BizToIslbBroadcast, util.Map("rid", rid, "uid", uid, "data", msg["data"]))
+	// resp
+	accept(emptyMap)
+}
+
+// 获取房间其他用户实时流
+func listusers(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
+	logger.Infof(fmt.Sprintf("biz.listusers uid=%s,msg=%v", peer.ID(), msg), "uid", peer.ID())
+	if invalid(msg, "rid", reject) {
+		return
+	}
+
+	uid := peer.ID()
+	rid := util.Val(msg, "rid")
+	// 查询房间其他用户实时流
+	_, users := FindRoomUsers(uid, rid)
+	result := util.Map("users", users)
+	accept(result)
+}
+
+// 获取房间其他用户直播流
+func listlives(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
+	logger.Infof(fmt.Sprintf("biz.listlives uid=%s,msg=%v", peer.ID(), msg), "uid", peer.ID())
+	if invalid(msg, "rid", reject) {
+		return
+	}
+
+	uid := peer.ID()
+	rid := util.Val(msg, "rid")
+	// 查询房间其他用户直播流
+	_, lives := FindRoomLives(uid, rid)
+	result := util.Map("lives", lives)
+	accept(result)
 }

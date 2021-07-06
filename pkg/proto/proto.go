@@ -40,8 +40,10 @@ const (
 
 	// ClientToBizBroadcast C->Biz 发送广播
 	ClientToBizBroadcast = "broadcast"
-	// ClientToBizGetRoomUsers C->Biz 获取房间所有用户信息
+	// ClientToBizGetRoomUsers C->Biz 获取房间所有用户流信息
 	ClientToBizGetRoomUsers = "listusers"
+	// ClientToBizGetRoomLives C->Biz 获取房间所有用户直播流
+	ClientToBizGetRoomLives = "listlives"
 
 	// BizToClientOnJoin biz->C 有人加入房间
 	BizToClientOnJoin = "peer-join"
@@ -112,10 +114,11 @@ const (
 	BizToIslbGetBizInfo = "getBizInfo"
 	// BizToIslbGetSfuInfo biz->islb 根据mid查询对应的sfu
 	BizToIslbGetSfuInfo = "getSfuInfo"
-	// BizToIslbGetRoomUsers biz->islb 获取所有用户信息
+	// BizToIslbGetRoomUsers biz->islb 获取房间其他用户实时流
 	BizToIslbGetRoomUsers = "getRoomUsers"
-	// BizToIslbGetMediaPubs biz->islb 获取所有的发布流信息
-	BizToIslbGetMediaPubs = "getMediaPubs"
+	// BizToIslbGetRoomLives biz->islb 获取房间其他用户直播流
+	BizToIslbGetRoomLives = "getRoomLives"
+
 	//BizToIslbGetMcuInfo biz->islb 根据rid查询对应mcu
 	BizToIslbGetMcuInfo = "getMcuInfo"
 	//BizToIslbSetMcuInfo biz->islb 设置rid跟mcu绑定关系

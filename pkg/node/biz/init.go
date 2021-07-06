@@ -249,7 +249,7 @@ func SetMcuNodeByRid(rid, nid string) *dis.Node {
 	return mcu
 }
 
-// FindRoomUsers 查询房间所有人信息
+// FindRoomUsers 获取房间其他用户实时流
 func FindRoomUsers(uid, rid string) (bool, []interface{}) {
 	islb := FindIslbNode()
 	if islb == nil {
@@ -281,6 +281,39 @@ func FindRoomUsers(uid, rid string) (bool, []interface{}) {
 	return true, users
 }
 
+// FindRoomLives 获取房间其他用户直播流
+func FindRoomLives(uid, rid string) (bool, []interface{}) {
+	islb := FindIslbNode()
+	if islb == nil {
+		log.Errorf("FindRoomLives islb not found")
+		return false, nil
+	}
+
+	find := false
+	rpc, find := rpcs[islb.Nid]
+	if !find {
+		log.Errorf("FindRoomLives islb rpc not found")
+		return false, nil
+	}
+
+	resp, err := rpc.SyncRequest(proto.BizToIslbGetRoomLives, util.Map("rid", rid, "uid", uid))
+	if err != nil {
+		log.Errorf(err.Reason)
+		return false, nil
+	}
+
+	log.Infof("FindRoomLives resp ==> %v", resp)
+
+	if resp["lives"] == nil {
+		log.Errorf("FindRoomLives lives is nil")
+		return false, nil
+	}
+
+	lives := resp["lives"].([]interface{})
+	return true, lives
+}
+
+/*
 // FindMediaPubs 查询房间所有人的发布流
 func FindMediaPubs(uid, rid string) (bool, []interface{}) {
 	islb := FindIslbNode()
@@ -311,7 +344,7 @@ func FindMediaPubs(uid, rid string) (bool, []interface{}) {
 
 	pubs := resp["pubs"].([]interface{})
 	return true, pubs
-}
+}*/
 
 // findIssrNode 查询全局的可用的Issr节点
 func findIssrNode() *dis.Node {

@@ -107,8 +107,8 @@ func handleRpcMsg(request map[string]interface{}, accept nprotoo.AcceptFunc, rej
 		result, err = broadcast(data)
 	case proto.BizToIslbGetRoomUsers:
 		result, err = getRoomUsers(data)
-	case proto.BizToIslbGetMediaPubs:
-		result, err = getMediaPubs(data)
+	case proto.BizToIslbGetRoomLives:
+		result, err = getRoomLives(data)
 
 	case proto.IssrToIslbStoreFailedStreamState:
 		result, err = pushFailedStreamState(data)
@@ -506,15 +506,33 @@ func broadcast(data map[string]interface{}) (map[string]interface{}, *nprotoo.Er
 /*
 	"method", proto.BizToIslbGetRoomUsers, "rid", rid, "uid", uid
 */
-// 获取房间里所有人
+// 获取房间其他用户实时流
 func getRoomUsers(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	id := util.Val(data, "uid")
-	// 获取用户的信息
-	pubs := getUserMedias(rid, id)
-	users := make([]map[string]interface{}, 0)
-	uKey := "/user/rid/" + rid + "/uid/*"
+	// 获取实时流数据
+	var pubs []map[string]interface{}
+	uKey := "/pub/rid/" + rid + "/uid/*"
 	ukeys := redis.Keys(uKey)
+	for _, key := range ukeys {
+		arr := strings.Split(key, "/")
+		uid := arr[5]
+		mid := arr[7]
+		if uid == id {
+			continue
+		}
+
+		nid := redis.Get(key)
+		uKey := proto.GetMediaInfoKey(rid, uid, mid)
+		minfo := redis.Get(uKey)
+
+		pub := util.Map("uid", uid, "mid", mid, "nid", nid, "minfo", util.Unmarshal(minfo))
+		pubs = append(pubs, pub)
+	}
+	// 获取用户信息数据
+	users := make([]map[string]interface{}, 0)
+	uKey = "/node/rid/" + rid + "/uid/*"
+	ukeys = redis.Keys(uKey)
 	for _, key := range ukeys {
 		// 去掉指定的uid
 		arr := strings.Split(key, "/")
@@ -523,9 +541,9 @@ func getRoomUsers(data map[string]interface{}) (map[string]interface{}, *nprotoo
 			continue
 		}
 
-		info := redis.Get(key)
-		uKey := proto.GetUserNodeKey(rid, uid)
-		nid := redis.Get(uKey)
+		nid := redis.Get(key)
+		uKey := proto.GetUserInfoKey(rid, uid)
+		info := redis.Get(uKey)
 
 		media := make([]map[string]interface{}, 0)
 		for _, pub := range pubs {
@@ -552,44 +570,19 @@ func getRoomUsers(data map[string]interface{}) (map[string]interface{}, *nprotoo
 	return resp, nil
 }
 
-// 获取房间所有人的发布流
-func getUserMedias(rid, id string) []map[string]interface{} {
-	// 找到所有用户流信息的key
-	var pubs []map[string]interface{}
-	uKey := "/media/rid/" + rid + "/uid/*"
-	ukeys := redis.Keys(uKey)
-	for _, key := range ukeys {
-		arr := strings.Split(key, "/")
-		uid := arr[5]
-		mid := arr[7]
-		if uid == id {
-			continue
-		}
-
-		minfo := redis.Get(key)
-		uKey := proto.GetMediaPubKey(rid, uid, mid)
-		nid := redis.Get(uKey)
-
-		pub := util.Map("uid", uid, "mid", mid, "nid", nid, "minfo", util.Unmarshal(minfo))
-		pubs = append(pubs, pub)
-	}
-	// 返回
-	logger.Infof(fmt.Sprintf("islb.getUserMedias resp=%v ", pubs), "rid", rid)
-	return pubs
-}
-
 /*
-	"method", proto.BizToIslbGetMediaPubs, "rid", rid, "uid", uid
+	"method", proto.BizToIslbGetRoomLives, "rid", rid, "uid", uid
 */
-// 获取房间所有人的发布流
-func getMediaPubs(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
+// 获取房间其他用户直播流
+func getRoomLives(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
 	rid := util.Val(data, "rid")
 	id := util.Val(data, "uid")
-	// 找到保存用户流信息的key
-	pubs := make([]map[string]interface{}, 0)
-	uKey := "/media/rid/" + rid + "/uid/*"
+
+	lives := make([]map[string]interface{}, 0)
+	uKey := "/livepub/rid/" + rid + "/uid/*"
 	ukeys := redis.Keys(uKey)
 	for _, key := range ukeys {
+		// 去掉指定的uid
 		arr := strings.Split(key, "/")
 		uid := arr[5]
 		mid := arr[7]
@@ -597,16 +590,16 @@ func getMediaPubs(data map[string]interface{}) (map[string]interface{}, *nprotoo
 			continue
 		}
 
-		minfo := redis.Get(key)
-		uKey := proto.GetMediaPubKey(rid, uid, mid)
-		nid := redis.Get(uKey)
+		mcu := redis.Get(key)
+		uKey := proto.GetLiveInfoKey(rid, uid, mid)
+		minfo := redis.Get(uKey)
 
-		pub := util.Map("uid", uid, "mid", mid, "nid", nid, "minfo", util.Unmarshal(minfo))
-		pubs = append(pubs, pub)
+		live := util.Map("rid", rid, "uid", uid, "mid", mid, "mcu", mcu, "minfo", util.Unmarshal(minfo))
+		lives = append(lives, live)
 	}
 	// 返回
-	resp := util.Map("rid", rid, "pubs", pubs)
-	logger.Infof(fmt.Sprintf("islb.getMediaPubs resp=%v ", resp), "rid", rid)
+	resp := util.Map("rid", rid, "lives", lives)
+	logger.Infof(fmt.Sprintf("islb.getRoomLives resp=%v ", resp), "rid", rid)
 	return resp, nil
 }
 
