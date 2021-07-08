@@ -157,7 +157,7 @@ func clientJoin(data map[string]interface{}) (map[string]interface{}, *nprotoo.E
 */
 // 有人退出房间
 func clientLeave(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
-	logger.Infof(fmt.Sprintf("islb.BizToIslbOnLeave data=%v", data))
+	logger.Infof(fmt.Sprintf("islb.clientLeave data=%v", data))
 	rid := util.Val(data, "rid")
 	uid := util.Val(data, "uid")
 	// 获取用户的服务器信息
