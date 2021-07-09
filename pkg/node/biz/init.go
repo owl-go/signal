@@ -400,9 +400,9 @@ func reportStreamTiming(timer *timing.StreamTimer, isVideo, isInterval bool) err
 	if isVideo {
 		mode = "video"
 		if isInterval {
-			resolution = timer.GetLastResolution()
+			resolution = timing.TransformResolution(timer.GetLastResolution())
 		} else {
-			resolution = timer.GetCurrentResolution()
+			resolution = timing.TransformResolution(timer.GetCurrentResolution())
 		}
 	} else {
 		mode = "audio"

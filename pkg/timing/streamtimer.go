@@ -204,12 +204,12 @@ func (s *StreamTimer) UpdateResolution() bool {
 					log.Infof("444:%s", s.Resolution)
 				} else if sLen > 1 {
 					totalPixels += getPixelsByResolution(stream.Resolution)
-					log.Infof("555:%s", totalPixels)
+					log.Infof("555:%d", totalPixels)
 				}
 			}
 		}
 		s.Resolution = CalcPixelsToResolution(totalPixels)
-		log.Infof("666:%s", s.lastResolustion, s.Resolution)
+		log.Infof("666:%s-%s", s.lastResolustion, s.Resolution)
 		if s.lastResolustion == s.Resolution {
 			return false
 		} else {
