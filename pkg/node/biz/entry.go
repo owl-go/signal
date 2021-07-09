@@ -159,7 +159,7 @@ func leave(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reje
 
 	//stop timer if didn't stop then report
 	timer := peer.GetStreamTimer()
-	if !timer.IsStopped() {
+	if timer != nil && !timer.IsStopped() {
 		timer.Stop()
 		isVideo := timer.GetCurrentMode() == "video"
 		reportStreamTiming(timer, isVideo, false)
