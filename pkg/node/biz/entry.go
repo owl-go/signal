@@ -686,6 +686,12 @@ func startlivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.Accept
 		reject(err.Code, err.Reason)
 		return
 	}
+	//start live streaming timer
+	if record == 1 && peer.GetLiveStreamTimer() == nil {
+		livestreamtimer := timing.NewLiveStreamTimer(rid, uid, peer.GetAppID(), "FHD")
+		peer.SetLiveStreamTimer(livestreamtimer)
+		livestreamtimer.Start()
+	}
 	// resp
 	accept(util.Map("mcu", mcu.Nid, "mid", mcuresp["mid"]))
 }
@@ -766,6 +772,15 @@ func stoplivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptF
 		logger.Errorf(fmt.Sprintf("biz.stoplivestream request islb for liveStreamRemove err=%v", err.Reason), "uid", uid, "rid", rid)
 		reject(err.Code, err.Reason)
 		return
+	}
+	// stop live streaming timer
+	if peer.GetLiveStreamTimer() != nil {
+		livestreamtimer := peer.GetLiveStreamTimer()
+		if !livestreamtimer.IsStopped() {
+			livestreamtimer.Stop()
+			reportLiveStreamTiming(livestreamtimer) //sync operation
+			peer.SetStreamTimer(nil)                //del live streaming timer
+		}
 	}
 	// resp
 	accept(emptyMap)

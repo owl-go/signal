@@ -440,6 +440,31 @@ func reportStreamTiming(timer *timing.StreamTimer, isVideo, isInterval bool) err
 	return nil
 }
 
+func reportLiveStreamTiming(timer *timing.LiveStreamTimer) error {
+	log.Infof("reportLiveStreamTiming rid:%s uid:%s resolution:%s,seconds:%d", timer.RID, timer.UID, timer.Resolution,
+		timer.GetTotalSeconds())
+
+	seconds := timer.GetTotalSeconds()
+
+	if seconds != 0 {
+		msg := util.Map("appid", timer.AppID, "rid", timer.RID, "uid", timer.UID,
+			"mediatype", timer.GetMode(), "resolution", timer.Resolution, "seconds", seconds, "type", 700) //700 dedicate to live streaming record
+		issrRpc := getIssrRequestor()
+		if issrRpc == nil {
+			storeFailure(msg)
+			log.Errorf("can't found issr node")
+			return errors.New("can't found issr node")
+		}
+		_, err := issrRpc.SyncRequest(proto.BizToIssrReportStreamState, msg)
+		if err != nil {
+			storeFailure(msg)
+			log.Errorf(err.Reason)
+			return errors.New(err.Reason)
+		}
+	}
+	return nil
+}
+
 func storeFailure(data map[string]interface{}) error {
 	islb := getIslbRequestor()
 	if islb == nil {

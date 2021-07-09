@@ -11,8 +11,9 @@ import (
 // Peer peer对象
 type Peer struct {
 	peer.Peer
-	streamtimer *timing.StreamTimer
-	appid       string
+	streamtimer     *timing.StreamTimer
+	livestreamtimer *timing.LiveStreamTimer
+	appid           string
 }
 
 // NewPeer 初始化peer对象
@@ -40,6 +41,14 @@ func (p *Peer) SetStreamTimer(timer *timing.StreamTimer) {
 
 func (p *Peer) GetStreamTimer() *timing.StreamTimer {
 	return p.streamtimer
+}
+
+func (p *Peer) SetLiveStreamTimer(timer *timing.LiveStreamTimer) {
+	p.livestreamtimer = timer
+}
+
+func (p *Peer) GetLiveStreamTimer() *timing.LiveStreamTimer {
+	return p.livestreamtimer
 }
 
 // On 事件处理

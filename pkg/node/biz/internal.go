@@ -104,6 +104,7 @@ func handleBroadcast(msg map[string]interface{}, subj string) {
 		NotifyAllWithoutID(rid, uid, proto.BizToClientOnLiveStreamAdd, data)
 	case proto.IslbToBizOnLiveRemove:
 		NotifyAllWithoutID(rid, uid, proto.BizToClientOnLiveStreamRemove, data)
+		stopLiveStreamTimerByRIDUID(rid, uid)
 	}
 }
 
@@ -140,6 +141,18 @@ func updateSubTimersByMID(rid, mid string) {
 					}
 				}
 			}
+		}
+	}
+}
+
+func stopLiveStreamTimerByRIDUID(rid, uid string) {
+	roomNode := GetRoom(rid)
+	if roomNode != nil {
+		peer := roomNode.room.GetPeer(uid)
+		if peer != nil && peer.GetLiveStreamTimer() != nil {
+			peer.GetLiveStreamTimer().Stop()
+			reportLiveStreamTiming(peer.GetLiveStreamTimer())
+			peer.SetLiveStreamTimer(nil)
 		}
 	}
 }

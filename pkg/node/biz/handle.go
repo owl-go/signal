@@ -80,6 +80,13 @@ func in(transport *transport.WebSocketTransport, request *http.Request) {
 				reportStreamTiming(timer, isVideo, false)
 			}
 		}
+		livestreamtimer := peer.GetLiveStreamTimer()
+		if livestreamtimer != nil {
+			if !livestreamtimer.IsStopped() {
+				livestreamtimer.Stop()
+				reportLiveStreamTiming(livestreamtimer)
+			}
+		}
 		peer.Close()
 	}
 
