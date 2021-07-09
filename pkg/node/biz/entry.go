@@ -779,7 +779,7 @@ func stoplivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptF
 		if !livestreamtimer.IsStopped() {
 			livestreamtimer.Stop()
 			reportLiveStreamTiming(livestreamtimer) //sync operation
-			peer.SetStreamTimer(nil)                //del live streaming timer
+			peer.SetLiveStreamTimer(nil)            //del live streaming timer
 		}
 	}
 	// resp
