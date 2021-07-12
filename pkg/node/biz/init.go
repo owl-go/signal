@@ -414,11 +414,11 @@ func reportStreamTiming(timer *timing.StreamTimer, isVideo, isInterval bool) err
 		var msg map[string]interface{}
 		if mode == "audio" {
 			msg = util.Map("appid", timer.AppID, "rid", timer.RID, "uid", timer.UID,
-				"mediatype", mode, "seconds", seconds, "type", 100) //100 dedicate to rtc meeting
+				"mediatype", mode, "seconds", seconds, "type", 200) //200 dedicate to rtc meeting
 		} else {
 			if resolution != "" {
 				msg = util.Map("appid", timer.AppID, "rid", timer.RID, "uid", timer.UID,
-					"mediatype", mode, "resolution", resolution, "seconds", seconds, "type", 100)
+					"mediatype", mode, "resolution", resolution, "seconds", seconds, "type", 200)
 			} else {
 				log.Errorf("resolution is empty")
 				return errors.New("resolution is empty")
