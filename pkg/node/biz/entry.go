@@ -702,9 +702,12 @@ func startlivestream(peer *ws.Peer, msg map[string]interface{}, accept ws.Accept
 		return
 	}
 	//start live streaming timer
-	if record == 1 && peer.GetLiveStreamTimer() == nil {
-		livestreamtimer := timing.NewLiveStreamTimer(rid, uid, peer.GetAppID(), "FHD")
-		peer.SetLiveStreamTimer(livestreamtimer)
+	if record == 1 && index == 1 {
+		livestreamtimer := peer.GetLiveStreamTimer()
+		if livestreamtimer == nil {
+			livestreamtimer = timing.NewLiveStreamTimer(rid, uid, peer.GetAppID(), "FHD")
+			peer.SetLiveStreamTimer(livestreamtimer)
+		}
 		livestreamtimer.Start()
 	}
 	// resp

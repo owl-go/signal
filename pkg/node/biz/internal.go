@@ -170,9 +170,11 @@ func stopLiveStreamTimerByRIDUID(rid, uid string) {
 	if roomNode != nil {
 		peer := roomNode.room.GetPeer(uid)
 		if peer != nil && peer.GetLiveStreamTimer() != nil {
-			peer.GetLiveStreamTimer().Stop()
-			reportLiveStreamTiming(peer.GetLiveStreamTimer())
-			peer.SetLiveStreamTimer(nil)
+			if !peer.GetLiveStreamTimer().IsStopped() {
+				peer.GetLiveStreamTimer().Stop()
+				reportLiveStreamTiming(peer.GetLiveStreamTimer())
+				peer.SetLiveStreamTimer(nil)
+			}
 		}
 	}
 }
