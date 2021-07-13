@@ -90,6 +90,12 @@ func (s *StreamTimer) AddStream(stream *StreamInfo) bool {
 	s.streams = append(s.streams, stream)
 
 	if stream.MediaType == "video" {
+		if len(s.streams) == 1 {
+			s.Resolution = ""
+			s.lastResolustion = ""
+			s.lastmode = ""
+			return true
+		}
 		s.lastmode = s.mode
 		s.mode = "video"
 		if s.lastmode == s.mode {

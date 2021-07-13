@@ -475,6 +475,10 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 					reportStreamTiming(timer, true, true)
 					//then renew timer
 					timer.Renew()
+				} else {
+					if timer.GetStreamsCount() == 1 {
+						timer.Renew()
+					}
 				}
 			}
 		}
