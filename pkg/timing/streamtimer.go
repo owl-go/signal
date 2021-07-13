@@ -118,7 +118,9 @@ func (s *StreamTimer) RemoveStreamBySID(sid string) (*StreamInfo, bool) {
 			vlen++
 		}
 		if stream.SID == sid {
-			vlen--
+			if stream.MediaType == "video" {
+				vlen--
+			}
 			removed = s.streams[idx]
 			s.streams = append(s.streams[:idx], s.streams[idx+1:]...)
 			log.Infof("RemoveStreamBySID delete sid:%s", stream.SID)
@@ -126,13 +128,19 @@ func (s *StreamTimer) RemoveStreamBySID(sid string) (*StreamInfo, bool) {
 	}
 
 	if vlen == 0 {
-		s.lastmode = s.mode
-		s.mode = "audio"
-		if s.lastmode == s.mode {
-			isModeChanged = false
+		if len(s.streams) >= 1 {
+			s.lastmode = s.mode
+			s.mode = "audio"
+			if s.lastmode == s.mode {
+				isModeChanged = false
+			} else {
+				isModeChanged = true
+			}
 		} else {
-			isModeChanged = true
+			isModeChanged = false
 		}
+	} else {
+		isModeChanged = false
 	}
 
 	/*if s.mode == "audio" && s.lastmode == "audio" {
@@ -157,7 +165,9 @@ func (s *StreamTimer) RemoveStreamByMID(mid string) ([]*StreamInfo, bool) {
 			vlen++
 		}
 		if stream.MID == mid {
-			vlen--
+			if stream.MediaType == "video" {
+				vlen--
+			}
 			removed := s.streams[idx]
 			s.streams = append(s.streams[:idx], s.streams[idx+1:]...)
 			removedstreams = append(removedstreams, removed)
@@ -166,13 +176,19 @@ func (s *StreamTimer) RemoveStreamByMID(mid string) ([]*StreamInfo, bool) {
 	}
 
 	if vlen == 0 {
-		s.lastmode = s.mode
-		s.mode = "audio"
-		if s.lastmode == s.mode {
-			isModeChanged = false
+		if len(s.streams) >= 1 {
+			s.lastmode = s.mode
+			s.mode = "audio"
+			if s.lastmode == s.mode {
+				isModeChanged = false
+			} else {
+				isModeChanged = true
+			}
 		} else {
-			isModeChanged = true
+			isModeChanged = false
 		}
+	} else {
+		isModeChanged = false
 	}
 
 	/*if s.mode == "audio" && s.lastmode == "audio" {

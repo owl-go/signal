@@ -61,13 +61,6 @@ func join(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, rejec
 	rid := util.Val(msg, "rid")
 	info := util.Val(msg, "info")
 
-	// create stream timer and add the dummy audio stream,then start
-	timer := timing.NewStreamTimer(rid, uid, peer.GetAppID())
-	peer.SetStreamTimer(timer)
-	dummyAudioStream := timing.NewStreamInfo("dummy-audio", "dummy-audio", "audio", "")
-	timer.AddStream(dummyAudioStream)
-	timer.Start()
-
 	// 查询islb节点
 	islb := FindIslbNode()
 	if islb == nil {
@@ -460,7 +453,10 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	} else if isVideo {
 		mediatype = "video"
 	}
-	resolution := minfo.(map[string]interface{})["resolution"].(string)
+	resolution, ok := minfo.(map[string]interface{})["resolution"].(string)
+	if !ok {
+		resolution = ""
+	}
 	timer := peer.GetStreamTimer()
 	if timer != nil {
 		isModeChanged := timer.AddStream(timing.NewStreamInfo(mid, sid, mediatype, resolution))
@@ -482,6 +478,13 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 				}
 			}
 		}
+	} else {
+		// create stream timer and add the stream,then start
+		streamTimer := timing.NewStreamTimer(rid, uid, peer.GetAppID())
+		peer.SetStreamTimer(streamTimer)
+		subscribedStream := timing.NewStreamInfo(mid, sid, mediatype, resolution)
+		streamTimer.AddStream(subscribedStream)
+		streamTimer.Start()
 	}
 	// resp
 	accept(rspSfu)
@@ -535,17 +538,29 @@ func unsubscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc
 			if isModeChanged {
 				//this must be video to audio
 				timer.Stop()
-				reportStreamTiming(timer, true, true)
+				reportStreamTiming(timer, true, false)
 				timer.Renew()
 			} else {
-				isResolutionChanged := timer.UpdateResolution()
-				//check whether total resolution change or not,to determine timer stop or not
-				if isResolutionChanged {
-					timer.Stop()
-					//report this interval
-					reportStreamTiming(timer, true, true)
-					//then timer renew
-					timer.Renew()
+				if removed.MediaType == "video" {
+					if timer.GetStreamsCount() > 0 {
+						isResolutionChanged := timer.UpdateResolution()
+						//check whether total resolution change or not,to determine timer stop or not
+						if isResolutionChanged {
+							timer.Stop()
+							//report this interval
+							reportStreamTiming(timer, true, true)
+							//then timer renew
+							timer.Renew()
+						}
+					} else {
+						timer.Stop()
+						reportStreamTiming(timer, true, false)
+					}
+				} else if removed.MediaType == "audio" {
+					if timer.GetStreamsCount() == 0 {
+						timer.Stop()
+						reportStreamTiming(timer, false, false)
+					}
 				}
 			}
 		}
