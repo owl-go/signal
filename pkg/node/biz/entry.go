@@ -484,6 +484,9 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 		peer.SetStreamTimer(streamTimer)
 		subscribedStream := timing.NewStreamInfo(mid, sid, mediatype, resolution)
 		streamTimer.AddStream(subscribedStream)
+		if mediatype == "video" {
+			streamTimer.UpdateResolution()
+		}
 		streamTimer.Start()
 	}
 	// resp

@@ -225,7 +225,7 @@ func (s *StreamTimer) UpdateResolution() bool {
 			}
 		}
 		s.Resolution = CalcPixelsToResolution(totalPixels)
-		log.Infof("666:%s-%s", s.lastResolustion, s.Resolution)
+		log.Infof("666:%s--%s", s.lastResolustion, s.Resolution)
 		if s.lastResolustion == s.Resolution {
 			return false
 		} else {
