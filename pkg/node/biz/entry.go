@@ -562,11 +562,13 @@ func unsubscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc
 					} else {
 						timer.Stop()
 						reportStreamTiming(timer, true, false)
+						timer.Reset()
 					}
 				} else if removed.MediaType == "audio" {
 					if timer.GetStreamsCount() == 0 {
 						timer.Stop()
 						reportStreamTiming(timer, false, false)
+						timer.Reset()
 					}
 				}
 			}

@@ -94,7 +94,8 @@ func (s *StreamTimer) AddStream(stream *StreamInfo) bool {
 			s.Resolution = ""
 			s.lastResolustion = ""
 			s.lastmode = ""
-			return true
+			s.mode = "video"
+			return false
 		}
 		s.lastmode = s.mode
 		s.mode = "video"
@@ -105,6 +106,14 @@ func (s *StreamTimer) AddStream(stream *StreamInfo) bool {
 			s.Resolution = ""
 			s.lastResolustion = ""
 			return true
+		}
+	} else if stream.MediaType == "audio" {
+		if len(s.streams) == 1 {
+			s.Resolution = ""
+			s.lastResolustion = ""
+			s.lastmode = ""
+			s.mode = "audio"
+			return false
 		}
 	}
 	log.Infof("AddStream count:%d == %v mode:%s,lastmode:%s", len(s.streams), stream, s.mode, s.lastmode)
@@ -222,8 +231,8 @@ func (s *StreamTimer) UpdateResolution() bool {
 				if sLen == 1 {
 					log.Infof("333:%s", stream.Resolution)
 					s.Resolution = stream.Resolution
-					totalPixels = getPixelsByResolution(s.Resolution)
 					log.Infof("444:%s", s.Resolution)
+					return false
 				} else if sLen > 1 {
 					totalPixels += getPixelsByResolution(stream.Resolution)
 					log.Infof("555:%d", totalPixels)
@@ -240,10 +249,12 @@ func (s *StreamTimer) UpdateResolution() bool {
 	} else {
 		//there is no subscribed stream any more,reset resolution
 		log.Infof("777:%s--%s", s.lastResolustion, s.Resolution)
-		s.lastResolustion = s.Resolution
+		s.lastResolustion = ""
 		s.Resolution = ""
+		s.lastmode = ""
+		s.mode = ""
 		log.Infof("888:%s--%s", s.lastResolustion, s.Resolution)
-		return true
+		return false
 	}
 }
 
@@ -261,6 +272,14 @@ func (s *StreamTimer) Stop() {
 		s.Seconds = s.stopTime - s.startTime
 		log.Infof("RID = %s UID = %s stream timer stop and ran %d seconds, count:%d", s.RID, s.UID, s.Seconds, len(s.streams))
 	}
+}
+
+func (s *StreamTimer) Reset() {
+	s.lastResolustion = ""
+	s.Resolution = ""
+	s.lastmode = ""
+	s.mode = ""
+	s.Seconds = 0
 }
 
 func (s *StreamTimer) Renew() {

@@ -146,6 +146,7 @@ func updateSubTimersByMID(rid, mid string) {
 									logger.Errorf(fmt.Sprintf("biz.removeSubStreamByMID reportStreamTiming 3 when removed MID:%s stream, err:%v", mid, err), "rid", timer.RID, "uid", timer.UID,
 										"mid", mid)
 								}
+								timer.Reset()
 							}
 						} else if removedStreams[0].MediaType == "audio" {
 							isLastStream := timer.GetStreamsCount() == 0
@@ -156,6 +157,7 @@ func updateSubTimersByMID(rid, mid string) {
 									logger.Errorf(fmt.Sprintf("biz.removeSubStreamByMID reportStreamTiming 4 when removed MID:%s stream, err:%v", mid, err), "rid", timer.RID, "uid", timer.UID,
 										"mid", mid)
 								}
+								timer.Reset()
 							}
 						}
 					}
