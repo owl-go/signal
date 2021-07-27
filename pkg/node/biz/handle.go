@@ -31,6 +31,7 @@ func in(transport *transport.WebSocketTransport, request *http.Request) {
 	handleRequest := func(request map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
 		defer util.Recover("signal.in handleRequest")
 		method := util.Val(request, "method")
+		totalRequestCounter.WithLabelValues(method).Inc()
 		if method == "" {
 			logger.Errorf(fmt.Sprintf("method=%s", method), "uid", id)
 			reject(-1, ws.ErrInvalidMethod)

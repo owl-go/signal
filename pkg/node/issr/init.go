@@ -6,6 +6,7 @@ import (
 	dis "signal/infra/discovery"
 	"signal/infra/kafka"
 	logger2 "signal/infra/logger"
+	"signal/infra/monitor"
 	"signal/pkg/log"
 	"signal/pkg/proto"
 	"signal/util"
@@ -15,14 +16,15 @@ import (
 )
 
 var (
-	statCycle     = 10 * time.Second
-	logger        *logger2.Logger
-	rpcs          map[string]*nprotoo.Requestor
-	protoo        *nprotoo.NatsProtoo
-	kafkaClient   *kafka.KafkaClient
-	kafkaProducer *kafka.SyncProducer
-	node          *dis.ServiceNode
-	watch         *dis.ServiceWatcher
+	statCycle              = 10 * time.Second
+	logger                 *logger2.Logger
+	rpcs                   map[string]*nprotoo.Requestor
+	protoo                 *nprotoo.NatsProtoo
+	kafkaClient            *kafka.KafkaClient
+	kafkaProducer          *kafka.SyncProducer
+	node                   *dis.ServiceNode
+	watch                  *dis.ServiceWatcher
+	rpcProcessingTimeGauge = monitor.NewMonitorGauge("issr_rpc_processing_time", "issr rpc request processing time", []string{"method"})
 )
 
 // Init 初始化服务

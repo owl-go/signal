@@ -14,6 +14,8 @@ import (
 	"signal/pkg/log"
 	issr "signal/pkg/node/issr"
 	"signal/util"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -35,6 +37,13 @@ func main() {
 	httpserver.Init(conf.Probe.Host, strconv.Itoa(conf.Probe.Port))
 	g := httpserver.Group("/api/v1", nil, nil)
 	g.Post("/probe", probe, nil)
+
+	http.Handle("/metrics", promhttp.Handler())
+	go func() {
+		if http.ListenAndServe(":"+strconv.Itoa(conf.Monitor.Port), nil) == nil {
+			log.Errorf("start prometheus service fail")
+		}
+	}()
 
 	serviceNode := dis.NewServiceNode(util.ProcessUrlString(conf.Etcd.Addrs), conf.Global.Ndc, conf.Global.Nid, conf.Global.Name, conf.Global.Nip)
 	serviceNode.RegisterNode()

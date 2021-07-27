@@ -3,6 +3,7 @@ package sfu
 import (
 	dis "signal/infra/discovery"
 	logger2 "signal/infra/logger"
+	"signal/infra/monitor"
 	"signal/pkg/proto"
 	"signal/pkg/rtc"
 	"signal/util"
@@ -17,12 +18,13 @@ const (
 )
 
 var (
-	logger      *logger2.Logger
-	protoo      *nprotoo.NatsProtoo
-	broadcaster *nprotoo.Broadcaster
-	node        *dis.ServiceNode
-	watch       *dis.ServiceWatcher
-	routersLock sync.RWMutex
+	logger                 *logger2.Logger
+	protoo                 *nprotoo.NatsProtoo
+	broadcaster            *nprotoo.Broadcaster
+	node                   *dis.ServiceNode
+	watch                  *dis.ServiceWatcher
+	routersLock            sync.RWMutex
+	rpcProcessingTimeGauge = monitor.NewMonitorGauge("sfu_rpc_processing_time", "sfu rpc request processing time", []string{"method"})
 )
 
 // Init 初始化服务

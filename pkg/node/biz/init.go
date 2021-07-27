@@ -5,6 +5,7 @@ import (
 	"fmt"
 	dis "signal/infra/discovery"
 	logger2 "signal/infra/logger"
+	"signal/infra/monitor"
 	"signal/pkg/log"
 	"signal/pkg/proto"
 	"signal/pkg/timing"
@@ -14,11 +15,14 @@ import (
 )
 
 var (
-	logger *logger2.Logger
-	nats   *nprotoo.NatsProtoo
-	node   *dis.ServiceNode
-	watch  *dis.ServiceWatcher
-	rpcs   = make(map[string]*nprotoo.Requestor)
+	logger              *logger2.Logger
+	nats                *nprotoo.NatsProtoo
+	node                *dis.ServiceNode
+	watch               *dis.ServiceWatcher
+	rpcs                = make(map[string]*nprotoo.Requestor)
+	totalRequestCounter = monitor.NewMonitorCounter("req_counter", "signal service request counter", []string{"method"})
+	totalConnections    = monitor.NewMonitorGauge("clients", "signal service node total clients", []string{"signalServices"})
+	processMetricsGauge = monitor.NewMonitorGauge("processing_time", "signal service request processing time metrics", []string{"method"})
 )
 
 // Init 初始化服务

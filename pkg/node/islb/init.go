@@ -5,6 +5,7 @@ import (
 	"time"
 
 	dis "signal/infra/discovery"
+	"signal/infra/monitor"
 	db "signal/infra/redis"
 	"signal/util"
 
@@ -17,13 +18,15 @@ const (
 )
 
 var (
-	logger      *logger2.Logger
-	nats        *nprotoo.NatsProtoo
-	broadcaster *nprotoo.Broadcaster
-	redis       *db.Redis
-	redis1      *db.Redis
-	node        *dis.ServiceNode
-	watch       *dis.ServiceWatcher
+	logger             *logger2.Logger
+	nats               *nprotoo.NatsProtoo
+	broadcaster        *nprotoo.Broadcaster
+	redis              *db.Redis
+	redis1             *db.Redis
+	node               *dis.ServiceNode
+	watch              *dis.ServiceWatcher
+	rpcCounter         = monitor.NewMonitorCounter("islb_rpc_counter", "islb rpc request counter", []string{"method"})
+	rpcProcessingGauge = monitor.NewMonitorGauge("islb_rpc_processing_time", "islb rpc request processing time", []string{"method"})
 )
 
 // Init 初始化服务

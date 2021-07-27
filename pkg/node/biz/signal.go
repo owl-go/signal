@@ -10,6 +10,7 @@ import (
 )
 
 const (
+	monitorCycle      = 5 * time.Second
 	statCycle         = 10 * time.Second
 	streamTimingCycle = 5 * time.Second
 )
@@ -24,6 +25,7 @@ var (
 func InitSignalServer(host string, port int, cert, key string) {
 	initWebSocket(host, port, cert, key, Entry)
 	go checkRoom()
+	go checkConnections()
 }
 
 func initWebSocket(host string, port int, cert, key string, handler interface{}) {
@@ -96,5 +98,19 @@ func stopStreamTimer(roomNode *RoomNode, uid string) {
 				}
 			}
 		}
+	}
+}
+
+func checkConnections() {
+	t := time.NewTicker(monitorCycle)
+	defer t.Stop()
+	for range t.C {
+		roomLock.Lock()
+		count := 0
+		for _, node := range rooms {
+			count += len(node.room.GetPeers())
+		}
+		roomLock.Unlock()
+		totalConnections.WithLabelValues("peers").Set(float64(count))
 	}
 }

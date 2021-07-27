@@ -7,6 +7,7 @@ import (
 
 	nprotoo "github.com/gearghost/nats-protoo"
 
+	"signal/infra/monitor"
 	"signal/pkg/proto"
 	"signal/util"
 )
@@ -69,6 +70,7 @@ func handleRPCRequest(rpcID string) {
 
 // 处理rpc请求
 func handleRpcMsg(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
+	rpcCounter.WithLabelValues(request["method"].(string)).Inc()
 	go func(request map[string]interface{}, accept nprotoo.AcceptFunc, reject nprotoo.RejectFunc) {
 		defer util.Recover("islb.handleRPCRequest")
 		method := request["method"].(string)
@@ -77,6 +79,8 @@ func handleRpcMsg(request map[string]interface{}, accept nprotoo.AcceptFunc, rej
 		var result map[string]interface{}
 		err := &nprotoo.Error{Code: 400, Reason: fmt.Sprintf("Unkown method [%s]", method)}
 
+		processingTime := monitor.NewProcessingTimeGauge(method)
+		processingTime.Start()
 		/* 处理和其它服务器通信 */
 		switch method {
 		case proto.BizToIslbOnJoin:
@@ -118,6 +122,8 @@ func handleRpcMsg(request map[string]interface{}, accept nprotoo.AcceptFunc, rej
 		case proto.IssrToIslbGetFailedStreamState:
 			result, err = popFailedStreamState(data)
 		}
+		processingTime.Stop()
+		rpcProcessingGauge.WithLabelValues(method).Set(processingTime.GetDuration())
 		// 判断成功
 		if err != nil {
 			reject(err.Code, err.Reason)

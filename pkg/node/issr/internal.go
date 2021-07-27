@@ -3,6 +3,7 @@ package issr
 import (
 	"encoding/json"
 	"fmt"
+	"signal/infra/monitor"
 	"signal/pkg/proto"
 	"signal/util"
 	"time"
@@ -26,12 +27,16 @@ func handleRPCRequest(rpcID string) {
 			err := &nprotoo.Error{Code: 400, Reason: fmt.Sprintf("Unkown method [%s]", method)}
 
 			if method != "" {
+				processingTime := monitor.NewProcessingTimeGauge(method)
+				processingTime.Start()
 				switch method {
 				case proto.BizToIssrReportStreamState:
 					result, err = report(data)
 				default:
 					logger.Warnf(fmt.Sprintf("issr.handleRPCRequest invalid protocol method=%s, data=%v", method, data), "rpcid", rpcID)
 				}
+				processingTime.Stop()
+				rpcProcessingTimeGauge.WithLabelValues(method).Set(processingTime.GetDuration())
 			}
 			if err != nil {
 				reject(err.Code, err.Reason)

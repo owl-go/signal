@@ -22,6 +22,8 @@ var (
 	Kafka = &cfg.Kafka
 	//http探针
 	Probe = &cfg.Probe
+	//monitor
+	Monitor = &cfg.Monitor
 )
 
 func init() {
@@ -63,13 +65,21 @@ type probe struct {
 	Key  string `mapstructure:"key"`
 }
 
+type monitor struct {
+	Host string `mapstructure:"host"`
+	Port int    `mapstructure:"port"`
+	Cert string `mapstructure:"cert"`
+	Key  string `mapstructure:"key"`
+}
+
 type config struct {
-	Global  global `mapstructure:"global"`
-	Log     log    `mapstructure:"log"`
-	Etcd    etcd   `mapstructure:"etcd"`
-	Nats    nats   `mapstructure:"nats"`
-	Kafka   kafka  `mapstructure:"kafka"`
-	Probe   probe  `mapstructure:"probe"`
+	Global  global  `mapstructure:"global"`
+	Log     log     `mapstructure:"log"`
+	Etcd    etcd    `mapstructure:"etcd"`
+	Nats    nats    `mapstructure:"nats"`
+	Kafka   kafka   `mapstructure:"kafka"`
+	Probe   probe   `mapstructure:"probe"`
+	Monitor monitor `mapstructure:"monitor"`
 	CfgFile string
 }
 

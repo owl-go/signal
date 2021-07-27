@@ -3,6 +3,7 @@ package biz
 import (
 	"fmt"
 	dis "signal/infra/discovery"
+	"signal/infra/monitor"
 	"signal/pkg/proto"
 	"signal/pkg/timing"
 	"signal/pkg/ws"
@@ -11,6 +12,8 @@ import (
 
 // Entry 信令处理
 func Entry(method string, peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reject ws.RejectFunc) {
+	processTime := monitor.NewProcessingTimeGauge("websocket request processing")
+	processTime.Start()
 	switch method {
 	case proto.ClientToBizJoin:
 		join(peer, msg, accept, reject)
@@ -39,6 +42,8 @@ func Entry(method string, peer *ws.Peer, msg map[string]interface{}, accept ws.A
 	default:
 		ws.DefaultReject(codeUnknownErr, codeStr(codeUnknownErr))
 	}
+	processTime.Stop()
+	processMetricsGauge.WithLabelValues(method).Set(processTime.GetDuration())
 }
 
 /*

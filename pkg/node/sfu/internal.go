@@ -2,6 +2,7 @@ package sfu
 
 import (
 	"fmt"
+	"signal/infra/monitor"
 	"signal/pkg/proto"
 	"signal/pkg/rtc"
 	"signal/util"
@@ -26,6 +27,8 @@ func handleRPCRequest(rpcID string) {
 			var result map[string]interface{}
 			err := &nprotoo.Error{Code: 400, Reason: fmt.Sprintf("Unkown method [%s]", method)}
 			if method != "" {
+				processingTime := monitor.NewProcessingTimeGauge(method)
+				processingTime.Start()
 				switch method {
 				case proto.BizToSfuPublish:
 					result, err = publish(data)
@@ -39,6 +42,8 @@ func handleRPCRequest(rpcID string) {
 					//log.Warnf("sfu.handleRPCRequest invalid protocol method=%s data=%v", method, data)
 					logger.Warnf(fmt.Sprintf("sfu.handleRPCRequest invalid protocol method=%s data=%v", method, data), "rpcid", rpcID)
 				}
+				processingTime.Stop()
+				rpcProcessingTimeGauge.WithLabelValues(method).Set(processingTime.GetDuration())
 			}
 			if err != nil {
 				reject(err.Code, err.Reason)

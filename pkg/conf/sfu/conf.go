@@ -24,6 +24,8 @@ var (
 	Nats = &cfg.Nats
 	//http探针
 	Probe = &cfg.Probe
+	//monitor
+	Monitor = &cfg.Monitor
 )
 
 func init() {
@@ -85,6 +87,13 @@ type probe struct {
 	Key  string `mapstructure:"key"`
 }
 
+type monitor struct {
+	Host string `mapstructure:"host"`
+	Port int    `mapstructure:"port"`
+	Cert string `mapstructure:"cert"`
+	Key  string `mapstructure:"key"`
+}
+
 type config struct {
 	Global  global  `mapstructure:"global"`
 	Plugins plugins `mapstructure:"plugins"`
@@ -93,6 +102,7 @@ type config struct {
 	Etcd    etcd    `mapstructure:"etcd"`
 	Nats    nats    `mapstructure:"nats"`
 	Probe   probe   `mapstructure:"probe"`
+	Monitor monitor `mapstructure:"monitor"`
 	CfgFile string
 }
 
