@@ -94,9 +94,6 @@ func handleBroadcast(msg map[string]interface{}, subj string) {
 	case proto.IslbToBizOnStreamRemove:
 		/* "method", proto.IslbToBizOnStreamRemove, "rid", rid, "uid", uid, "mid", mid */
 		NotifyAllWithoutID(rid, uid, proto.BizToClientOnStreamRemove, data)
-		//when publisher's stream remove,stop all the stream timer
-		mid := util.Val(data, "mid")
-		updateSubTimersByMID(rid, mid)
 	case proto.IslbToBizBroadcast:
 		/* "method", proto.IslbToBizBroadcast, "rid", rid, "uid", uid, "data", data */
 		NotifyAllWithoutID(rid, uid, proto.BizToClientBroadcast, data)
@@ -105,65 +102,6 @@ func handleBroadcast(msg map[string]interface{}, subj string) {
 	case proto.IslbToBizOnLiveRemove:
 		NotifyAllWithoutID(rid, uid, proto.BizToClientOnLiveStreamRemove, data)
 		stopLiveStreamTimerByRIDUID(rid, uid)
-	}
-}
-
-func updateSubTimersByMID(rid, mid string) {
-	roomNode := GetRoom(rid)
-	if roomNode != nil {
-		peers := roomNode.room.GetPeers()
-		for _, peer := range peers {
-			timer := peer.GetStreamTimer()
-			if timer != nil && !timer.IsStopped() {
-				removedStreams, isModeChanged := timer.RemoveStreamByMID(mid)
-				//it must be video change to audio,cuz it at least have one last audio stream in the end.
-				if isModeChanged {
-					timer.Stop()
-					err := reportStreamTiming(timer, true, false)
-					if err != nil {
-						logger.Errorf(fmt.Sprintf("biz.removeSubStreamByMID reportStreamTiming 1 when removed MID:%s stream, err:%v", mid, err), "rid", timer.RID, "uid", timer.UID,
-							"mid", mid)
-					}
-					timer.Renew()
-				} else {
-					if removedStreams != nil {
-						if removedStreams[0].MediaType == "video" {
-							if timer.GetStreamsCount() > 0 {
-								isResolutionChanged := timer.UpdateResolution()
-								if isResolutionChanged {
-									timer.Stop()
-									err := reportStreamTiming(timer, true, true)
-									if err != nil {
-										logger.Errorf(fmt.Sprintf("biz.removeSubStreamByMID reportStreamTiming 2 when removed MID:%s stream, err:%v", mid, err), "rid", timer.RID, "uid", timer.UID,
-											"mid", mid)
-									}
-									timer.Renew()
-								}
-							} else {
-								timer.Stop()
-								err := reportStreamTiming(timer, true, false)
-								if err != nil {
-									logger.Errorf(fmt.Sprintf("biz.removeSubStreamByMID reportStreamTiming 3 when removed MID:%s stream, err:%v", mid, err), "rid", timer.RID, "uid", timer.UID,
-										"mid", mid)
-								}
-								timer.Reset()
-							}
-						} else if removedStreams[0].MediaType == "audio" {
-							isLastStream := timer.GetStreamsCount() == 0
-							if isLastStream {
-								timer.Stop()
-								err := reportStreamTiming(timer, false, false)
-								if err != nil {
-									logger.Errorf(fmt.Sprintf("biz.removeSubStreamByMID reportStreamTiming 4 when removed MID:%s stream, err:%v", mid, err), "rid", timer.RID, "uid", timer.UID,
-										"mid", mid)
-								}
-								timer.Reset()
-							}
-						}
-					}
-				}
-			}
-		}
 	}
 }
 

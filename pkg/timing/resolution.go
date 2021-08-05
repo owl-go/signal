@@ -4,7 +4,7 @@ import (
 	"strings"
 )
 
-func getPixelsByResolution(resolution string) uint64 {
+func GetPixelsByResolution(resolution string) int64 {
 	switch strings.ToLower(resolution) {
 	case "240":
 		return 57600
@@ -25,33 +25,7 @@ func getPixelsByResolution(resolution string) uint64 {
 	}
 }
 
-func CalcPixelsToResolution(pixels uint64) string {
-	if pixels == 0 {
-		return ""
-	}
-	if pixels >= 129600 && pixels < 407040 {
-		return "360"
-	}
-	if pixels >= 407040 && pixels < 921600 {
-		return "480p"
-	}
-	if pixels >= 921600 && pixels < 2073600 {
-		return "720p"
-	}
-	if pixels >= 2073600 && pixels < 3686400 {
-		return "1080p"
-	}
-	if pixels >= 3686400 && pixels < 8847360 {
-		return "2k"
-	}
-	if pixels >= 8847360 {
-		return "4k"
-	}
-	return "240"
-}
-
-func TransformResolution(resolution string) string {
-	pixels := getPixelsByResolution(resolution)
+func TransformResolutionFromPixels(pixels int64) string {
 	if pixels > 0 && pixels <= 407040 {
 		return "SD"
 	} else if pixels > 407040 && pixels <= 921600 {

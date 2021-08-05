@@ -66,8 +66,7 @@ func checkRoom() {
 					rpc.SyncRequest(proto.BizToIslbOnLiveRemove, util.Map("rid", rid, "uid", uid, "mid", ""))
 					rpc.SyncRequest(proto.BizToIslbOnStreamRemove, util.Map("rid", rid, "uid", uid, "mid", ""))
 					rpc.SyncRequest(proto.BizToIslbOnLeave, util.Map("rid", rid, "uid", uid))
-					//stop this user's timer when disconnect
-					stopStreamTimer(node, uid)
+
 					node.room.RemovePeer(uid)
 				}
 			}
@@ -78,26 +77,6 @@ func checkRoom() {
 			}
 		}
 		roomLock.Unlock()
-	}
-}
-
-func stopStreamTimer(roomNode *RoomNode, uid string) {
-	peer := roomNode.room.GetPeer(uid)
-	if peer != nil {
-		timer := peer.GetStreamTimer()
-		if timer != nil {
-			if !timer.IsStopped() {
-				timer.Stop()
-				logger.Infof(fmt.Sprintf("biz.stopDisconnetedTimer room %s uid=%s stream was stopped", timer.RID, timer.UID),
-					"uid", timer.UID, "rid", timer.RID)
-				//cuz this timer was disconnected, it will stop and delete,so should use current resolution
-				isVideo := timer.GetCurrentMode() == "video"
-				err := reportStreamTiming(timer, isVideo, false)
-				if err != nil {
-					logger.Errorf(fmt.Sprintf("biz.cleanDisconnetedTimer rpc err=%v", err), "uid", timer.UID, "rid", timer.RID)
-				}
-			}
-		}
 	}
 }
 

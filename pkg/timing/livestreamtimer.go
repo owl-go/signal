@@ -5,6 +5,14 @@ import (
 	"time"
 )
 
+type StreamState struct {
+	RID        string `json:"rid"`
+	UID        string `json:"uid"`
+	AppID      string `json:"appid"`
+	Resolution string `json:"resolution"`
+	Seconds    int64  `json:"seconds"`
+}
+
 type LiveStreamTimer struct {
 	*StreamState
 	startTime int64

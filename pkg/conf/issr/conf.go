@@ -24,6 +24,8 @@ var (
 	Probe = &cfg.Probe
 	//monitor
 	Monitor = &cfg.Monitor
+	// Redis Redis设置
+	Redis = &cfg.Redis
 )
 
 func init() {
@@ -72,6 +74,12 @@ type monitor struct {
 	Key  string `mapstructure:"key"`
 }
 
+type redis struct {
+	Addrs []string `mapstructure:"addrs"`
+	Pwd   string   `mapstructure:"password"`
+	DB    int      `mapstructure:"db"`
+}
+
 type config struct {
 	Global  global  `mapstructure:"global"`
 	Log     log     `mapstructure:"log"`
@@ -80,6 +88,7 @@ type config struct {
 	Kafka   kafka   `mapstructure:"kafka"`
 	Probe   probe   `mapstructure:"probe"`
 	Monitor monitor `mapstructure:"monitor"`
+	Redis   redis   `mapstructure:"redis"`
 	CfgFile string
 }
 

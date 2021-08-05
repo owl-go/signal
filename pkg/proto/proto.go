@@ -6,10 +6,6 @@ import (
 
 const (
 
-	//IssrToIslbStoreFailedStreamState Issr -> Islb 存储失败拉流数据
-	IssrToIslbStoreFailedStreamState = "storefailedstreamstate"
-	//IssrToIslbGetFailedStreamState Issr -> Islb 获取失败拉流记录
-	IssrToIslbGetFailedStreamState = "getfailedstreamstate"
 	//BizToIssrReportStreamState Biz -> Issr 发送拉流信息到Issr
 	BizToIssrReportStreamState = "reportstreamstate"
 
@@ -151,6 +147,11 @@ const (
 	McuToIslbOnStreamRemove = "mcu-stream-remove"
 	//McuToIslbOnRoomRemove mcu->biz mcu房间移除通知
 	McuToIslbOnRoomRemove = "mcu-room-remove"
+
+	//SfuToIssrOnSubscribeAdd Sfu->Issr Sfu通知Issr订阅流添加消息
+	SfuToIssrOnSubscribeAdd = "sfu-subscribe-add"
+	//SfuToIssrOnSubscribeRemove Sfu->Issr Sfu通知Issr订阅流移除消息
+	SfuToIssrOnSubscribeRemove = "sfu-subscribe-remove"
 )
 
 // GetUIDFromMID 从mid中获取uid
@@ -198,9 +199,19 @@ func GetFailedStreamStateKey() string {
 	return "/zx/report/failure"
 }
 
-// GetUserLockKey 获取UserLock key
-func GetUserLockKey(rid, uid string) string {
-	return "/lock/" + rid + "/" + uid
+// GetSubVideoStreamTime 获取订阅视频流Unix时间 key
+func GetSubVideoStreamTimingKey(appid, rid, uid string) string {
+	return "/zx/timing/video/" + appid + "/" + rid + "/" + uid
+}
+
+// GetSubAudioStreamTime 获取订阅音频流Unix时间 key
+func GetSubAudioStreamTimingKey(appid, rid, uid string) string {
+	return "/zx/timing/audio/" + appid + "/" + rid + "/" + uid
+}
+
+//GetUserTimingLock 获取用户计时 lock key
+func GetSubStreamTimingLockKey(appid, rid, uid string) string {
+	return "/zx/timing/lock/" + appid + "/" + rid + "/" + uid
 }
 
 // TrackInfo track信息

@@ -2,7 +2,6 @@ package biz
 
 import (
 	"errors"
-	"fmt"
 	dis "signal/infra/discovery"
 	logger2 "signal/infra/logger"
 	"signal/infra/monitor"
@@ -394,56 +393,6 @@ func getIslbRequestor() *nprotoo.Requestor {
 	return rpc
 }
 
-func reportStreamTiming(timer *timing.StreamTimer, isVideo, isInterval bool) error {
-	log.Infof("reportStreamTiming:uid:%s,count:%d,lastmode:%s,mode:%s,lastres:%s,res:%s", timer.UID, timer.GetStreamsCount(), timer.GetLastMode(), timer.GetCurrentMode(),
-		timer.GetLastResolution(), timer.GetCurrentResolution())
-
-	var resolution string
-	var mode string
-
-	if isVideo {
-		mode = "video"
-		if isInterval {
-			resolution = timing.TransformResolution(timer.GetLastResolution())
-		} else {
-			resolution = timing.TransformResolution(timer.GetCurrentResolution())
-		}
-	} else {
-		mode = "audio"
-	}
-
-	seconds := timer.GetTotalSeconds()
-
-	if seconds != 0 {
-		var msg map[string]interface{}
-		if mode == "audio" {
-			msg = util.Map("appid", timer.AppID, "rid", timer.RID, "uid", timer.UID,
-				"mediatype", mode, "seconds", seconds, "type", 200) //200 dedicate to rtc meeting
-		} else {
-			if resolution != "" {
-				msg = util.Map("appid", timer.AppID, "rid", timer.RID, "uid", timer.UID,
-					"mediatype", mode, "resolution", resolution, "seconds", seconds, "type", 200)
-			} else {
-				log.Errorf("resolution is empty")
-				return errors.New("resolution is empty")
-			}
-		}
-		issrRpc := getIssrRequestor()
-		if issrRpc == nil {
-			storeFailure(msg)
-			log.Errorf("can't found issr node")
-			return errors.New("can't found issr node")
-		}
-		_, err := issrRpc.SyncRequest(proto.BizToIssrReportStreamState, msg)
-		if err != nil {
-			storeFailure(msg)
-			log.Errorf(err.Reason)
-			return errors.New(err.Reason)
-		}
-	}
-	return nil
-}
-
 func reportLiveStreamTiming(timer *timing.LiveStreamTimer) error {
 	log.Infof("reportLiveStreamTiming rid:%s uid:%s resolution:%s,seconds:%d", timer.RID, timer.UID, timer.Resolution,
 		timer.GetTotalSeconds())
@@ -455,31 +404,14 @@ func reportLiveStreamTiming(timer *timing.LiveStreamTimer) error {
 			"mediatype", timer.GetMode(), "resolution", timer.Resolution, "seconds", seconds, "type", 700) //700 dedicate to live streaming record
 		issrRpc := getIssrRequestor()
 		if issrRpc == nil {
-			storeFailure(msg)
 			log.Errorf("can't found issr node")
 			return errors.New("can't found issr node")
 		}
 		_, err := issrRpc.SyncRequest(proto.BizToIssrReportStreamState, msg)
 		if err != nil {
-			storeFailure(msg)
 			log.Errorf(err.Reason)
 			return errors.New(err.Reason)
 		}
-	}
-	return nil
-}
-
-func storeFailure(data map[string]interface{}) error {
-	islb := getIslbRequestor()
-	if islb == nil {
-		logger.Errorf("biz.storeFailure can't find islb requestor")
-		return errors.New("biz.storeFailure can't find islb requestor")
-	}
-	_, nerr := islb.SyncRequest(proto.IssrToIslbStoreFailedStreamState, data)
-	if nerr != nil {
-		logger.Errorf(fmt.Sprintf("biz.storeFailure islb rpc err=%v", nerr))
-		//return errors.New(fmt.Sprintf("biz.storeFailure islb rpc err=%v", nerr))
-		return fmt.Errorf("biz.storeFailure islb rpc err=%v", nerr)
 	}
 	return nil
 }

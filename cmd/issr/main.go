@@ -10,6 +10,7 @@ import (
 
 	dis "signal/infra/discovery"
 	h "signal/infra/http"
+	db "signal/infra/redis"
 	conf "signal/pkg/conf/issr"
 	"signal/pkg/log"
 	issr "signal/pkg/node/issr"
@@ -49,7 +50,13 @@ func main() {
 	serviceNode.RegisterNode()
 	serviceWatcher := dis.NewServiceWatcher(util.ProcessUrlString(conf.Etcd.Addrs))
 
-	issr.Init(serviceNode, serviceWatcher, conf.Nats.URL, conf.Kafka.URL, l)
+	config := db.Config{
+		Addrs: conf.Redis.Addrs,
+		Pwd:   conf.Redis.Pwd,
+		DB:    conf.Redis.DB,
+	}
+
+	issr.Init(serviceNode, serviceWatcher, conf.Nats.URL, conf.Kafka.URL, config, l)
 
 	l.Infof(fmt.Sprintf("issr %s start.", conf.Global.Nid))
 

@@ -155,13 +155,6 @@ func leave(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, reje
 	rpc.SyncRequest(proto.BizToIslbOnLeave, util.Map("rid", rid, "uid", uid))
 	DelPeer(rid, uid)
 
-	//stop timer if didn't stop then report
-	timer := peer.GetStreamTimer()
-	if timer != nil && !timer.IsStopped() {
-		timer.Stop()
-		isVideo := timer.GetCurrentMode() == "video"
-		reportStreamTiming(timer, isVideo, false)
-	}
 	// resp
 	accept(emptyMap)
 }
@@ -240,13 +233,15 @@ func publish(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, re
 	if invalid(jsep, "sdp", reject) {
 		return
 	}
-	minfo := msg["minfo"]
-	if minfo == nil {
+	minfo, ok := msg["minfo"].(map[string]interface{})
+	if minfo == nil || !ok {
 		logger.Errorf("biz.publish minfo not found", "uid", uid, "rid", rid)
 		reject(codeMinfoErr, codeStr(codeMinfoErr))
 		return
 	}
-	minfo = msg["minfo"].(map[string]interface{})
+
+	//add appid into minfo
+	minfo["appid"] = peer.GetAppID()
 
 	// 判断是否在房间里面
 	room := GetRoom(rid)
@@ -395,14 +390,12 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	if invalid(jsep, "sdp", reject) {
 		return
 	}
-	minfo := msg["minfo"]
-	if minfo == nil {
+	minfo, ok := msg["minfo"].(map[string]interface{})
+	if !ok {
 		logger.Errorf("biz.subscribe minfo not found", "uid", uid, "rid", rid, "mid", mid)
 		reject(codeMinfoErr, codeStr(codeMinfoErr))
 		return
 	}
-	minfo = msg["minfo"].(map[string]interface{})
-
 	// 判断是否在房间里面
 	room := GetRoom(rid)
 	if room == nil {
@@ -445,59 +438,6 @@ func subscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc, 
 	rspSfu["sid"] = resp["mid"]
 	rspSfu["uid"] = resp["uid"]
 
-	//add stream to timer then start
-	var mediatype string
-	sid := rspSfu["sid"].(string)
-	isVideo := minfo.(map[string]interface{})["video"].(bool)
-	if !isVideo {
-		isVideo = minfo.(map[string]interface{})["screen"].(bool)
-	}
-	isAudio := minfo.(map[string]interface{})["audio"].(bool)
-	if !isVideo && isAudio {
-		mediatype = "audio"
-	} else if isVideo {
-		mediatype = "video"
-	}
-	resolution, ok := minfo.(map[string]interface{})["resolution"].(string)
-	if !ok {
-		resolution = ""
-	}
-	timer := peer.GetStreamTimer()
-	if timer != nil {
-		isModeChanged := timer.AddStream(timing.NewStreamInfo(mid, sid, mediatype, resolution))
-		if isModeChanged {
-			//this must be audio report
-			timer.UpdateResolution()
-			timer.Stop()
-			reportStreamTiming(timer, false, false)
-			timer.Renew()
-		} else {
-			if mediatype == "video" {
-				isResolutionChanged := timer.UpdateResolution()
-				if isResolutionChanged {
-					timer.Stop()
-					//report this interval
-					reportStreamTiming(timer, true, true)
-					//then renew timer
-					timer.Renew()
-				} else {
-					if timer.GetStreamsCount() == 1 {
-						timer.Renew()
-					}
-				}
-			}
-		}
-	} else {
-		// create stream timer and add the stream,then start
-		streamTimer := timing.NewStreamTimer(rid, uid, peer.GetAppID())
-		peer.SetStreamTimer(streamTimer)
-		subscribedStream := timing.NewStreamInfo(mid, sid, mediatype, resolution)
-		streamTimer.AddStream(subscribedStream)
-		if mediatype == "video" {
-			streamTimer.UpdateResolution()
-		}
-		streamTimer.Start()
-	}
 	// resp
 	accept(rspSfu)
 }
@@ -542,43 +482,6 @@ func unsubscribe(peer *ws.Peer, msg map[string]interface{}, accept ws.AcceptFunc
 	}
 	rpcSfu.SyncRequest(proto.BizToSfuUnSubscribe, util.Map("rid", rid, "uid", uid, "mid", mid))
 
-	//remove stream from timer then according to the state,decide what to do
-	timer := peer.GetStreamTimer()
-	if timer != nil {
-		removed, isModeChanged := timer.RemoveStreamBySID(mid)
-		if removed != nil {
-			if isModeChanged {
-				//this must be video to audio
-				timer.Stop()
-				reportStreamTiming(timer, true, false)
-				timer.Renew()
-			} else {
-				if removed.MediaType == "video" {
-					if timer.GetStreamsCount() > 0 {
-						isResolutionChanged := timer.UpdateResolution()
-						//check whether total resolution change or not,to determine timer stop or not
-						if isResolutionChanged {
-							timer.Stop()
-							//report this interval
-							reportStreamTiming(timer, true, true)
-							//then timer renew
-							timer.Renew()
-						}
-					} else {
-						timer.Stop()
-						reportStreamTiming(timer, true, false)
-						timer.Reset()
-					}
-				} else if removed.MediaType == "audio" {
-					if timer.GetStreamsCount() == 0 {
-						timer.Stop()
-						reportStreamTiming(timer, false, false)
-						timer.Reset()
-					}
-				}
-			}
-		}
-	}
 	// resp
 	accept(emptyMap)
 }

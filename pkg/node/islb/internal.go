@@ -1,7 +1,6 @@
 package node
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -117,10 +116,6 @@ func handleRpcMsg(request map[string]interface{}, accept nprotoo.AcceptFunc, rej
 		case proto.BizToIslbGetRoomLives:
 			result, err = getRoomLives(data)
 
-		case proto.IssrToIslbStoreFailedStreamState:
-			result, err = pushFailedStreamState(data)
-		case proto.IssrToIslbGetFailedStreamState:
-			result, err = popFailedStreamState(data)
 		}
 		processingTime.Stop()
 		rpcProcessingGauge.WithLabelValues(method).Set(processingTime.GetDuration())
@@ -612,43 +607,4 @@ func getRoomLives(data map[string]interface{}) (map[string]interface{}, *nprotoo
 	resp := util.Map("lives", lives)
 	logger.Infof(fmt.Sprintf("islb.getRoomLives resp=%v ", resp), "rid", rid)
 	return resp, nil
-}
-
-// 存储失败拉流数据
-func pushFailedStreamState(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
-	rid := util.Val(data, "rid")
-	uid := util.Val(data, "uid")
-	//生成key
-	sKey := proto.GetFailedStreamStateKey()
-	// 写入key值
-	state, err := json.Marshal(data)
-	if err != nil {
-		logger.Errorf(fmt.Sprintf("islb.pushFailedStreamState json marshal err=%v", err), "rid", rid, "uid", uid)
-		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("json marshal err:%v", err)}
-	}
-
-	err = redis1.RPush(sKey, string(state))
-	if err != nil {
-		logger.Errorf(fmt.Sprintf("biz.pushFailedStreamState redis.Set stream state err=%v", err), "rid", rid, "uid", uid)
-		return nil, &nprotoo.Error{Code: -1, Reason: fmt.Sprintf("redis.Set err=%v", err)}
-	} else {
-		return util.Map(), nil
-	}
-}
-
-// 获取失败拉流记录
-func popFailedStreamState(data map[string]interface{}) (map[string]interface{}, *nprotoo.Error) {
-	sKey := proto.GetFailedStreamStateKey()
-	length := redis1.LLen(sKey)
-	if length > 20 {
-		length = 20
-	}
-	failures := make([]string, 0)
-	for i := int64(0); i < length; i++ {
-		failure := redis1.LPop(sKey)
-		if failure != "" {
-			failures = append(failures, failure)
-		}
-	}
-	return util.Map("failures", failures), nil
 }

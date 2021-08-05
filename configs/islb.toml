@@ -20,7 +20,6 @@ natslog = "127.0.0.1:4222"
 addrs = [":6379"]
 password = ""
 db = 0
-tdb = 1
 
 [probe]
 host="0.0.0.0"

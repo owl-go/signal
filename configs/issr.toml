@@ -27,3 +27,8 @@ port="7074"
 [monitor]
 host = "0.0.0.0"
 port = "10082"
+
+[redis]
+addrs = [":6379"]
+password = ""
+db = 0

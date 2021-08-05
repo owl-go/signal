@@ -7,6 +7,7 @@ import (
 	"signal/infra/kafka"
 	logger2 "signal/infra/logger"
 	"signal/infra/monitor"
+	db "signal/infra/redis"
 	"signal/pkg/log"
 	"signal/pkg/proto"
 	"signal/util"
@@ -16,19 +17,23 @@ import (
 )
 
 var (
-	statCycle              = 10 * time.Second
+	redisKeyTTL            = 24 * time.Hour
+	failureKey             = proto.GetFailedStreamStateKey()
+	timingType             = 200
+	statCycle              = 60 * time.Second
 	logger                 *logger2.Logger
 	rpcs                   map[string]*nprotoo.Requestor
 	protoo                 *nprotoo.NatsProtoo
 	kafkaClient            *kafka.KafkaClient
 	kafkaProducer          *kafka.SyncProducer
+	redis                  *db.Redis
 	node                   *dis.ServiceNode
 	watch                  *dis.ServiceWatcher
 	rpcProcessingTimeGauge = monitor.NewMonitorGauge("issr_rpc_processing_time", "issr rpc request processing time", []string{"method"})
 )
 
 // Init 初始化服务
-func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL, kafkaURL string, l *logger2.Logger) {
+func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL, kafkaURL string, config db.Config, l *logger2.Logger) {
 	// 赋值
 	logger = l
 	node = serviceNode
@@ -50,6 +55,8 @@ func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, nats
 	protoo = nprotoo.NewNatsProtoo(util.GenerateNatsUrlString(natsURL))
 	// 启动MQ监听
 	handleRPCRequest(node.GetRPCChannel())
+	//建立redis连接
+	redis = db.NewRedis(config)
 	//监听islb节点
 	go watch.WatchServiceNode("", WatchServiceCallBack)
 	go checkFailures()
@@ -66,6 +73,10 @@ func WatchServiceCallBack(state dis.NodeStateType, node dis.Node) {
 				rpcID := dis.GetRPCChannel(node)
 				rpcs[id] = protoo.NewRequestor(rpcID)
 			}
+		}
+		if node.Name == "sfu" {
+			eventID := dis.GetEventChannel(node)
+			protoo.OnBroadcastWithGroup(eventID, "issr", handleBroadcast)
 		}
 	} else if state == dis.ServerDown {
 		log.Infof("WatchServiceCallBack node down %v", node.Nid)
@@ -127,35 +138,29 @@ func checkFailures() {
 	t := time.NewTicker(statCycle)
 	defer t.Stop()
 	for range t.C {
-		islbRpc := getIslbRequestor()
-		if islbRpc == nil {
-			log.Errorf("issr.checkFailures can't get islb rpc")
-		} else {
-			resp, nerr := islbRpc.SyncRequest(proto.IssrToIslbGetFailedStreamState, util.Map())
-			if nerr == nil {
-				failures := resp["failures"].([]interface{})
-				for _, failure := range failures {
-					var msg map[string]interface{}
-					json.Unmarshal([]byte(failure.(string)), &msg)
-					timestamp := time.Now().UnixNano() / 1000
-					msg["timestamp"] = timestamp
-					str, err := json.Marshal(msg)
+		length := redis.LLen(failureKey)
+		for i := int64(0); i < length; i++ {
+			failure := redis.LPop(failureKey)
+			if failure != "" {
+				msg := util.Unmarshal(failure)
+				timestamp := time.Now().UnixNano() / 1000
+				msg["timestamp"] = timestamp
+				str, err := json.Marshal(msg)
+				if err != nil {
+					logger.Errorf(fmt.Sprintf("issr.checkFailures json marshal failed=%v", err))
+				} else {
+					//logger.Infof(fmt.Sprintf("issr.checkFailures msg: %s", string(str)))
+					err = kafkaProducer.Produce("Livs-Usage-Event", string(str))
 					if err != nil {
-						logger.Errorf(fmt.Sprintf("issr.checkFailures json marshal failed=%v", err))
-					} else {
-						//logger.Infof(fmt.Sprintf("issr.checkFailures msg: %s", string(str)))
-						err = kafkaProducer.Produce("Livs-Usage-Event", string(str))
+						logger.Errorf(fmt.Sprintf("issr.checkFailures kafka produce error=%v", err))
+						err = redis.RPush(failureKey, string(str))
 						if err != nil {
-							logger.Errorf(fmt.Sprintf("issr.checkFailures kafka produce error=%v", err))
-							_, nerr := islbRpc.SyncRequest(proto.IssrToIslbStoreFailedStreamState, msg)
-							if nerr != nil {
-								logger.Errorf(fmt.Sprintf("issr.checkFailures request islb to store err=%v", nerr))
-							}
+							logger.Errorf(fmt.Sprintf("issr.checkFailures store failure err=%v", err))
 						}
 					}
 				}
 			} else {
-				logger.Errorf(nerr.Reason)
+				break
 			}
 		}
 	}

@@ -22,7 +22,6 @@ var (
 	nats               *nprotoo.NatsProtoo
 	broadcaster        *nprotoo.Broadcaster
 	redis              *db.Redis
-	redis1             *db.Redis
 	node               *dis.ServiceNode
 	watch              *dis.ServiceWatcher
 	rpcCounter         = monitor.NewMonitorCounter("islb_rpc_counter", "islb rpc request counter", []string{"method"})
@@ -30,14 +29,13 @@ var (
 )
 
 // Init 初始化服务
-func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL string, config, config1 db.Config, log *logger2.Logger) {
+func Init(serviceNode *dis.ServiceNode, ServiceWatcher *dis.ServiceWatcher, natsURL string, config db.Config, log *logger2.Logger) {
 	// 赋值
 	node = serviceNode
 	watch = ServiceWatcher
 	nats = nprotoo.NewNatsProtoo(util.GenerateNatsUrlString(natsURL))
 	broadcaster = nats.NewBroadcaster(node.GetEventChannel())
 	redis = db.NewRedis(config)
-	redis1 = db.NewRedis(config1)
 	logger = log
 	// 启动
 	handleRPCRequest(node.GetRPCChannel())

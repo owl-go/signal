@@ -59,13 +59,8 @@ func main() {
 		Pwd:   conf.Redis.Pwd,
 		DB:    conf.Redis.DB,
 	}
-	config1 := db.Config{
-		Addrs: conf.Redis.Addrs,
-		Pwd:   conf.Redis.Pwd,
-		DB:    conf.Redis.TDB,
-	}
 
-	islb.Init(serviceNode, serviceWatcher, conf.Nats.URL, config, config1, l)
+	islb.Init(serviceNode, serviceWatcher, conf.Nats.URL, config, l)
 
 	l.Infof(fmt.Sprintf("islb %s start.", conf.Global.Nid))
 

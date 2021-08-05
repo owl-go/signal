@@ -58,7 +58,6 @@ type redis struct {
 	Addrs []string `mapstructure:"addrs"`
 	Pwd   string   `mapstructure:"password"`
 	DB    int      `mapstructure:"db"`
-	TDB   int      `mapstructure:"tdb"`
 }
 
 type probe struct {
