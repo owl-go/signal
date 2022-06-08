@@ -214,6 +214,11 @@ func GetSubStreamTimingLockKey(appid, rid, uid string) string {
 	return "/zx/timing/lock/" + appid + "/" + rid + "/" + uid
 }
 
+// GetSubStreamTime 获取订阅流Unix时间 key
+func GetSubStreamTimingKey(rid, uid string) string {
+	return "/zx/timing/" + rid + "/" + uid
+}
+
 // TrackInfo track信息
 type TrackInfo struct {
 	ID      string `json:"id"`

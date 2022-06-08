@@ -144,6 +144,14 @@ func (r *Redis) HSet(k, field string, value interface{}) error {
 	return r.single.HSet(k, field, value).Err()
 }
 
+// HSet redis以hash散列表方式存储key的field字段的值
+func (r *Redis) HMSet(k string, fields map[string]interface{}) error {
+	if r.clusterMode {
+		return r.cluster.HMSet(k, fields).Err()
+	}
+	return r.single.HMSet(k, fields).Err()
+}
+
 // HGet redis读取hash散列表key的field字段的值
 func (r *Redis) HGet(k, field string) string {
 	if r.clusterMode {
